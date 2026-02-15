@@ -459,13 +459,17 @@ h1{
   min-height: 176px;
   padding: 20px 18px;
   border-radius: 20px;
-  border-color: rgba(15, 23, 42, .09);
+  border-color: rgba(255, 255, 255, .58);
   background:
-    radial-gradient(140px 92px at 16% 10%, var(--tile-tint), transparent 72%),
-    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    radial-gradient(170px 120px at 16% 10%, var(--tile-tint), transparent 74%),
+    linear-gradient(155deg, rgba(255,255,255,.64) 0%, rgba(247,252,255,.42) 56%, rgba(238,246,255,.50) 100%);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.82);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
 
 .homeGrid .homeTile::before{
@@ -478,18 +482,17 @@ h1{
   border-radius: 999px;
   background: var(--tile-tint);
   filter: blur(26px);
-  opacity: .45;
+  opacity: .55;
   animation: tintDrift 8s ease-in-out infinite alternate;
 }
 
 .homeGrid .homeTile::after{
   content: "";
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(15,23,42,.12), transparent);
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.46) 0%, rgba(255,255,255,0) 46%);
+  pointer-events: none;
 }
 
 .homeGrid .homeTile > *{
@@ -498,9 +501,11 @@ h1{
 }
 
 .homeGrid .homeTile:hover{
-  transform: translateY(-2px);
-  border-color: rgba(15, 23, 42, .16);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
+  transform: translateY(-2px) scale(1.005);
+  border-color: rgba(255,255,255,.78);
+  box-shadow:
+    0 16px 28px rgba(15, 23, 42, .10),
+    inset 0 1px 0 rgba(255,255,255,.9);
 }
 
 .homeGrid .homeTile .tileTitle{
@@ -511,7 +516,7 @@ h1{
 
 .homeGrid .homeTile .tileSub{
   max-width: 30ch;
-  color: #6b7280;
+  color: #5e6978;
 }
 
 .homeGrid .homeTile.tileWide{
@@ -525,12 +530,14 @@ h1{
   display: grid;
   place-items: center;
   color: var(--tile-accent);
-  border: 1px solid rgba(15, 23, 42, .12);
-  background: linear-gradient(180deg, #ffffff 0%, #f5f7fa 100%);
+  border: 1px solid rgba(255,255,255,.7);
+  background: linear-gradient(180deg, rgba(255,255,255,.7) 0%, rgba(245,249,255,.48) 100%);
   box-shadow:
-    0 4px 10px rgba(15, 23, 42, .08),
-    inset 0 1px 0 rgba(255,255,255,.7);
+    0 6px 14px rgba(15, 23, 42, .10),
+    inset 0 1px 0 rgba(255,255,255,.85);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .homeGrid .homeTileIcon svg{
@@ -544,11 +551,11 @@ h1{
 }
 
 .homeGrid .homeTile:hover .homeTileIcon{
-  transform: translateY(-1px);
-  border-color: rgba(15, 23, 42, .2);
+  transform: translateY(-1px) scale(1.02);
+  border-color: rgba(255,255,255,.85);
   box-shadow:
-    0 6px 14px rgba(15, 23, 42, .1),
-    inset 0 1px 0 rgba(255,255,255,.8);
+    0 8px 16px rgba(15, 23, 42, .12),
+    inset 0 1px 0 rgba(255,255,255,.9);
 }
 
 .homeGrid .homeTileMenu{
