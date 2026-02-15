@@ -382,10 +382,6 @@ h1{
 }
 
 .homeGrid .homeTile{
-  --home-accent: #0f766e;
-  --home-accent-2: #14b8a6;
-  --home-tint: rgba(20, 184, 166, .14);
-
   text-align: center;
   justify-items: center;
   align-content: center;
@@ -393,12 +389,11 @@ h1{
   min-height: 176px;
   padding: 20px 18px;
   border-radius: 20px;
-  border-color: rgba(15, 23, 42, .12);
-  background:
-    radial-gradient(140px 90px at 18% 12%, var(--home-tint), transparent 70%),
-    linear-gradient(170deg, #ffffff 0%, #f9fcff 62%, #f4f8ff 100%);
+  border-color: rgba(15, 23, 42, .09);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
 }
 
 .homeGrid .homeTile::after{
@@ -412,16 +407,20 @@ h1{
 }
 
 .homeGrid .homeTile:hover{
-  transform: translateY(-3px);
-  border-color: rgba(15, 23, 42, .2);
+  transform: translateY(-2px);
+  border-color: rgba(15, 23, 42, .16);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
 }
 
 .homeGrid .homeTile .tileTitle{
-  font-size: 23px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -.1px;
 }
 
 .homeGrid .homeTile .tileSub{
   max-width: 30ch;
+  color: #6b7280;
 }
 
 .homeGrid .homeTile.tileWide{
@@ -429,62 +428,27 @@ h1{
 }
 
 .homeGrid .homeTileIcon{
-  width: 54px;
-  height: 54px;
+  width: 50px;
+  height: 50px;
   border-radius: 16px;
   display: grid;
   place-items: center;
-  color: #ffffff;
-  background: linear-gradient(140deg, var(--home-accent), var(--home-accent-2));
+  color: #475467;
+  border: 1px solid rgba(15, 23, 42, .12);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7fa 100%);
   box-shadow:
-    0 10px 20px rgba(15, 23, 42, .18),
-    inset 0 1px 0 rgba(255,255,255,.4);
+    0 4px 10px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.7);
 }
 
 .homeGrid .homeTileIcon svg{
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.9;
+  stroke-width: 1.45;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.homeGrid .homeTileMenu{
-  --home-accent: #0f766e;
-  --home-accent-2: #14b8a6;
-  --home-tint: rgba(20,184,166,.14);
-}
-
-.homeGrid .homeTileCollection{
-  --home-accent: #a35517;
-  --home-accent-2: #f59e0b;
-  --home-tint: rgba(245,158,11,.14);
-}
-
-.homeGrid .homeTileDelivery{
-  --home-accent: #1d4ed8;
-  --home-accent-2: #38bdf8;
-  --home-tint: rgba(56,189,248,.14);
-}
-
-.homeGrid .homeTileBookings{
-  --home-accent: #0f4c81;
-  --home-accent-2: #2563eb;
-  --home-tint: rgba(37,99,235,.12);
-}
-
-.homeGrid .homeTileLocation{
-  --home-accent: #b42318;
-  --home-accent-2: #ef4444;
-  --home-tint: rgba(239,68,68,.14);
-}
-
-.homeGrid .homeTileContact{
-  --home-accent: #14532d;
-  --home-accent-2: #16a34a;
-  --home-tint: rgba(22,163,74,.12);
 }
 
 .footer{
