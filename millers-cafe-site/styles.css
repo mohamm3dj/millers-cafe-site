@@ -1,11 +1,15 @@
 :root{
-  --bg: #0b0b0c;
-  --card: rgba(255,255,255,.08);
-  --card2: rgba(255,255,255,.12);
-  --text: rgba(255,255,255,.92);
-  --muted: rgba(255,255,255,.70);
-  --radius: 18px;
-  --shadow: 0 14px 40px rgba(0,0,0,.35);
+  --bg: #f4f1ea;
+  --card: rgba(255,255,255,.9);
+  --card2: rgba(255,255,255,.98);
+  --text: #1f2430;
+  --muted: #5f6775;
+  --accent: #8d1f42;
+  --accent-2: #432430;
+  --accent-soft: #f8e9ef;
+  --line: rgba(21, 28, 40, .12);
+  --radius: 20px;
+  --shadow: 0 16px 38px rgba(18, 24, 36, .11);
 }
 
 *{ box-sizing: border-box; }
@@ -13,13 +17,13 @@
 html, body {
   height: 100%;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: "Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif;
   color: var(--text);
 
-  /* App-like background */
+  /* Soft stone + wine wash background */
   background:
-    radial-gradient(900px 600px at 15% 10%, rgba(255,255,255,.09), transparent 60%),
-    radial-gradient(700px 500px at 85% 0%, rgba(255,255,255,.07), transparent 55%),
+    radial-gradient(900px 620px at 18% -5%, rgba(214, 170, 190, .26), transparent 60%),
+    radial-gradient(760px 560px at 90% 0%, rgba(185, 201, 218, .32), transparent 58%),
     var(--bg);
 }
 
@@ -53,9 +57,9 @@ main{
   place-content: center;
   gap: 16px;
   background:
-    radial-gradient(700px 360px at 50% 25%, rgba(207,176,100,.30), transparent 65%),
-    radial-gradient(900px 700px at 50% 110%, rgba(65,72,110,.28), transparent 70%),
-    #06070b;
+    radial-gradient(700px 360px at 50% 25%, rgba(207,176,100,.38), transparent 65%),
+    radial-gradient(900px 700px at 50% 110%, rgba(99,72,104,.34), transparent 70%),
+    #130c14;
   overflow: hidden;
 }
 
@@ -105,6 +109,7 @@ main{
   text-align: center;
   font-size: clamp(26px, 5vw, 40px);
   font-weight: 800;
+  font-family: "Didot", "Bodoni MT", "Times New Roman", serif;
   letter-spacing: .4px;
   color: rgba(255,255,255,.94);
   text-shadow: 0 8px 26px rgba(0,0,0,.45);
@@ -155,7 +160,7 @@ main{
   border-radius: 50%;
   overflow: hidden;
   display: block;
-  background: rgba(255,255,255,.04);
+  background: rgba(255,255,255,.72);
   box-shadow: var(--shadow);
   user-select: none;
 }
@@ -169,14 +174,19 @@ main{
 
 h1{
   margin: 0;
-  font-size: 22px;
+  font-family: "Didot", "Bodoni MT", "Times New Roman", serif;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--accent-2);
   letter-spacing: .2px;
 }
 
 .subtitle{
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: .35px;
+  text-transform: uppercase;
 }
 
 .grid{
@@ -189,7 +199,7 @@ h1{
 /* Make tiles feel tappable like app buttons */
 .tile{
   background: var(--card);
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 16px;
   min-height: 150px;
@@ -210,7 +220,7 @@ h1{
 
 .tile:hover{
   background: var(--card2);
-  border-color: rgba(255,255,255,.18);
+  border-color: rgba(141, 31, 66, .34);
   transform: translateY(-2px);
 }
 
@@ -225,8 +235,11 @@ h1{
 }
 
 .tileTitle{
-  font-size: 18px;
+  font-family: "Didot", "Bodoni MT", "Times New Roman", serif;
+  font-size: 24px;
   font-weight: 800;
+  line-height: 1.1;
+  color: var(--accent-2);
 }
 
 .tileSub{
@@ -239,18 +252,42 @@ h1{
   text-align: center;
   color: var(--muted);
   font-size: 13px;
-  padding-bottom: 6px;
+  padding: 10px 0 6px;
+  border-top: 1px solid var(--line);
 }
 
 .footerHours{
   margin-top: 6px;
 }
 
+.grid .tile{
+  animation: cardRise 520ms cubic-bezier(.16,.84,.25,1) both;
+}
+
+.grid .tile:nth-child(1){ animation-delay: 80ms; }
+.grid .tile:nth-child(2){ animation-delay: 140ms; }
+.grid .tile:nth-child(3){ animation-delay: 200ms; }
+.grid .tile:nth-child(4){ animation-delay: 260ms; }
+.grid .tile:nth-child(5){ animation-delay: 320ms; }
+.grid .tile:nth-child(6){ animation-delay: 380ms; }
+
+@keyframes cardRise{
+  from{ opacity: 0; transform: translateY(14px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
 /* =========================
    Menu page helpers + toggle
    ========================= */
 
-.backBtn{ min-height:auto; padding:10px 14px; display:inline-block; }
+.backBtn{
+  min-height:auto;
+  padding:10px 14px;
+  display:inline-block;
+  background: var(--accent-soft);
+  border-color: rgba(141, 31, 66, .2);
+  color: var(--accent-2);
+}
 
 .menuSection{ min-height:auto; }
 .menuTools{ min-height:auto; }
@@ -268,7 +305,7 @@ h1{
   justify-content:space-between;
   gap:14px;
   padding:10px 0;
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-bottom:1px solid var(--line);
 }
 
 .menuItem:last-child{ border-bottom:none; }
@@ -279,6 +316,7 @@ h1{
   font-size:15px;
   font-weight:750;
   line-height:1.25;
+  color: #232935;
 }
 
 .labelText{
@@ -299,6 +337,7 @@ h1{
   font-size:15px;
   font-weight:800;
   white-space:nowrap;
+  color: var(--accent-2);
 }
 
 /* Labels (chips) */
@@ -307,8 +346,9 @@ h1{
   display:inline-block;
   padding:3px 8px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
+  border:1px solid rgba(141, 31, 66, .24);
+  background:var(--accent-soft);
+  color: var(--accent-2);
   font-size:12px;
   font-weight:700;
   letter-spacing:.2px;
@@ -319,8 +359,8 @@ h1{
 .toggle input{ position:absolute; opacity:0; pointer-events:none; }
 .toggleUi{
   width:46px; height:26px; border-radius:999px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.10);
+  border:1px solid rgba(42, 49, 61, .22);
+  background:rgba(137, 145, 159, .24);
   position:relative;
   box-shadow:var(--shadow);
 }
@@ -328,14 +368,17 @@ h1{
   content:"";
   width:20px; height:20px;
   border-radius:999px;
-  background:rgba(255,255,255,.85);
+  background:#ffffff;
   position:absolute;
   top:50%; left:4px;
   transform:translateY(-50%);
   transition: left 140ms ease;
 }
 .toggle input:checked + .toggleUi::after{ left:22px; }
-.toggle input:checked + .toggleUi{ background:rgba(255,255,255,.14); }
+.toggle input:checked + .toggleUi{
+  background: linear-gradient(120deg, #b32f59, #7f2140);
+  border-color: transparent;
+}
 
 /* Hide labels when toggled off */
 .hide-labels .labels,
@@ -344,15 +387,15 @@ h1{
 
 /* Legend button */
 .legendBtn{
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.16);
+  background:#fff;
+  border:1px solid var(--line);
   color:var(--text);
   padding:10px 14px;
   border-radius:14px;
   font-weight:700;
   cursor:pointer;
 }
-.legendBtn:hover{ background:rgba(255,255,255,.14); }
+.legendBtn:hover{ background:var(--accent-soft); }
 
 /* Legend modal */
 .legend{
@@ -360,21 +403,21 @@ h1{
   padding:0;
   border-radius:18px;
   width:min(560px, calc(100% - 24px));
-  background:rgba(20,20,22,.98);
+  background:#fff;
   color:var(--text);
-  box-shadow:0 30px 80px rgba(0,0,0,.6);
+  box-shadow:0 30px 80px rgba(26, 34, 51, .22);
 }
-.legend::backdrop{ background:rgba(0,0,0,.55); }
+.legend::backdrop{ background:rgba(11, 14, 18, .28); }
 
 .legendHeader{
   display:flex; align-items:center; justify-content:space-between;
   padding:16px 16px 10px;
-  border-bottom:1px solid rgba(255,255,255,.10);
+  border-bottom:1px solid var(--line);
 }
 .legendTitle{ font-size:16px; font-weight:850; }
 .legendClose{
   background:transparent;
-  border:1px solid rgba(255,255,255,.16);
+  border:1px solid var(--line);
   color:var(--text);
   width:34px; height:34px;
   border-radius:12px;
@@ -387,7 +430,7 @@ h1{
   gap:10px 14px;
   padding:14px 16px;
   font-size:14px;
-  color:rgba(255,255,255,.86);
+  color:#36404e;
 }
 @media (max-width:420px){
   .legendGrid{ grid-template-columns:1fr; }
@@ -411,8 +454,8 @@ h1{
 }
 
 .switchBtn{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.16);
+  background:#fff;
+  border:1px solid var(--line);
   color:var(--text);
   padding:11px 12px;
   border-radius:12px;
@@ -421,8 +464,9 @@ h1{
 }
 
 .switchBtn.active{
-  background:rgba(255,255,255,.20);
-  border-color:rgba(255,255,255,.30);
+  background:var(--accent-soft);
+  border-color:rgba(141, 31, 66, .3);
+  color: var(--accent-2);
 }
 
 .menuSubhead{
@@ -430,7 +474,8 @@ h1{
   font-size:14px;
   text-transform:uppercase;
   letter-spacing:.6px;
-  color:var(--muted);
+  color:var(--accent);
+  font-weight: 800;
 }
 
 .menuNote{
@@ -452,7 +497,7 @@ h1{
   top:50%;
   transform:translateY(-50%);
   font-size:14px;
-  color:var(--muted);
+  color:var(--accent);
 }
 
 .menuSection.accordion.collapsed .tileTitle::after{
