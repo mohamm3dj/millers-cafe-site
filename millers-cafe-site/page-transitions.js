@@ -1,5 +1,6 @@
 (function setupPageTransitions() {
   var DIR_KEY = "pt-nav-dir";
+  var INTERNAL_NAV_KEY = "pt-internal-nav";
   var DIR_FORWARD = "forward";
   var DIR_BACK = "back";
   var reduceMotion = false;
@@ -80,6 +81,7 @@
     var direction = isBackLikeNavigation(anchor, destination) ? DIR_BACK : DIR_FORWARD;
     try {
       window.sessionStorage.setItem(DIR_KEY, direction);
+      window.sessionStorage.setItem(INTERNAL_NAV_KEY, "1");
     } catch (e) {
       // Ignore storage failures.
     }

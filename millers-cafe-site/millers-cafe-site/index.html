@@ -149,7 +149,15 @@
     const intro = document.getElementById("intro");
     if (intro) {
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reducedMotion) {
+      let internalNav = false;
+      try {
+        internalNav = window.sessionStorage.getItem("pt-internal-nav") === "1";
+        if (internalNav) window.sessionStorage.removeItem("pt-internal-nav");
+      } catch (e) {
+        internalNav = false;
+      }
+
+      if (reducedMotion || internalNav) {
         intro.remove();
       } else {
         window.addEventListener("load", () => {
