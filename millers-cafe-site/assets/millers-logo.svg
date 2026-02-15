@@ -1,36 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Millers Cafe Logo</title>
-  <desc id="desc">Circular gold and dark logo with monogram M and coffee steam.</desc>
+  <desc id="desc">White oval logo with gold outline and clear Millers Cafe text.</desc>
   <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#222533" />
-      <stop offset="65%" stop-color="#0f121c" />
-      <stop offset="100%" stop-color="#080a12" />
-    </radialGradient>
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f5dea7" />
-      <stop offset="45%" stop-color="#d9b86b" />
-      <stop offset="100%" stop-color="#9e7a2c" />
+      <stop offset="0%" stop-color="#f2dd9f" />
+      <stop offset="45%" stop-color="#c7a24e" />
+      <stop offset="100%" stop-color="#8a6a24" />
     </linearGradient>
-    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#8a6926" />
-      <stop offset="50%" stop-color="#f2d489" />
-      <stop offset="100%" stop-color="#8a6926" />
+    <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b2b12" />
+      <stop offset="100%" stop-color="#241a0a" />
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.45" />
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#435266" flood-opacity="0.2" />
     </filter>
   </defs>
 
   <g filter="url(#shadow)">
-    <circle cx="128" cy="128" r="114" fill="url(#bg)" />
-    <circle cx="128" cy="128" r="110" fill="none" stroke="url(#ring)" stroke-width="4" />
-    <circle cx="128" cy="128" r="96" fill="none" stroke="#3b3020" stroke-width="2" />
+    <ellipse cx="128" cy="128" rx="106" ry="112" fill="#ffffff" />
+    <ellipse cx="128" cy="128" rx="102" ry="108" fill="none" stroke="url(#gold)" stroke-width="3.2" />
+    <ellipse cx="128" cy="128" rx="92" ry="98" fill="none" stroke="#ead8a5" stroke-width="1.4" />
   </g>
 
-  <path d="M88 101c7-16 27-16 35 0M101 88c8-14 23-14 30 0M114 76c7-11 18-11 24 0" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" />
+  <path d="M94 72c7-14 24-14 30 0M106 60c8-12 20-12 26 0M118 49c7-10 15-10 20 0" fill="none" stroke="url(#gold)" stroke-width="3.6" stroke-linecap="round" />
 
-  <text x="128" y="154" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="92" font-weight="700" fill="url(#gold)">M</text>
+  <text x="128" y="132" text-anchor="middle" font-family="'Snell Roundhand', 'Brush Script MT', 'Segoe Script', cursive" font-size="68" font-weight="700" fill="url(#ink)" stroke="url(#gold)" stroke-width="1.2" paint-order="stroke fill">Millers</text>
 
-  <text x="128" y="198" text-anchor="middle" font-family="'Trebuchet MS', Arial, sans-serif" font-size="19" letter-spacing="5" fill="#dcc180">MILLERS CAFE</text>
+  <text x="128" y="160" text-anchor="middle" font-family="'Avenir Next', 'Trebuchet MS', Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="6.4" fill="#8a6a24">CAFE</text>
+  <path d="M66 187c26 6 98 6 125-10 7-4 13-5 17-2 5 4 4 12-4 16" fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round" />
+  <path d="M62 197c15 4 54 6 80 2" fill="none" stroke="#d7bd74" stroke-width="2" stroke-linecap="round" />
 </svg>
