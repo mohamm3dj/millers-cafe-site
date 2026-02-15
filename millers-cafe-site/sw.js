@@ -1,11 +1,17 @@
-const CACHE_NAME = "millers-v1";
+const CACHE_NAME = "millers-v2";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/manifest.webmanifest",
-  "/icon-192.png",
-  "/icon-512.png"
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./manifest.webmanifest",
+  "./menu/",
+  "./menu/index.html",
+  "./collection/",
+  "./collection/index.html",
+  "./delivery/",
+  "./delivery/index.html",
+  "./bookings/",
+  "./bookings/index.html"
 ];
 
 self.addEventListener("install", (event) => {
