@@ -160,32 +160,6 @@
 
     </div>
 
-    <section class="quickPanels">
-      <article class="tile quickPanel">
-        <h2 class="tileTitle">Location</h2>
-        <p id="addressText" class="tileSub quickAddress">55 Brigsley Road, Waltham, Grimsby, DN37 0JZ</p>
-        <div class="quickActions">
-          <a
-            class="quickBtn"
-            href="https://www.google.com/maps/dir/?api=1&destination=Millers%20Restaurant%2C%2055%20Brigsley%20Road%2C%20Waltham%2C%20Grimsby%20DN37%200JZ"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Directions</a>
-          <button id="copyAddressBtn" class="quickBtn quickBtnGhost" type="button">Copy address</button>
-        </div>
-        <p id="copyAddressFeedback" class="quickFeedback" aria-live="polite"></p>
-      </article>
-
-      <article class="tile quickPanel">
-        <h2 class="tileTitle">Contact</h2>
-        <p class="tileSub">Use one tap options to call or email us.</p>
-        <div class="quickActions">
-          <a class="quickBtn" href="tel:+441472828600">Call 01472 828600</a>
-          <a class="quickBtn quickBtnGhost" href="mailto:hello@millers.cafe">Email us</a>
-        </div>
-      </article>
-    </section>
-
     <!-- FOOTER -->
     <div class="footer">
       <a href="mailto:hello@millers.cafe" style="color:inherit;">
@@ -197,7 +171,6 @@
 
   <script src="./page-transitions.js"></script>
   <script>
-    const addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
     const businessTimezone = "Europe/London";
     const weeklyHours = {
       0: [["12:00", "17:00"]],
@@ -259,39 +232,6 @@
       heroHours.textContent = `Today: ${formatDayHours(windows)}`;
     }
 
-    async function copyAddress() {
-      const feedback = document.getElementById("copyAddressFeedback");
-      if (!feedback) return;
-
-      const done = (msg) => {
-        feedback.textContent = msg;
-        window.setTimeout(() => {
-          if (feedback.textContent === msg) feedback.textContent = "";
-        }, 2200);
-      };
-
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(addressText);
-          done("Address copied");
-          return;
-        }
-      } catch (error) {
-        // Fallback below
-      }
-
-      const temp = document.createElement("textarea");
-      temp.value = addressText;
-      temp.setAttribute("readonly", "");
-      temp.style.position = "absolute";
-      temp.style.left = "-9999px";
-      document.body.appendChild(temp);
-      temp.select();
-      const copied = document.execCommand("copy");
-      document.body.removeChild(temp);
-      done(copied ? "Address copied" : "Copy failed");
-    }
-
     const intro = document.getElementById("intro");
     if (intro) {
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -315,11 +255,6 @@
 
     updateOpeningStatus();
     window.setInterval(updateOpeningStatus, 60 * 1000);
-
-    const copyBtn = document.getElementById("copyAddressBtn");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", copyAddress);
-    }
 
     const contactFlipTile = document.getElementById("contactFlipTile");
     if (contactFlipTile) {
