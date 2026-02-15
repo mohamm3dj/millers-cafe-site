@@ -115,6 +115,11 @@ h1{
   transform: scale(.985);
 }
 
+.tileWide{
+  grid-column: 1 / -1;
+  min-height: auto;
+}
+
 .tileTitle{
   font-size: 18px;
   font-weight: 800;
