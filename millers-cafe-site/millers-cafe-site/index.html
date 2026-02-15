@@ -16,47 +16,120 @@
   <meta name="description" content="Millers Café — menu, collection, delivery and bookings.">
 
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
 
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+  <div id="intro" class="intro" aria-hidden="true">
+    <div class="introStage">
+      <div class="introCupScene">
+        <div class="introSteam introSteam1"></div>
+        <div class="introSteam introSteam2"></div>
+        <div class="introSteam introSteam3"></div>
+        <div class="introCup">
+          <div class="introCoffee"></div>
+        </div>
+        <div class="introHandle"></div>
+        <div class="introSaucer"></div>
+      </div>
+      <div class="introLogoWrap">
+        <img class="introLogo" src="./assets/millers-logo.svg" alt="">
+      </div>
+    </div>
+    <div class="introWordmark">Millers Cafe</div>
+  </div>
 
   <main>
 
     <!-- HEADER -->
     <div class="header">
-      <div class="logo">☕</div>
+      <div class="logo">
+        <img class="logoImg" src="./assets/millers-logo.svg" alt="Millers Cafe logo">
+      </div>
 
       <div>
         <h1>Millers Café</h1>
-        <p class="subtitle">Fresh coffee & homemade food</p>
       </div>
     </div>
 
-    <!-- 2x2 BUTTON GRID -->
-    <div class="grid">
+    <!-- BUTTON GRID -->
+    <div class="grid homeGrid">
 
-      <a class="tile" href="/menu">
+      <a class="tile homeTile homeTileMenu" href="./menu/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 6.5c2.5-1.3 5.5-1.3 8 0v11c-2.5-1.3-5.5-1.3-8 0v-11Z"></path>
+            <path d="M20 6.5c-2.5-1.3-5.5-1.3-8 0v11c2.5-1.3 5.5-1.3 8 0v-11Z"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Menu</div>
-        <div class="tileSub">Food & drinks</div>
+        <div class="tileSub">View our Menu</div>
       </a>
 
-      <a class="tile" href="/collection">
+      <a class="tile homeTile homeTileCollection" href="./collection/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 8.5h10l.9 10H6.1l.9-10Z"></path>
+            <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Collection</div>
-        <div class="tileSub">Order ahead & skip the queue</div>
+        <div class="tileSub">Order for pick Up</div>
       </a>
 
-      <a class="tile" href="/delivery">
+      <a class="tile homeTile homeTileDelivery" href="./delivery/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 14V9h9v5"></path>
+            <path d="M13 11h3l3 3v5"></path>
+            <circle cx="7" cy="19" r="2"></circle>
+            <circle cx="18" cy="19" r="2"></circle>
+          </svg>
+        </div>
         <div class="tileTitle">Delivery</div>
         <div class="tileSub">Get it delivered to you</div>
       </a>
 
-      <a class="tile" href="/bookings">
+      <a class="tile homeTile homeTileBookings" href="./bookings/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="5.5" y="4.5" width="13" height="15" rx="2.5"></rect>
+            <path d="M9 3.8v2.8M15 3.8v2.8M6 9.5h12M9 14l2 2 4-4"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Bookings</div>
         <div class="tileSub">Reserve a table</div>
+      </a>
+
+      <a
+        class="tile tileWide homeTile homeTileLocation"
+        href="https://www.google.com/maps/dir/?api=1&destination=Millers%20Restaurant%2C%2055%20Brigsley%20Road%2C%20Waltham%2C%20Grimsby%20DN37%200JZ"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20.5s-5-4.6-5-8.7a5 5 0 1 1 10 0c0 4.1-5 8.7-5 8.7Z"></path>
+            <circle cx="12" cy="11.2" r="2"></circle>
+          </svg>
+        </div>
+        <div class="tileTitle">Millers Location</div>
+        <div class="tileSub">Get directions in Google Maps</div>
+        <div class="tileSub">55 Brigsley Road, Waltham, Grimsby, DN37 0JZ</div>
+      </a>
+
+      <a class="tile tileWide homeTile homeTileContact" href="tel:+441472828600">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6.2 5.8h3.1l1.1 3.1-2.1 1.5a12 12 0 0 0 5.2 5.2l1.5-2.1 3.1 1.1v3.1c0 .8-.7 1.4-1.5 1.4-6.4 0-11.7-5.2-11.7-11.7 0-.8.6-1.5 1.3-1.5Z"></path>
+          </svg>
+        </div>
+        <div class="tileTitle">Contact Us</div>
+        <div class="tileSub">Phone: 01472 828600 / 823030</div>
+        <div class="tileSub">Email: hello@millers.cafe</div>
       </a>
 
     </div>
@@ -66,15 +139,30 @@
       <a href="mailto:hello@millers.cafe" style="color:inherit;">
         hello@millers.cafe
       </a>
+      <div class="footerHours">Opening Hours: 12:00-17:00</div>
     </div>
 
   </main>
 
+  <script src="./page-transitions.js"></script>
   <script>
+    const intro = document.getElementById("intro");
+    if (intro) {
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reducedMotion) {
+        intro.remove();
+      } else {
+        window.addEventListener("load", () => {
+          setTimeout(() => intro.classList.add("introDone"), 2400);
+          setTimeout(() => intro.remove(), 3200);
+        });
+      }
+    }
+
     // Register Service Worker (only works properly once the site is hosted on HTTPS)
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
       });
     }
   </script>

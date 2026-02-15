@@ -34,6 +34,34 @@ body{
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (prefers-reduced-motion: no-preference){
+  body{
+    animation: pageEnter 380ms cubic-bezier(.18,.8,.28,1) both;
+  }
+
+  body.page-leaving{
+    opacity: 0;
+    transform: translateY(10px) scale(.992);
+    filter: blur(1px);
+    transition:
+      opacity 260ms ease,
+      transform 260ms ease,
+      filter 260ms ease;
+    pointer-events: none;
+  }
+}
+
+@keyframes pageEnter{
+  from{
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Center the app “screen” and respect iPhone safe areas */
 main{
   width: min(620px, 100%);
