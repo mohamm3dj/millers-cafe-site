@@ -382,6 +382,9 @@ h1{
 }
 
 .homeGrid .homeTile{
+  --tile-tint: rgba(15, 118, 110, .08);
+  --tile-accent: #485266;
+
   text-align: center;
   justify-items: center;
   align-content: center;
@@ -390,10 +393,26 @@ h1{
   padding: 20px 18px;
   border-radius: 20px;
   border-color: rgba(15, 23, 42, .09);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  background:
+    radial-gradient(140px 92px at 16% 10%, var(--tile-tint), transparent 72%),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   position: relative;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+}
+
+.homeGrid .homeTile::before{
+  content: "";
+  position: absolute;
+  width: 68%;
+  height: 62%;
+  left: -10%;
+  top: 58%;
+  border-radius: 999px;
+  background: var(--tile-tint);
+  filter: blur(26px);
+  opacity: .45;
+  animation: tintDrift 8s ease-in-out infinite alternate;
 }
 
 .homeGrid .homeTile::after{
@@ -404,6 +423,11 @@ h1{
   bottom: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(15,23,42,.12), transparent);
+}
+
+.homeGrid .homeTile > *{
+  position: relative;
+  z-index: 1;
 }
 
 .homeGrid .homeTile:hover{
@@ -433,12 +457,13 @@ h1{
   border-radius: 16px;
   display: grid;
   place-items: center;
-  color: #475467;
+  color: var(--tile-accent);
   border: 1px solid rgba(15, 23, 42, .12);
   background: linear-gradient(180deg, #ffffff 0%, #f5f7fa 100%);
   box-shadow:
     0 4px 10px rgba(15, 23, 42, .08),
     inset 0 1px 0 rgba(255,255,255,.7);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .homeGrid .homeTileIcon svg{
@@ -446,9 +471,47 @@ h1{
   height: 24px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.45;
+  stroke-width: 1.35;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.homeGrid .homeTile:hover .homeTileIcon{
+  transform: translateY(-1px);
+  border-color: rgba(15, 23, 42, .2);
+  box-shadow:
+    0 6px 14px rgba(15, 23, 42, .1),
+    inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+.homeGrid .homeTileMenu{
+  --tile-tint: rgba(20, 184, 166, .10);
+  --tile-accent: #0f766e;
+}
+
+.homeGrid .homeTileCollection{
+  --tile-tint: rgba(245, 158, 11, .10);
+  --tile-accent: #9a5b15;
+}
+
+.homeGrid .homeTileDelivery{
+  --tile-tint: rgba(56, 189, 248, .10);
+  --tile-accent: #1d4ed8;
+}
+
+.homeGrid .homeTileBookings{
+  --tile-tint: rgba(99, 102, 241, .10);
+  --tile-accent: #4f46e5;
+}
+
+.homeGrid .homeTileLocation{
+  --tile-tint: rgba(239, 68, 68, .09);
+  --tile-accent: #b42318;
+}
+
+.homeGrid .homeTileContact{
+  --tile-tint: rgba(22, 163, 74, .10);
+  --tile-accent: #15803d;
 }
 
 .footer{
@@ -477,6 +540,11 @@ h1{
 @keyframes cardRise{
   from{ opacity: 0; transform: translateY(14px); }
   to{ opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tintDrift{
+  from{ transform: translateX(0) translateY(0); opacity: .35; }
+  to{ transform: translateX(28%) translateY(-14%); opacity: .55; }
 }
 
 /* =========================
