@@ -54,136 +54,159 @@ main{
   inset: 0;
   z-index: 9999;
   display: grid;
-  place-content: center;
-  gap: 14px;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
   background:
-    radial-gradient(760px 420px at 50% 20%, rgba(33, 166, 149, .22), transparent 66%),
-    radial-gradient(900px 700px at 50% 120%, rgba(33, 84, 125, .3), transparent 68%),
-    #0a1222;
+    radial-gradient(860px 520px at 50% 8%, rgba(110, 183, 217, .22), transparent 64%),
+    radial-gradient(980px 760px at 50% 120%, rgba(168, 220, 208, .38), transparent 70%),
+    #f5f9fd;
   overflow: hidden;
 }
 
 .intro::before{
   content: "";
   position: absolute;
-  width: 380px;
-  height: 380px;
+  width: 420px;
+  height: 420px;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(34, 211, 195, .28), rgba(59, 130, 246, .03) 68%);
-  filter: blur(14px);
+  background: radial-gradient(circle, rgba(148, 199, 232, .24), rgba(148, 199, 232, .02) 70%);
+  filter: blur(16px);
   animation: introGlow 2200ms ease-in-out infinite alternate;
 }
 
-.introCupScene{
+.introStage{
   position: relative;
-  width: 210px;
-  height: 156px;
-  animation: cupSceneOut 520ms ease-in 1650ms forwards;
+  width: 236px;
+  height: 236px;
+}
+
+.introCupScene{
+  position: absolute;
+  inset: 0;
+  animation: cupSceneOut 420ms ease-in 1540ms forwards;
 }
 
 .introCup{
   position: absolute;
   left: 50%;
-  top: 36px;
+  top: 72px;
   transform: translateX(-50%);
-  width: 140px;
-  height: 88px;
-  border: 4px solid rgba(233, 246, 255, .9);
-  border-top: 0;
-  border-radius: 0 0 22px 22px;
-  background: rgba(255, 255, 255, .08);
+  width: 156px;
+  height: 96px;
+  border: 2px solid #d2dae6;
+  border-radius: 0 0 26px 26px;
+  background: linear-gradient(180deg, #ffffff 0%, #edf2f8 100%);
   overflow: hidden;
-  box-shadow: 0 12px 24px rgba(0,0,0,.24);
+  box-shadow:
+    inset 0 -8px 12px rgba(148, 163, 184, .2),
+    inset 0 10px 12px rgba(255,255,255,.85),
+    0 12px 22px rgba(30, 41, 59, .16);
 }
 
 .introCup::before{
   content: "";
   position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 0;
-  height: 6px;
+  left: -2px;
+  right: -2px;
+  top: -12px;
+  height: 16px;
   border-radius: 999px;
-  background: rgba(239, 250, 255, .92);
+  border: 2px solid #d2dae6;
+  background: radial-gradient(ellipse at center, #ffffff 0%, #e7edf5 70%, #d2dae6 100%);
 }
 
 .introHandle{
   position: absolute;
-  width: 34px;
-  height: 34px;
-  right: 24px;
-  top: 48px;
-  border: 4px solid rgba(233, 246, 255, .9);
+  width: 44px;
+  height: 44px;
+  right: 26px;
+  top: 96px;
+  border: 5px solid #d2dae6;
   border-left: 0;
-  border-radius: 0 20px 20px 0;
+  border-radius: 0 24px 24px 0;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.55);
 }
 
 .introSaucer{
   position: absolute;
   left: 50%;
-  bottom: 18px;
+  bottom: 42px;
   transform: translateX(-50%);
-  width: 162px;
-  height: 14px;
+  width: 186px;
+  height: 18px;
   border-radius: 999px;
-  background: rgba(232, 245, 255, .86);
-  box-shadow: 0 10px 20px rgba(0,0,0,.24);
+  background: linear-gradient(180deg, #f9fcff 0%, #dce5f0 100%);
+  border: 2px solid #d4dde9;
+  box-shadow: 0 12px 20px rgba(30, 41, 59, .14);
 }
 
 .introCoffee{
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 6px;
+  right: 6px;
   bottom: 0;
   height: 0%;
-  background: linear-gradient(180deg, #9d6842 0%, #7a4b2f 52%, #5a351f 100%);
-  animation: coffeeFill 1300ms cubic-bezier(.2,.74,.2,1) 250ms forwards;
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(180deg, #8f5b38 0%, #6f4327 58%, #4a2b19 100%);
+  animation: coffeeFill 1260ms cubic-bezier(.2,.74,.2,1) 220ms forwards;
+}
+
+.introCoffee::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.18), rgba(255,255,255,.04));
+  mix-blend-mode: screen;
+  opacity: .45;
 }
 
 .introCoffee::before{
   content: "";
   position: absolute;
-  left: -8%;
-  width: 116%;
+  left: -3%;
+  width: 106%;
   top: -5px;
   height: 10px;
   border-radius: 999px;
-  background: rgba(236, 194, 156, .65);
+  background: linear-gradient(180deg, #ddb084 0%, #ca8f62 100%);
   animation: coffeeSurface 700ms ease-in-out 300ms infinite alternate;
 }
 
 .introSteam{
   position: absolute;
-  top: 0;
+  top: 42px;
   width: 3px;
-  height: 40px;
+  height: 44px;
   border-radius: 999px;
-  background: rgba(227, 246, 255, .8);
+  background: rgba(148, 163, 184, .64);
   opacity: 0;
-  filter: blur(.2px);
+  filter: blur(.3px);
   animation: steamRise 1100ms ease-out infinite;
 }
 
-.introSteam1{ left: 84px; animation-delay: 350ms; }
-.introSteam2{ left: 102px; animation-delay: 560ms; }
-.introSteam3{ left: 120px; animation-delay: 760ms; }
+.introSteam1{ left: 93px; animation-delay: 350ms; }
+.introSteam2{ left: 114px; animation-delay: 560ms; }
+.introSteam3{ left: 135px; animation-delay: 760ms; }
 
 .introLogoWrap{
-  position: relative;
-  width: 150px;
-  height: 150px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160px;
+  height: 160px;
+  transform: translate(-50%, -50%) scale(.52);
   border-radius: 50%;
   padding: 8px;
-  background: radial-gradient(circle at 30% 24%, rgba(255,255,255,.44), rgba(19,86,124,.2));
+  background: radial-gradient(circle at 30% 24%, rgba(255,255,255,.6), rgba(140, 180, 206, .24));
   box-shadow:
-    0 0 0 1px rgba(255,255,255,.10),
-    0 20px 38px rgba(0,0,0,.42);
+    0 0 0 1px rgba(140, 180, 206, .2),
+    0 14px 28px rgba(30, 41, 59, .20);
   opacity: 0;
-  transform: scale(.62) translateY(8px);
-  animation: logoReveal 760ms cubic-bezier(.19,.9,.25,1) 1680ms forwards;
+  animation: logoReveal 760ms cubic-bezier(.19,.9,.25,1) 1560ms forwards;
 }
 
 .introLogo{
@@ -199,11 +222,11 @@ main{
   font-size: clamp(24px, 4.8vw, 36px);
   font-weight: 800;
   letter-spacing: .5px;
-  color: rgba(255,255,255,.94);
-  text-shadow: 0 8px 24px rgba(0,0,0,.30);
+  color: #10233a;
+  text-shadow: 0 8px 24px rgba(198, 213, 228, .7);
   opacity: 0;
   transform: translateY(12px);
-  animation: wordReveal 620ms ease-out 1800ms forwards;
+  animation: wordReveal 620ms ease-out 1770ms forwards;
 }
 
 .intro.introDone{
@@ -211,13 +234,13 @@ main{
 }
 
 @keyframes introGlow{
-  from{ opacity: .65; transform: translate(-50%, -50%) scale(.92); }
-  to{ opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  from{ opacity: .6; transform: translate(-50%, -50%) scale(.94); }
+  to{ opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
 }
 
 @keyframes coffeeFill{
   from{ height: 0%; }
-  to{ height: 84%; }
+  to{ height: 82%; }
 }
 
 @keyframes coffeeSurface{
@@ -227,19 +250,19 @@ main{
 
 @keyframes steamRise{
   0%{ transform: translateY(18px) scaleY(.4); opacity: 0; }
-  25%{ opacity: .65; }
+  25%{ opacity: .58; }
   100%{ transform: translateY(-24px) scaleY(1); opacity: 0; }
 }
 
 @keyframes cupSceneOut{
   from{ opacity: 1; transform: scale(1); }
-  to{ opacity: 0; transform: scale(.88) translateY(-12px); }
+  to{ opacity: 0; transform: scale(.9); }
 }
 
 @keyframes logoReveal{
-  0%{ opacity: 0; transform: scale(.62) translateY(8px); }
-  65%{ opacity: 1; transform: scale(1.06) translateY(0); }
-  100%{ opacity: 1; transform: scale(1) translateY(0); }
+  0%{ opacity: 0; transform: translate(-50%, -50%) scale(.52); }
+  68%{ opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  100%{ opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 @keyframes wordReveal{
