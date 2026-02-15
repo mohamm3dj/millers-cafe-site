@@ -168,6 +168,13 @@ h1{
   line-height:1.25;
 }
 
+.labelText{
+  margin-left:6px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:650;
+}
+
 .menuDesc{
   margin-top:4px;
   font-size:13px;
@@ -218,7 +225,8 @@ h1{
 .toggle input:checked + .toggleUi{ background:rgba(255,255,255,.14); }
 
 /* Hide labels when toggled off */
-.hide-labels .labels{ display:none; }
+.hide-labels .labels,
+.hide-labels .labelText{ display:none; }
 .hide-legend .menuLegend{ display:none; }
 
 /* Legend button */
@@ -314,4 +322,30 @@ h1{
 
 .menuNote{
   margin:0 0 8px;
+}
+
+/* Collapsible menu cards to avoid wall-of-text scrolling */
+.menuSection.accordion .tileTitle{
+  position:relative;
+  padding-right:24px;
+  cursor:pointer;
+  user-select:none;
+}
+
+.menuSection.accordion .tileTitle::after{
+  content:"▾";
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:14px;
+  color:var(--muted);
+}
+
+.menuSection.accordion.collapsed .tileTitle::after{
+  content:"▸";
+}
+
+.menuSection.accordion.collapsed > :not(.tileTitle){
+  display:none;
 }

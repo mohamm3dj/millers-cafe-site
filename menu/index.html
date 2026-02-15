@@ -429,6 +429,11 @@
         }
 
         el.textContent = cleaned;
+        const textCodes = document.createElement("span");
+        textCodes.className = "labelText";
+        textCodes.textContent = ` (${found.join(", ")})`;
+        el.appendChild(textCodes);
+
         const wrap = document.createElement("span");
         wrap.className = "labels";
         wrap.setAttribute("aria-hidden", "true");
@@ -445,6 +450,39 @@
     function applyToggles() {
       document.body.classList.toggle("hide-labels", !labelsToggle.checked);
       document.body.classList.toggle("hide-legend", !legendToggle.checked);
+    }
+
+    function setCollapsed(section, collapsed) {
+      section.classList.toggle("collapsed", collapsed);
+      const title = section.querySelector(".tileTitle");
+      if (title) title.setAttribute("aria-expanded", String(!collapsed));
+    }
+
+    function setupAccordions() {
+      const byMenuCount = {};
+      document.querySelectorAll(".menuSection.menuGroup").forEach((section) => {
+        if (section.classList.contains("menuLegend")) return;
+        const menuType = section.dataset.menu || "evening";
+        byMenuCount[menuType] = (byMenuCount[menuType] || 0) + 1;
+        section.classList.add("accordion");
+
+        // Keep first 2 sections open per menu type; collapse the rest.
+        setCollapsed(section, byMenuCount[menuType] > 2);
+
+        const title = section.querySelector(".tileTitle");
+        if (!title) return;
+        title.setAttribute("role", "button");
+        title.setAttribute("tabindex", "0");
+
+        const toggleSection = () => setCollapsed(section, !section.classList.contains("collapsed"));
+        title.addEventListener("click", toggleSection);
+        title.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleSection();
+          }
+        });
+      });
     }
 
     function setMenu(type) {
@@ -467,6 +505,7 @@
     legendToggle.addEventListener("change", applyToggles);
 
     decorateLabels();
+    setupAccordions();
     applyToggles();
     setMenu("evening");
   </script>
