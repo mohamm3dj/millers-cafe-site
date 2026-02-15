@@ -24,6 +24,16 @@
 
 <body>
   <div id="intro" class="intro" aria-hidden="true">
+    <div class="introCupScene">
+      <div class="introSteam introSteam1"></div>
+      <div class="introSteam introSteam2"></div>
+      <div class="introSteam introSteam3"></div>
+      <div class="introCup">
+        <div class="introCoffee"></div>
+      </div>
+      <div class="introHandle"></div>
+      <div class="introSaucer"></div>
+    </div>
     <div class="introLogoWrap">
       <img class="introLogo" src="./assets/millers-logo.svg" alt="">
     </div>
@@ -104,8 +114,8 @@
         intro.remove();
       } else {
         window.addEventListener("load", () => {
-          setTimeout(() => intro.classList.add("introDone"), 1700);
-          setTimeout(() => intro.remove(), 2550);
+          setTimeout(() => intro.classList.add("introDone"), 2400);
+          setTimeout(() => intro.remove(), 3200);
         });
       }
     }
