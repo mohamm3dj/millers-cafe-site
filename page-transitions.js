@@ -1,4 +1,7 @@
 (function setupPageTransitions() {
+  var DIR_KEY = "pt-nav-dir";
+  var DIR_FORWARD = "forward";
+  var DIR_BACK = "back";
   var reduceMotion = false;
   try {
     reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -6,6 +9,17 @@
     reduceMotion = false;
   }
   if (reduceMotion) return;
+
+  var savedDir = "";
+  try {
+    savedDir = window.sessionStorage.getItem(DIR_KEY) || "";
+    if (savedDir === DIR_BACK) {
+      document.body.classList.add("page-enter-back");
+    }
+    window.sessionStorage.removeItem(DIR_KEY);
+  } catch (e) {
+    // Ignore storage failures.
+  }
 
   function isInternalNavigableLink(anchor) {
     if (!anchor) return false;
@@ -29,8 +43,24 @@
     return true;
   }
 
+  function pathDepth(pathname) {
+    return pathname.split("/").filter(Boolean).length;
+  }
+
+  function isBackLikeNavigation(anchor, destination) {
+    if (!anchor || !destination) return false;
+    if (anchor.classList && anchor.classList.contains("backBtn")) return true;
+
+    var rawHref = (anchor.getAttribute("href") || "").trim();
+    if (rawHref.startsWith("../")) return true;
+
+    var currentDepth = pathDepth(window.location.pathname);
+    var destinationDepth = pathDepth(destination.pathname);
+    return destinationDepth < currentDepth;
+  }
+
   var leaving = false;
-  var LEAVE_MS = 260;
+  var LEAVE_MS = 280;
 
   document.addEventListener("click", function onClick(event) {
     if (leaving) return;
@@ -47,7 +77,15 @@
 
     leaving = true;
     event.preventDefault();
-    document.body.classList.add("page-leaving");
+    var direction = isBackLikeNavigation(anchor, destination) ? DIR_BACK : DIR_FORWARD;
+    try {
+      window.sessionStorage.setItem(DIR_KEY, direction);
+    } catch (e) {
+      // Ignore storage failures.
+    }
+
+    document.body.classList.remove("page-leaving-forward", "page-leaving-back");
+    document.body.classList.add(direction === DIR_BACK ? "page-leaving-back" : "page-leaving-forward");
     window.setTimeout(function go() {
       window.location.assign(destination.href);
     }, LEAVE_MS);
@@ -55,6 +93,6 @@
 
   window.addEventListener("pageshow", function onPageShow() {
     leaving = false;
-    document.body.classList.remove("page-leaving");
+    document.body.classList.remove("page-leaving-forward", "page-leaving-back");
   });
 })();
