@@ -798,10 +798,6 @@ h1{
   min-height: 176px;
   height: 100%;
   isolation: isolate;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-  transform: translateZ(0);
-  transition: transform 620ms cubic-bezier(.22,.82,.24,1);
 }
 
 .homeFlipFace{
@@ -819,16 +815,19 @@ h1{
   -webkit-backface-visibility: hidden;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(.22,.82,.24,1), opacity 320ms ease;
 }
 
 .homeFlipFront{
   z-index: 2;
-  transform: rotateY(0deg) translateZ(1px);
+  transform: rotateY(0deg);
+  opacity: 1;
 }
 
 .homeFlipBack{
-  z-index: 1;
-  transform: rotateY(180deg) translateZ(1px);
+  z-index: 3;
+  transform: rotateY(180deg);
+  opacity: 0;
 }
 
 .homeFlipTile:not(.isFlipped) .homeFlipBack{
@@ -836,11 +835,14 @@ h1{
 }
 
 .homeFlipTile.isFlipped .homeFlipFront{
+  transform: rotateY(-180deg);
+  opacity: 0;
   pointer-events: none;
 }
 
-.homeFlipTile.isFlipped .homeFlipInner{
-  transform: rotateY(180deg);
+.homeFlipTile.isFlipped .homeFlipBack{
+  transform: rotateY(0deg);
+  opacity: 1;
 }
 
 .flipLink{
