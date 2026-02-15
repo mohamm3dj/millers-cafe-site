@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <!-- Mobile sizing -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- App-like behaviour -->
+  <meta name="theme-color" content="#0b0b0c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+
+  <title>Millers Café</title>
+  <meta name="description" content="Millers Café — menu, collection, delivery and bookings.">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <main>
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="logo">☕</div>
+
+      <div>
+        <h1>Millers Café</h1>
+        <p class="subtitle">Fresh coffee & homemade food</p>
+      </div>
+    </div>
+
+    <!-- 2x2 BUTTON GRID -->
+    <div class="grid">
+
+      <a class="tile" href="/menu">
+        <div class="tileTitle">Menu</div>
+        <div class="tileSub">Food & drinks</div>
+      </a>
+
+      <a class="tile" href="/collection">
+        <div class="tileTitle">Collection</div>
+        <div class="tileSub">Order ahead & skip the queue</div>
+      </a>
+
+      <a class="tile" href="/delivery">
+        <div class="tileTitle">Delivery</div>
+        <div class="tileSub">Get it delivered to you</div>
+      </a>
+
+      <a class="tile" href="/bookings">
+        <div class="tileTitle">Bookings</div>
+        <div class="tileSub">Reserve a table</div>
+      </a>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <a href="mailto:hello@millers.cafe" style="color:inherit;">
+        hello@millers.cafe
+      </a>
+    </div>
+
+  </main>
+
+  <script>
+    // Register Service Worker (only works properly once the site is hosted on HTTPS)
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+
+</body>
+</html>
