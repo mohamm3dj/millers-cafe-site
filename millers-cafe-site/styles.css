@@ -349,6 +349,38 @@ main{
   padding-top: 4px;
 }
 
+.glassHero{
+  position: relative;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 22px 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.62);
+  background:
+    radial-gradient(170px 120px at 16% 10%, rgba(56, 189, 248, .14), transparent 74%),
+    radial-gradient(190px 140px at 85% 16%, rgba(20, 184, 166, .12), transparent 74%),
+    linear-gradient(150deg, rgba(255,255,255,.64) 0%, rgba(251,253,255,.36) 56%, rgba(240,247,255,.4) 100%);
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, .09),
+    inset 0 1px 0 rgba(255,255,255,.95);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  overflow: hidden;
+}
+
+.glassHero::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.58) 0%, rgba(255,255,255,0) 46%),
+    linear-gradient(120deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 36%);
+  pointer-events: none;
+}
+
 .logo{
   width: 56px;
   height: 56px;
@@ -358,6 +390,15 @@ main{
   background: rgba(255,255,255,.88);
   box-shadow: var(--shadow);
   user-select: none;
+}
+
+.glassHero .logo{
+  width: 108px;
+  height: 108px;
+  box-shadow:
+    0 18px 30px rgba(15, 23, 42, .12),
+    0 0 0 1px rgba(255,255,255,.8),
+    inset 0 1px 0 rgba(255,255,255,.96);
 }
 
 .logoImg{
@@ -376,12 +417,38 @@ h1{
   letter-spacing: -.2px;
 }
 
+.glassHero h1{
+  font-size: clamp(32px, 7.4vw, 42px);
+  letter-spacing: -.3px;
+}
+
 .subtitle{
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 14px;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.glassHero .subtitle{
+  margin: 0;
+  max-width: 36ch;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #5b6677;
+}
+
+.heroMeta{
+  margin: 0;
+  font-size: 12px;
+  color: #475467;
+  max-width: 100%;
+  text-align: center;
+  background: rgba(255,255,255,.54);
+  border: 1px solid rgba(255,255,255,.76);
+  border-radius: 999px;
+  padding: 7px 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
 }
 
 .grid{
