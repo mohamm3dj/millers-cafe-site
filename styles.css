@@ -787,18 +787,28 @@ h1{
   perspective: 1200px;
 }
 
+.homeFlipTile::before,
+.homeFlipTile::after{
+  display: none;
+}
+
 .homeFlipInner{
   position: relative;
   width: 100%;
   min-height: 176px;
   height: 100%;
+  isolation: isolate;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transform: translateZ(0);
   transition: transform 620ms cubic-bezier(.22,.82,.24,1);
 }
 
 .homeFlipFace{
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -807,10 +817,26 @@ h1{
   border-radius: inherit;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.homeFlipFront{
+  z-index: 2;
+  transform: rotateY(0deg) translateZ(1px);
 }
 
 .homeFlipBack{
-  transform: rotateY(180deg);
+  z-index: 1;
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.homeFlipTile:not(.isFlipped) .homeFlipBack{
+  pointer-events: none;
+}
+
+.homeFlipTile.isFlipped .homeFlipFront{
+  pointer-events: none;
 }
 
 .homeFlipTile.isFlipped .homeFlipInner{
