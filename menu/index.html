@@ -30,6 +30,18 @@
           <span>Show symbol legend</span>
         </label>
       </div>
+      <div class="menuSearchRow">
+        <input
+          id="menuSearchInput"
+          class="menuSearchInput"
+          type="search"
+          placeholder="Search dishes, ingredients, or sections..."
+          aria-label="Search menu"
+        />
+        <button id="clearMenuSearch" class="searchClearBtn" type="button">Clear</button>
+      </div>
+      <div id="menuJumpChips" class="menuJumpChips" aria-label="Jump to menu section"></div>
+      <p id="menuSearchMeta" class="menuSearchMeta" aria-live="polite"></p>
     </div>
 
     <section class="tile menuSection menuGroup menuLegend" data-menu="evening">
@@ -363,8 +375,14 @@
   <script>
     const labelsToggle = document.getElementById("labelsToggle");
     const legendToggle = document.getElementById("legendToggle");
+    const menuSearchInput = document.getElementById("menuSearchInput");
+    const clearMenuSearch = document.getElementById("clearMenuSearch");
+    const menuJumpChips = document.getElementById("menuJumpChips");
+    const menuSearchMeta = document.getElementById("menuSearchMeta");
 
     const knownCodes = new Set(["LC", "V", "VE", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
+    const allSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
+    const searchableSections = allSections.filter((section) => !section.classList.contains("menuLegend"));
 
     function decorateLabels() {
       document.querySelectorAll(".menuName").forEach((el) => {
@@ -411,6 +429,31 @@
       document.body.classList.toggle("hide-legend", !legendToggle.checked);
     }
 
+    function slugify(text) {
+      return text
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function ensureSectionIds() {
+      const used = new Set();
+      searchableSections.forEach((section, index) => {
+        const heading = section.querySelector(".tileTitle");
+        const fallback = `section-${index + 1}`;
+        const base = slugify((heading?.textContent || "").trim()) || fallback;
+        let id = base;
+        let num = 2;
+        while (used.has(id) || document.getElementById(id)) {
+          id = `${base}-${num}`;
+          num += 1;
+        }
+        section.id = id;
+        used.add(id);
+      });
+    }
+
     function setCollapsed(section, collapsed) {
       section.classList.toggle("collapsed", collapsed);
       const title = section.querySelector(".tileTitle");
@@ -441,12 +484,109 @@
       });
     }
 
+    function buildJumpChips() {
+      if (!menuJumpChips) return;
+      menuJumpChips.innerHTML = "";
+
+      searchableSections
+        .filter((section) => !section.classList.contains("noSearchMatch"))
+        .forEach((section) => {
+          const heading = section.querySelector(".tileTitle");
+          if (!heading) return;
+
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = "jumpChip";
+          chip.textContent = heading.textContent.trim();
+          chip.addEventListener("click", () => {
+            setCollapsed(section, false);
+            section.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+          menuJumpChips.appendChild(chip);
+        });
+    }
+
+    function applySearch() {
+      const query = (menuSearchInput?.value || "").trim().toLowerCase();
+
+      if (!query) {
+        searchableSections.forEach((section) => {
+          section.classList.remove("noSearchMatch");
+          section.querySelectorAll(".menuItem.hiddenBySearch").forEach((item) => {
+            item.classList.remove("hiddenBySearch");
+          });
+          setCollapsed(section, true);
+        });
+        if (menuSearchMeta) menuSearchMeta.textContent = "";
+        buildJumpChips();
+        return;
+      }
+
+      let matchedSections = 0;
+      let matchedItems = 0;
+
+      searchableSections.forEach((section) => {
+        const headingText = (section.querySelector(".tileTitle")?.textContent || "").toLowerCase();
+        const sectionTitleMatch = headingText.includes(query);
+        const items = Array.from(section.querySelectorAll(".menuItem"));
+        let sectionHasMatch = false;
+        let localMatches = 0;
+
+        items.forEach((item) => {
+          const itemMatch = sectionTitleMatch || item.textContent.toLowerCase().includes(query);
+          item.classList.toggle("hiddenBySearch", !itemMatch);
+          if (itemMatch) {
+            sectionHasMatch = true;
+            localMatches += 1;
+          }
+        });
+
+        if (!items.length) {
+          sectionHasMatch = sectionTitleMatch || section.textContent.toLowerCase().includes(query);
+        }
+
+        section.classList.toggle("noSearchMatch", !sectionHasMatch);
+
+        if (sectionHasMatch) {
+          matchedSections += 1;
+          matchedItems += localMatches;
+          setCollapsed(section, false);
+        } else {
+          setCollapsed(section, true);
+        }
+      });
+
+      if (menuSearchMeta) {
+        if (!matchedSections) {
+          menuSearchMeta.textContent = `No matches for "${menuSearchInput.value.trim()}"`;
+        } else {
+          const sectionWord = matchedSections === 1 ? "section" : "sections";
+          const itemWord = matchedItems === 1 ? "item" : "items";
+          menuSearchMeta.textContent = `Showing ${matchedItems} ${itemWord} in ${matchedSections} ${sectionWord}`;
+        }
+      }
+
+      buildJumpChips();
+    }
+
     labelsToggle.addEventListener("change", applyToggles);
     legendToggle.addEventListener("change", applyToggles);
+    if (menuSearchInput) menuSearchInput.addEventListener("input", applySearch);
+    if (clearMenuSearch) {
+      clearMenuSearch.addEventListener("click", () => {
+        if (!menuSearchInput) return;
+        menuSearchInput.value = "";
+        applySearch();
+        menuSearchInput.focus();
+      });
+    }
 
+    ensureSectionIds();
     decorateLabels();
     setupAccordions();
     applyToggles();
+    buildJumpChips();
+    applySearch();
   </script>
 </body>
 </html>

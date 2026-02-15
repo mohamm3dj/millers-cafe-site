@@ -55,7 +55,7 @@
         <span class="statusDot" aria-hidden="true"></span>
         <span id="heroStatusText">Checking opening status...</span>
       </div>
-      <p id="heroHours" class="heroHours">Today: 12:00-17:00</p>
+      <p id="heroHours" class="heroHours">Tue-Sun: 12:00-17:00 • Today: 12:00-17:00</p>
       <p class="heroMeta">55 Brigsley Road, Waltham, Grimsby DN37 0JZ</p>
     </div>
 
@@ -192,6 +192,7 @@
   <script>
     const addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
     const businessTimezone = "Europe/London";
+    const openingSummary = "Tue-Sun: 12:00-17:00";
     const weeklyHours = {
       0: [["12:00", "17:00"]],
       1: [],
@@ -249,7 +250,7 @@
       statusWrap.classList.toggle("isOpen", isOpen);
       statusWrap.classList.toggle("isClosed", !isOpen);
       statusText.textContent = isOpen ? "Open now" : "Closed now";
-      heroHours.textContent = `Today: ${formatDayHours(windows)}`;
+      heroHours.textContent = `${openingSummary} • Today: ${formatDayHours(windows)}`;
     }
 
     async function copyAddress() {
