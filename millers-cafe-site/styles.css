@@ -466,6 +466,41 @@ h1{
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
 }
 
+.heroStatus{
+  margin: 2px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255,255,255,.8);
+  background: rgba(255,255,255,.58);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.statusDot{
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, .16);
+}
+
+.heroStatus.isOpen{
+  color: #166534;
+}
+
+.heroStatus.isOpen .statusDot{
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, .18);
+}
+
+.heroStatus.isClosed{
+  color: #9f1239;
+}
+
 .grid{
   display: grid;
   grid-template-columns: 1fr 1fr;  /* 2×2 on mobile too */
@@ -638,6 +673,45 @@ h1{
   color: #5e6978;
 }
 
+.homeGrid .homeTile .tileCta{
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #0f172a;
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: rgba(255,255,255,.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.92),
+    0 6px 14px rgba(15, 23, 42, .08);
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.homeGrid .homeTile .tileCta::after{
+  content: "\2192";
+  font-size: 12px;
+  transform: translateX(0);
+  transition: transform 160ms ease;
+}
+
+.homeGrid .homeTile:hover .tileCta{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 8px 16px rgba(15, 23, 42, .11);
+}
+
+.homeGrid .homeTile:hover .tileCta::after{
+  transform: translateX(2px);
+}
+
 .homeGrid .homeTile.tileWide{
   min-height: 164px;
 }
@@ -707,6 +781,86 @@ h1{
   --tile-accent: #15803d;
 }
 
+.quickPanels{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.quickPanel{
+  min-height: auto;
+  gap: 10px;
+  border-radius: 20px;
+  background:
+    radial-gradient(170px 120px at 20% 6%, rgba(59, 130, 246, .08), transparent 78%),
+    linear-gradient(155deg, rgba(255,255,255,.44) 0%, rgba(249,252,255,.22) 58%, rgba(238,246,255,.3) 100%);
+  border: 1px solid rgba(255,255,255,.58);
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+.quickPanel .tileTitle{
+  font-size: 24px;
+}
+
+.quickAddress{
+  color: #475467;
+}
+
+.quickActions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.quickBtn{
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #0f172a;
+  background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(246,251,255,.78));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 8px 16px rgba(15, 23, 42, .08);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.quickBtn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(15, 23, 42, .2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.96),
+    0 10px 18px rgba(15, 23, 42, .12);
+}
+
+.quickBtn:active{
+  transform: translateY(0);
+}
+
+.quickBtnGhost{
+  background: rgba(255,255,255,.56);
+}
+
+.quickFeedback{
+  margin: 0;
+  min-height: 18px;
+  font-size: 12px;
+  color: #0f766e;
+}
+
+.quickBtn:focus-visible,
+.homeGrid .homeTile:focus-visible{
+  outline: 2px solid rgba(15, 118, 110, .45);
+  outline-offset: 2px;
+}
+
 .footer{
   text-align: center;
   color: var(--muted);
@@ -730,6 +884,13 @@ h1{
 .homeGrid .homeTile:nth-child(5){ animation-delay: 320ms; }
 .homeGrid .homeTile:nth-child(6){ animation-delay: 380ms; }
 
+.quickPanels .quickPanel{
+  animation: cardRise 560ms cubic-bezier(.16,.84,.25,1) both;
+}
+
+.quickPanels .quickPanel:nth-child(1){ animation-delay: 430ms; }
+.quickPanels .quickPanel:nth-child(2){ animation-delay: 500ms; }
+
 @keyframes cardRise{
   from{ opacity: 0; transform: translateY(14px); }
   to{ opacity: 1; transform: translateY(0); }
@@ -748,6 +909,12 @@ h1{
 @keyframes glassOrbB{
   from{ transform: translate(0, 0) scale(1); opacity: .52; }
   to{ transform: translate(-20px, -18px) scale(1.1); opacity: .36; }
+}
+
+@media (max-width: 620px){
+  .quickPanels{
+    grid-template-columns: 1fr;
+  }
 }
 
 /* =========================
