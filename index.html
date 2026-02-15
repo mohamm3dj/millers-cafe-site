@@ -16,8 +16,8 @@
   <meta name="description" content="Millers Café — menu, collection, delivery and bookings.">
 
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
 
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -39,22 +39,22 @@
     <!-- 2x2 BUTTON GRID -->
     <div class="grid">
 
-      <a class="tile" href="/menu">
+      <a class="tile" href="./menu/">
         <div class="tileTitle">Menu</div>
         <div class="tileSub">Food & drinks</div>
       </a>
 
-      <a class="tile" href="/collection">
+      <a class="tile" href="./collection/">
         <div class="tileTitle">Collection</div>
         <div class="tileSub">Order ahead & skip the queue</div>
       </a>
 
-      <a class="tile" href="/delivery">
+      <a class="tile" href="./delivery/">
         <div class="tileTitle">Delivery</div>
         <div class="tileSub">Get it delivered to you</div>
       </a>
 
-      <a class="tile" href="/bookings">
+      <a class="tile" href="./bookings/">
         <div class="tileTitle">Bookings</div>
         <div class="tileSub">Reserve a table</div>
       </a>
@@ -74,7 +74,7 @@
     // Register Service Worker (only works properly once the site is hosted on HTTPS)
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
       });
     }
   </script>
