@@ -52,45 +52,82 @@
 
       <div>
         <h1>Millers Café</h1>
-        <p class="subtitle">Fresh coffee & homemade food</p>
       </div>
     </div>
 
     <!-- BUTTON GRID -->
-    <div class="grid">
+    <div class="grid homeGrid">
 
-      <a class="tile" href="./menu/">
+      <a class="tile homeTile homeTileMenu" href="./menu/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 7h12M6 12h12M6 17h12"></path>
+            <path d="M3 7h.01M3 12h.01M3 17h.01"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Menu</div>
         <div class="tileSub">View our Menu</div>
       </a>
 
-      <a class="tile" href="./collection/">
+      <a class="tile homeTile homeTileCollection" href="./collection/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 9h10l1 10H6L7 9Z"></path>
+            <path d="M9 9V7a3 3 0 0 1 6 0v2"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Collection</div>
         <div class="tileSub">Order for pick Up</div>
       </a>
 
-      <a class="tile" href="./delivery/">
+      <a class="tile homeTile homeTileDelivery" href="./delivery/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 14V9h11v5"></path>
+            <path d="M14 11h3l3 3v5h-1"></path>
+            <path d="M3 19h2M14 19h2"></path>
+            <circle cx="7" cy="19" r="2"></circle>
+            <circle cx="18" cy="19" r="2"></circle>
+          </svg>
+        </div>
         <div class="tileTitle">Delivery</div>
         <div class="tileSub">Get it delivered to you</div>
       </a>
 
-      <a class="tile" href="./bookings/">
+      <a class="tile homeTile homeTileBookings" href="./bookings/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="6" y="4" width="12" height="16" rx="2"></rect>
+            <path d="M9 4v3M15 4v3M8 10h8M8 13h8M8 16h5"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Bookings</div>
         <div class="tileSub">Reserve a table</div>
       </a>
 
       <a
-        class="tile tileWide"
+        class="tile tileWide homeTile homeTileLocation"
         href="https://www.google.com/maps/dir/?api=1&destination=Millers%20Restaurant%2C%2055%20Brigsley%20Road%2C%20Waltham%2C%20Grimsby%20DN37%200JZ"
         target="_blank"
         rel="noopener noreferrer"
       >
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 21s-6-5.4-6-10a6 6 0 1 1 12 0c0 4.6-6 10-6 10Z"></path>
+            <circle cx="12" cy="11" r="2.2"></circle>
+          </svg>
+        </div>
         <div class="tileTitle">Millers Location</div>
         <div class="tileSub">Get directions in Google Maps</div>
         <div class="tileSub">55 Brigsley Road, Waltham, Grimsby, DN37 0JZ</div>
       </a>
 
-      <a class="tile tileWide" href="tel:+441472828600">
+      <a class="tile tileWide homeTile homeTileContact" href="tel:+441472828600">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7.5 5.5c.5-.5 1.3-.5 1.8 0l1.7 1.7c.5.5.5 1.3 0 1.8l-1.1 1.1a13.8 13.8 0 0 0 4 4l1.1-1.1c.5-.5 1.3-.5 1.8 0l1.7 1.7c.5.5.5 1.3 0 1.8l-1.3 1.3c-.7.7-1.8 1-2.8.7A16.8 16.8 0 0 1 4.5 9.6c-.3-1 .1-2.1.8-2.8l2.2-1.3Z"></path>
+          </svg>
+        </div>
         <div class="tileTitle">Contact Us</div>
         <div class="tileSub">Phone: 01472 828600 / 823030</div>
         <div class="tileSub">Email: hello@millers.cafe</div>

@@ -377,6 +377,116 @@ h1{
   line-height: 1.3;
 }
 
+.homeGrid{
+  gap: 16px;
+}
+
+.homeGrid .homeTile{
+  --home-accent: #0f766e;
+  --home-accent-2: #14b8a6;
+  --home-tint: rgba(20, 184, 166, .14);
+
+  text-align: center;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 176px;
+  padding: 20px 18px;
+  border-radius: 20px;
+  border-color: rgba(15, 23, 42, .12);
+  background:
+    radial-gradient(140px 90px at 18% 12%, var(--home-tint), transparent 70%),
+    linear-gradient(170deg, #ffffff 0%, #f9fcff 62%, #f4f8ff 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.homeGrid .homeTile::after{
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(15,23,42,.12), transparent);
+}
+
+.homeGrid .homeTile:hover{
+  transform: translateY(-3px);
+  border-color: rgba(15, 23, 42, .2);
+}
+
+.homeGrid .homeTile .tileTitle{
+  font-size: 23px;
+}
+
+.homeGrid .homeTile .tileSub{
+  max-width: 30ch;
+}
+
+.homeGrid .homeTile.tileWide{
+  min-height: 164px;
+}
+
+.homeGrid .homeTileIcon{
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: linear-gradient(140deg, var(--home-accent), var(--home-accent-2));
+  box-shadow:
+    0 10px 20px rgba(15, 23, 42, .18),
+    inset 0 1px 0 rgba(255,255,255,.4);
+}
+
+.homeGrid .homeTileIcon svg{
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.homeGrid .homeTileMenu{
+  --home-accent: #0f766e;
+  --home-accent-2: #14b8a6;
+  --home-tint: rgba(20,184,166,.14);
+}
+
+.homeGrid .homeTileCollection{
+  --home-accent: #a35517;
+  --home-accent-2: #f59e0b;
+  --home-tint: rgba(245,158,11,.14);
+}
+
+.homeGrid .homeTileDelivery{
+  --home-accent: #1d4ed8;
+  --home-accent-2: #38bdf8;
+  --home-tint: rgba(56,189,248,.14);
+}
+
+.homeGrid .homeTileBookings{
+  --home-accent: #0f4c81;
+  --home-accent-2: #2563eb;
+  --home-tint: rgba(37,99,235,.12);
+}
+
+.homeGrid .homeTileLocation{
+  --home-accent: #b42318;
+  --home-accent-2: #ef4444;
+  --home-tint: rgba(239,68,68,.14);
+}
+
+.homeGrid .homeTileContact{
+  --home-accent: #14532d;
+  --home-accent-2: #16a34a;
+  --home-tint: rgba(22,163,74,.12);
+}
+
 .footer{
   text-align: center;
   color: var(--muted);
@@ -389,16 +499,16 @@ h1{
   margin-top: 6px;
 }
 
-.grid .tile{
+.homeGrid .homeTile{
   animation: cardRise 520ms cubic-bezier(.16,.84,.25,1) both;
 }
 
-.grid .tile:nth-child(1){ animation-delay: 80ms; }
-.grid .tile:nth-child(2){ animation-delay: 140ms; }
-.grid .tile:nth-child(3){ animation-delay: 200ms; }
-.grid .tile:nth-child(4){ animation-delay: 260ms; }
-.grid .tile:nth-child(5){ animation-delay: 320ms; }
-.grid .tile:nth-child(6){ animation-delay: 380ms; }
+.homeGrid .homeTile:nth-child(1){ animation-delay: 80ms; }
+.homeGrid .homeTile:nth-child(2){ animation-delay: 140ms; }
+.homeGrid .homeTile:nth-child(3){ animation-delay: 200ms; }
+.homeGrid .homeTile:nth-child(4){ animation-delay: 260ms; }
+.homeGrid .homeTile:nth-child(5){ animation-delay: 320ms; }
+.homeGrid .homeTile:nth-child(6){ animation-delay: 380ms; }
 
 @keyframes cardRise{
   from{ opacity: 0; transform: translateY(14px); }
