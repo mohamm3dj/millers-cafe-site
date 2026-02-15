@@ -863,7 +863,11 @@ h1{
 
 .flipLinkBtn{
   appearance: none;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: normal;
+  color: #0f172a;
   cursor: pointer;
 }
 
