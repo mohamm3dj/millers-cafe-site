@@ -45,6 +45,103 @@ main{
   gap: 18px;
 }
 
+.intro{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  background:
+    radial-gradient(700px 360px at 50% 25%, rgba(207,176,100,.30), transparent 65%),
+    radial-gradient(900px 700px at 50% 110%, rgba(65,72,110,.28), transparent 70%),
+    #06070b;
+  overflow: hidden;
+}
+
+.intro::before{
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(207,176,100,.05),
+    rgba(245,222,167,.60),
+    rgba(207,176,100,.08),
+    rgba(207,176,100,.05)
+  );
+  filter: blur(2px);
+  animation: introSpin 2.6s linear infinite;
+}
+
+.introLogoWrap{
+  position: relative;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  padding: 8px;
+  background: radial-gradient(circle at 28% 22%, rgba(245,222,167,.65), rgba(158,122,44,.20));
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.10),
+    0 24px 50px rgba(0,0,0,.55);
+  animation: introPop 900ms cubic-bezier(.22,.7,.2,1) both;
+}
+
+.introLogo{
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
+  animation: introPulse 1200ms ease-in-out 800ms both;
+}
+
+.introWordmark{
+  text-align: center;
+  font-size: clamp(26px, 5vw, 40px);
+  font-weight: 800;
+  letter-spacing: .4px;
+  color: rgba(255,255,255,.94);
+  text-shadow: 0 8px 26px rgba(0,0,0,.45);
+  animation: introWord 700ms ease-out 550ms both;
+}
+
+.intro.introDone{
+  animation: introExit 750ms cubic-bezier(.42,0,.2,1) forwards;
+}
+
+@keyframes introSpin{
+  from{ transform: translate(-50%, -50%) rotate(0deg); }
+  to{ transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes introPop{
+  0%{ transform: scale(.58); opacity: 0; }
+  70%{ transform: scale(1.06); opacity: 1; }
+  100%{ transform: scale(1); opacity: 1; }
+}
+
+@keyframes introPulse{
+  0%{ transform: scale(1); }
+  50%{ transform: scale(1.05); }
+  100%{ transform: scale(1); }
+}
+
+@keyframes introWord{
+  0%{ opacity: 0; transform: translateY(16px); }
+  100%{ opacity: 1; transform: translateY(0); }
+}
+
+@keyframes introExit{
+  from{ opacity: 1; transform: scale(1); }
+  to{ opacity: 0; transform: scale(1.03); }
+}
+
 .header{
   display: flex;
   align-items: center;
@@ -143,6 +240,10 @@ h1{
   color: var(--muted);
   font-size: 13px;
   padding-bottom: 6px;
+}
+
+.footerHours{
+  margin-top: 6px;
 }
 
 /* =========================

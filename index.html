@@ -23,6 +23,12 @@
 </head>
 
 <body>
+  <div id="intro" class="intro" aria-hidden="true">
+    <div class="introLogoWrap">
+      <img class="introLogo" src="./assets/millers-logo.svg" alt="">
+    </div>
+    <div class="introWordmark">Millers Cafe</div>
+  </div>
 
   <main>
 
@@ -85,11 +91,25 @@
       <a href="mailto:hello@millers.cafe" style="color:inherit;">
         hello@millers.cafe
       </a>
+      <div class="footerHours">Opening Hours: 12:00-17:00</div>
     </div>
 
   </main>
 
   <script>
+    const intro = document.getElementById("intro");
+    if (intro) {
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reducedMotion) {
+        intro.remove();
+      } else {
+        window.addEventListener("load", () => {
+          setTimeout(() => intro.classList.add("introDone"), 1700);
+          setTimeout(() => intro.remove(), 2550);
+        });
+      }
+    }
+
     // Register Service Worker (only works properly once the site is hosted on HTTPS)
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
