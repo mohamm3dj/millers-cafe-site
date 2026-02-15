@@ -18,10 +18,6 @@
     </div>
 
     <div class="tile menuTools">
-      <div class="menuSwitch" role="tablist" aria-label="Menu type">
-        <button class="switchBtn active" type="button" data-menu-btn="evening" aria-selected="true">Evening Menu</button>
-        <button class="switchBtn" type="button" data-menu-btn="daytime" aria-selected="false">Daytime &amp; Desserts</button>
-      </div>
       <div class="toolsRow">
         <label class="toggle">
           <input id="labelsToggle" type="checkbox" checked />
@@ -294,7 +290,7 @@
       <div class="menuItem"><div class="menuLeft"><div class="menuName">7" Cheese &amp; Tomato Pizza</div><div class="menuDesc">Served with chips and a soft drink.</div></div><div class="menuPrice">&pound;10</div></div>
     </section>
 
-    <section class="tile menuSection menuGroup" data-menu="daytime" hidden>
+    <section class="tile menuSection menuGroup" data-menu="daytime">
       <h2 class="tileTitle">Milkshakes &amp; Exotic Drinks</h2>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Mango Lassi</div></div><div class="menuPrice">&pound;4</div></div>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Lychee Ice Drink</div></div><div class="menuPrice">&pound;4</div></div>
@@ -314,13 +310,13 @@
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Snickers</div></div><div class="menuPrice">&pound;5</div></div>
     </section>
 
-    <section class="tile menuSection menuGroup" data-menu="daytime" hidden>
+    <section class="tile menuSection menuGroup" data-menu="daytime">
       <h2 class="tileTitle">Jacket Potato</h2>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Jacket Potato</div><div class="menuDesc">Choose butter or garlic butter.</div></div><div class="menuPrice">&pound;5</div></div>
       <div class="menuDesc">Toppings: Tuna +&pound;2, Cheese +&pound;2, Beans +&pound;2, Chicken +&pound;2, Keema +&pound;2, Curry Sauce +&pound;4, Crispy Onions +&pound;2.</div>
     </section>
 
-    <section class="tile menuSection menuGroup" data-menu="daytime" hidden>
+    <section class="tile menuSection menuGroup" data-menu="daytime">
       <h2 class="tileTitle">Desserts</h2>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Red Velvet Cake (slice)</div></div><div class="menuPrice">&pound;5</div></div>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Carrot Cake (slice)</div></div><div class="menuPrice">&pound;5</div></div>
@@ -335,7 +331,7 @@
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Cream, Custard or Ice Cream</div></div><div class="menuPrice">+&pound;1</div></div>
     </section>
 
-    <section class="tile menuSection menuGroup" data-menu="daytime" hidden>
+    <section class="tile menuSection menuGroup" data-menu="daytime">
       <h2 class="tileTitle">Salad Bowls</h2>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Chicken Tikka Salad Bowl</div></div><div class="menuPrice">&pound;8</div></div>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Lamb Tikka Salad Bowl</div></div><div class="menuPrice">&pound;8</div></div>
@@ -344,7 +340,7 @@
       <div class="menuDesc">Build with lettuce, onions, tomato, cucumber, peppers, green peas. Dressing: lemon juice or olive oil.</div>
     </section>
 
-    <section class="tile menuSection menuGroup" data-menu="daytime" hidden>
+    <section class="tile menuSection menuGroup" data-menu="daytime">
       <h2 class="tileTitle">Hot Drinks</h2>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Peppermint Tea</div></div><div class="menuPrice">&pound;2</div></div>
       <div class="menuItem"><div class="menuLeft"><div class="menuName">Green Tea</div></div><div class="menuPrice">&pound;2</div></div>
@@ -364,8 +360,6 @@
   </main>
 
   <script>
-    const menuButtons = document.querySelectorAll("[data-menu-btn]");
-    const menuGroups = document.querySelectorAll(".menuGroup");
     const labelsToggle = document.getElementById("labelsToggle");
     const legendToggle = document.getElementById("legendToggle");
 
@@ -423,15 +417,12 @@
     }
 
     function setupAccordions() {
-      const byMenuCount = {};
       document.querySelectorAll(".menuSection.menuGroup").forEach((section) => {
         if (section.classList.contains("menuLegend")) return;
-        const menuType = section.dataset.menu || "evening";
-        byMenuCount[menuType] = (byMenuCount[menuType] || 0) + 1;
         section.classList.add("accordion");
 
-        // Keep first 2 sections open per menu type; collapse the rest.
-        setCollapsed(section, byMenuCount[menuType] > 2);
+        // Start with all sections collapsed.
+        setCollapsed(section, true);
 
         const title = section.querySelector(".tileTitle");
         if (!title) return;
@@ -449,37 +440,12 @@
       });
     }
 
-    function setMenu(type, options = {}) {
-      const { scrollToTop = true } = options;
-
-      menuButtons.forEach((btn) => {
-        const active = btn.dataset.menuBtn === type;
-        btn.classList.toggle("active", active);
-        btn.setAttribute("aria-selected", String(active));
-      });
-
-      menuGroups.forEach((group) => {
-        group.hidden = group.dataset.menu !== type;
-      });
-
-      const visibleSections = Array.from(document.querySelectorAll(`.menuSection.menuGroup[data-menu="${type}"]`))
-        .filter((section) => !section.classList.contains("menuLegend"));
-      visibleSections.forEach((section, index) => setCollapsed(section, index > 1));
-
-      if (scrollToTop) window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    menuButtons.forEach((btn) => {
-      btn.addEventListener("click", () => setMenu(btn.dataset.menuBtn));
-    });
-
     labelsToggle.addEventListener("change", applyToggles);
     legendToggle.addEventListener("change", applyToggles);
 
     decorateLabels();
     setupAccordions();
     applyToggles();
-    setMenu("evening", { scrollToTop: false });
   </script>
 </body>
 </html>
