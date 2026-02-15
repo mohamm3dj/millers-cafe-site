@@ -112,22 +112,41 @@
         <div class="tileCta">Book a Table</div>
       </a>
 
-      <a
-        class="tile homeTile homeTileLocation"
-        href="https://www.google.com/maps/dir/?api=1&destination=Millers%20Restaurant%2C%2055%20Brigsley%20Road%2C%20Waltham%2C%20Grimsby%20DN37%200JZ"
-        target="_blank"
-        rel="noopener noreferrer"
+      <div
+        id="locationFlipTile"
+        class="tile homeTile homeTileLocation homeFlipTile"
+        role="button"
+        tabindex="0"
+        aria-label="Find Us card. Activate to show directions and copy address."
+        aria-expanded="false"
       >
-        <div class="homeTileIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 20.5s-5-4.6-5-8.7a5 5 0 1 1 10 0c0 4.1-5 8.7-5 8.7Z"></path>
-            <circle cx="12" cy="11.2" r="2"></circle>
-          </svg>
+        <div class="homeFlipInner">
+          <div class="homeFlipFace homeFlipFront">
+            <div class="homeTileIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 20.5s-5-4.6-5-8.7a5 5 0 1 1 10 0c0 4.1-5 8.7-5 8.7Z"></path>
+                <circle cx="12" cy="11.2" r="2"></circle>
+              </svg>
+            </div>
+            <div class="tileTitle">Find Us</div>
+            <div class="tileSub">Tap to reveal directions and address options</div>
+            <div class="tileCta">Show Options</div>
+          </div>
+
+          <div class="homeFlipFace homeFlipBack">
+            <div class="tileTitle">Find Us</div>
+            <a
+              class="flipLink flipNoToggle"
+              href="https://www.google.com/maps/dir/?api=1&destination=Millers%20Restaurant%2C%2055%20Brigsley%20Road%2C%20Waltham%2C%20Grimsby%20DN37%200JZ"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Directions</a>
+            <button id="findCopyAddressBtn" class="flipLink flipLinkBtn flipNoToggle" type="button">Copy Address</button>
+            <p id="findCopyFeedback" class="flipFeedback" aria-live="polite"></p>
+            <button class="flipBackBtn" type="button">Back</button>
+          </div>
         </div>
-        <div class="tileTitle">Find Us</div>
-        <div class="tileSub">Open turn-by-turn directions instantly</div>
-        <div class="tileCta">Get Directions</div>
-      </a>
+      </div>
 
       <div
         id="contactFlipTile"
@@ -171,6 +190,7 @@
 
   <script src="./page-transitions.js"></script>
   <script>
+    const addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
     const businessTimezone = "Europe/London";
     const weeklyHours = {
       0: [["12:00", "17:00"]],
@@ -232,6 +252,39 @@
       heroHours.textContent = `Today: ${formatDayHours(windows)}`;
     }
 
+    async function copyAddress() {
+      const feedback = document.getElementById("findCopyFeedback");
+      if (!feedback) return;
+
+      const done = (message) => {
+        feedback.textContent = message;
+        window.setTimeout(() => {
+          if (feedback.textContent === message) feedback.textContent = "";
+        }, 2200);
+      };
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(addressText);
+          done("Address copied");
+          return;
+        }
+      } catch (error) {
+        // Fallback below.
+      }
+
+      const temp = document.createElement("textarea");
+      temp.value = addressText;
+      temp.setAttribute("readonly", "");
+      temp.style.position = "absolute";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(temp);
+      done(copied ? "Address copied" : "Copy failed");
+    }
+
     const intro = document.getElementById("intro");
     if (intro) {
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -256,18 +309,24 @@
     updateOpeningStatus();
     window.setInterval(updateOpeningStatus, 60 * 1000);
 
-    const contactFlipTile = document.getElementById("contactFlipTile");
-    if (contactFlipTile) {
+    const findCopyAddressBtn = document.getElementById("findCopyAddressBtn");
+    if (findCopyAddressBtn) {
+      findCopyAddressBtn.addEventListener("click", copyAddress);
+    }
+
+    const setupFlipTile = (tile) => {
+      if (!tile) return;
+
       const setFlipped = (flipped) => {
-        contactFlipTile.classList.toggle("isFlipped", flipped);
-        contactFlipTile.setAttribute("aria-expanded", flipped ? "true" : "false");
+        tile.classList.toggle("isFlipped", flipped);
+        tile.setAttribute("aria-expanded", flipped ? "true" : "false");
       };
 
-      contactFlipTile.addEventListener("click", (event) => {
+      tile.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
 
-        if (target.closest(".flipLink")) {
+        if (target.closest(".flipNoToggle")) {
           return;
         }
 
@@ -277,13 +336,13 @@
           return;
         }
 
-        setFlipped(!contactFlipTile.classList.contains("isFlipped"));
+        setFlipped(!tile.classList.contains("isFlipped"));
       });
 
-      contactFlipTile.addEventListener("keydown", (event) => {
+      tile.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          setFlipped(!contactFlipTile.classList.contains("isFlipped"));
+          setFlipped(!tile.classList.contains("isFlipped"));
         } else if (event.key === "Escape") {
           setFlipped(false);
         }
@@ -291,11 +350,14 @@
 
       document.addEventListener("click", (event) => {
         if (!(event.target instanceof Element)) return;
-        if (!contactFlipTile.contains(event.target)) {
+        if (!tile.contains(event.target)) {
           setFlipped(false);
         }
       });
-    }
+    };
+
+    setupFlipTile(document.getElementById("locationFlipTile"));
+    setupFlipTile(document.getElementById("contactFlipTile"));
 
     // Register Service Worker (only works properly once the site is hosted on HTTPS)
     if ("serviceWorker" in navigator) {
