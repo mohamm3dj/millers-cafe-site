@@ -723,14 +723,30 @@ h1{
   display: grid;
   place-items: center;
   color: var(--tile-accent);
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(255,255,255,.5);
   background: linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(245,249,255,.22) 100%);
   box-shadow:
     0 8px 16px rgba(15, 23, 42, .12),
     inset 0 1px 0 rgba(255,255,255,.75);
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
+  animation: iconFloat 4.8s ease-in-out infinite;
+}
+
+.homeGrid .homeTileIcon::after{
+  content: "";
+  position: absolute;
+  top: -120%;
+  left: -140%;
+  width: 86%;
+  height: 300%;
+  transform: rotate(24deg);
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.32), rgba(255,255,255,0));
+  opacity: .24;
+  animation: iconSheen 6.4s ease-in-out infinite;
 }
 
 .homeGrid .homeTileIcon svg{
@@ -741,13 +757,14 @@ h1{
   stroke-width: 1.35;
   stroke-linecap: round;
   stroke-linejoin: round;
+  animation: iconBreath 4.8s ease-in-out infinite;
 }
 
 .homeGrid .homeTile:hover .homeTileIcon{
-  transform: translateY(-1px) scale(1.02);
+  transform: translateY(-2px) scale(1.04);
   border-color: rgba(255,255,255,.68);
   box-shadow:
-    0 10px 18px rgba(15, 23, 42, .14),
+    0 14px 24px rgba(15, 23, 42, .16),
     inset 0 1px 0 rgba(255,255,255,.86);
 }
 
@@ -780,6 +797,13 @@ h1{
   --tile-tint: rgba(22, 163, 74, .10);
   --tile-accent: #15803d;
 }
+
+.homeGrid .homeTileMenu .homeTileIcon svg{ animation-name: iconBook; animation-duration: 5.2s; }
+.homeGrid .homeTileCollection .homeTileIcon svg{ animation-name: iconBag; animation-duration: 5s; animation-delay: .2s; }
+.homeGrid .homeTileDelivery .homeTileIcon svg{ animation-name: iconDrive; animation-duration: 4.8s; animation-delay: .1s; }
+.homeGrid .homeTileBookings .homeTileIcon svg{ animation-name: iconCalendar; animation-duration: 5.3s; animation-delay: .35s; }
+.homeGrid .homeTileLocation .homeTileIcon svg{ animation-name: iconPin; animation-duration: 4.9s; animation-delay: .18s; }
+.homeGrid .homeTileContact .homeTileIcon svg{ animation-name: iconPhone; animation-duration: 5.1s; animation-delay: .28s; }
 
 .homeFlipTile{
   padding: 0;
@@ -977,22 +1001,36 @@ h1{
   justify-items: center;
   text-align: center;
   gap: 12px;
-  padding: 26px 20px 24px;
+  padding: 28px 20px 24px;
   border-radius: 24px;
   border: 1px solid rgba(255,255,255,.72);
   background:
-    radial-gradient(200px 140px at 22% 14%, rgba(184, 156, 107, .17), transparent 74%),
-    radial-gradient(220px 150px at 84% 20%, rgba(124, 143, 136, .16), transparent 76%),
-    linear-gradient(150deg, rgba(255,255,255,.72) 0%, rgba(246, 250, 254, .45) 56%, rgba(240, 247, 255, .46) 100%);
+    radial-gradient(220px 150px at 22% 14%, rgba(184, 156, 107, .12), transparent 74%),
+    radial-gradient(240px 160px at 84% 20%, rgba(124, 143, 136, .13), transparent 76%),
+    linear-gradient(150deg, rgba(255,255,255,.74) 0%, rgba(246, 250, 254, .48) 56%, rgba(240, 247, 255, .48) 100%);
   box-shadow:
-    0 16px 34px rgba(15, 23, 42, .10),
+    0 16px 34px rgba(15, 23, 42, .09),
     inset 0 1px 0 rgba(255,255,255,.95);
 }
 
 .coffeeMachine{
   position: relative;
-  width: 220px;
-  height: 234px;
+  width: 236px;
+  height: 244px;
+}
+
+.coffeeMachine::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 166px;
+  height: 22px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(24, 33, 48, .22), rgba(24, 33, 48, 0) 70%);
+  filter: blur(2px);
+  opacity: .55;
 }
 
 .machineTop{
@@ -1001,75 +1039,130 @@ h1{
   margin: 0 auto;
   border-radius: 999px;
   border: 1px solid rgba(62, 41, 28, .2);
-  background: linear-gradient(180deg, #fefefe 0%, #dde4ed 100%);
+  background: linear-gradient(180deg, #fefefe 0%, #dbe4ef 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92);
 }
 
 .machineBody{
   position: relative;
-  width: 160px;
-  height: 112px;
+  width: 168px;
+  height: 118px;
   margin: 6px auto 0;
-  border-radius: 16px 16px 12px 12px;
+  border-radius: 17px 17px 12px 12px;
   border: 1px solid rgba(62, 41, 28, .22);
-  background: linear-gradient(180deg, #ffffff 0%, #e7edf5 100%);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, .12);
+  background: linear-gradient(180deg, #ffffff 0%, #e4ecf6 100%);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, .13), inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.machineBody::before{
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 13px;
+  width: 22px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #95d5b2, #d9f99d);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.5), 0 0 12px rgba(151, 214, 175, .55);
+  animation: statusBlink 3.8s ease-in-out infinite;
 }
 
 .machineGauge{
   position: absolute;
-  left: 14px;
-  top: 12px;
-  width: 34px;
-  height: 34px;
+  left: 13px;
+  top: 14px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid rgba(55, 65, 81, .35);
+  border: 2px solid rgba(55, 65, 81, .3);
   background: radial-gradient(circle at 35% 30%, #ffffff, #d9e1eb 70%);
   box-shadow: inset 0 1px 3px rgba(15, 23, 42, .14);
-  animation: gaugePulse 3.2s ease-in-out infinite;
+  animation: gaugePulse 3.8s ease-in-out infinite;
+}
+
+.machineGauge::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: #596272;
+  transform-origin: left center;
+  transform: translate(-8%, -50%) rotate(14deg);
+  animation: gaugeNeedle 3.8s ease-in-out infinite;
 }
 
 .machineSpout{
   position: absolute;
-  left: 72px;
+  left: 76px;
   top: 12px;
   width: 16px;
-  height: 56px;
+  height: 58px;
   border-radius: 0 0 10px 10px;
   border: 1px solid rgba(62, 41, 28, .25);
-  background: linear-gradient(180deg, #f8fafc 0%, #d8e1eb 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #d5dfea 100%);
+}
+
+.machineSpout::before,
+.machineSpout::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  width: 12px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 117, 135, .36);
+  border-bottom: 0;
+  border-left: 0;
+  opacity: 0;
+  transform: translateX(-50%) rotate(-14deg);
+  filter: blur(.3px);
+  animation: steamLift 3.8s ease-in-out infinite;
+}
+
+.machineSpout::after{
+  width: 10px;
+  height: 24px;
+  left: calc(50% + 9px);
+  animation-delay: .35s;
 }
 
 .coffeeDrip{
   position: absolute;
-  left: 79px;
-  top: 66px;
-  width: 4px;
+  left: 83px;
+  top: 68px;
+  width: 3px;
   height: 0;
   border-radius: 999px;
   background: linear-gradient(180deg, #7b4a2e 0%, #4b2d1c 100%);
   opacity: 0;
-  animation: dripLoop 3.2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(123, 74, 46, .28);
+  animation: dripLoop 3.8s ease-in-out infinite;
 }
 
 .machineBase{
-  width: 182px;
+  width: 194px;
   height: 14px;
-  margin: 8px auto 0;
+  margin: 10px auto 0;
   border-radius: 999px;
   border: 1px solid rgba(62, 41, 28, .2);
-  background: linear-gradient(180deg, #f8fafc 0%, #d8e1eb 100%);
-  box-shadow: 0 8px 15px rgba(15, 23, 42, .1);
+  background: linear-gradient(180deg, #f7fafd 0%, #d5dfeb 100%);
+  box-shadow: 0 9px 16px rgba(15, 23, 42, .11), inset 0 1px 0 rgba(255,255,255,.88);
 }
 
 .machineCup{
   position: relative;
-  width: 118px;
-  height: 78px;
+  width: 124px;
+  height: 82px;
   margin: 10px auto 0;
-  border: 2px solid rgba(62, 41, 28, .28);
+  border: 2px solid rgba(62, 41, 28, .26);
   border-radius: 0 0 18px 18px;
   border-top: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(232, 238, 247, .86) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(232, 238, 247, .86) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 5px 10px rgba(15, 23, 42, .06);
   overflow: hidden;
 }
 
@@ -1105,15 +1198,27 @@ h1{
   height: 0;
   border-radius: 0 0 14px 14px;
   background: linear-gradient(180deg, #916041 0%, #6e452d 58%, #4c2d1d 100%);
-  animation: cupFillLoop 3.2s cubic-bezier(.2,.76,.24,1) infinite;
+  animation: cupFillLoop 3.8s cubic-bezier(.2,.76,.24,1) infinite;
+}
+
+.cupCoffee::before{
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -4px;
+  width: calc(100% + 2px);
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(233, 197, 156, .95), rgba(180, 133, 88, .74));
+  opacity: .9;
 }
 
 .loadingTrack{
   width: min(320px, 100%);
-  height: 10px;
+  height: 9px;
   border-radius: 999px;
   border: 1px solid rgba(62, 41, 28, .17);
-  background: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.62);
   overflow: hidden;
 }
 
@@ -1122,7 +1227,7 @@ h1{
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #6f452e 0%, #bc9f72 100%);
-  animation: loadingLoop 3.2s linear infinite;
+  animation: loadingLoop 3.8s linear infinite;
 }
 
 .comingSoonText{
@@ -1131,7 +1236,8 @@ h1{
   font-weight: 700;
   color: #4f2f1f;
   opacity: 0;
-  animation: comingTextLoop 3.2s ease-in-out infinite;
+  letter-spacing: .2px;
+  animation: comingTextLoop 3.8s ease-in-out infinite;
 }
 
 .comingSoonPanel .tileSub{
@@ -1143,17 +1249,47 @@ h1{
   45%{ transform: scale(1.06); }
 }
 
+@keyframes gaugeNeedle{
+  0%, 14%{ transform: translate(-8%, -50%) rotate(-16deg); }
+  58%{ transform: translate(-8%, -50%) rotate(18deg); }
+  100%{ transform: translate(-8%, -50%) rotate(-16deg); }
+}
+
+@keyframes statusBlink{
+  0%, 24%{ opacity: .44; }
+  28%, 82%{ opacity: 1; }
+  100%{ opacity: .44; }
+}
+
+@keyframes steamLift{
+  0%, 22%{
+    opacity: 0;
+    transform: translateX(-50%) translateY(7px) rotate(-14deg) scale(.8);
+  }
+  40%{
+    opacity: .5;
+  }
+  72%{
+    opacity: .16;
+    transform: translateX(-50%) translateY(-8px) rotate(-18deg) scale(1.02);
+  }
+  100%{
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) rotate(-20deg) scale(1.06);
+  }
+}
+
 @keyframes dripLoop{
   0%, 12%{
     height: 0;
     opacity: 0;
   }
-  20%{
-    height: 26px;
+  22%{
+    height: 20px;
     opacity: .95;
   }
-  72%{
-    height: 40px;
+  74%{
+    height: 44px;
     opacity: .95;
   }
   82%, 100%{
@@ -1164,25 +1300,86 @@ h1{
 
 @keyframes cupFillLoop{
   0%, 10%{ height: 0; }
-  70%{ height: 66%; }
-  84%{ height: 66%; }
+  72%{ height: 68%; }
+  86%{ height: 68%; }
   100%{ height: 0; }
 }
 
 @keyframes loadingLoop{
   0%{ width: 0; }
-  84%{ width: 100%; }
+  86%{ width: 100%; }
   100%{ width: 0; }
 }
 
 @keyframes comingTextLoop{
-  0%, 72%{ opacity: 0; transform: translateY(3px); }
-  82%, 94%{ opacity: 1; transform: translateY(0); }
+  0%, 74%{ opacity: 0; transform: translateY(3px); }
+  86%, 96%{ opacity: 1; transform: translateY(0); }
   100%{ opacity: 0; transform: translateY(-2px); }
 }
 
+@keyframes iconFloat{
+  0%, 100%{ transform: translateY(0); }
+  50%{ transform: translateY(-2px); }
+}
+
+@keyframes iconBreath{
+  0%, 100%{ transform: scale(1); }
+  50%{ transform: scale(1.03); }
+}
+
+@keyframes iconSheen{
+  0%, 68%{ transform: translateX(0) rotate(24deg); opacity: 0; }
+  74%{ opacity: .28; }
+  100%{ transform: translateX(220%) rotate(24deg); opacity: 0; }
+}
+
+@keyframes iconBook{
+  0%, 100%{ transform: rotate(0deg) translateY(0); }
+  45%{ transform: rotate(-6deg) translateY(-1px); }
+  58%{ transform: rotate(3deg) translateY(0); }
+}
+
+@keyframes iconBag{
+  0%, 100%{ transform: translateY(0); }
+  35%{ transform: translateY(-2px); }
+  55%{ transform: translateY(1px); }
+}
+
+@keyframes iconDrive{
+  0%, 100%{ transform: translateX(0); }
+  30%{ transform: translateX(1.2px); }
+  60%{ transform: translateX(-1.2px); }
+}
+
+@keyframes iconCalendar{
+  0%, 100%{ transform: rotate(0deg); }
+  38%{ transform: rotate(-3deg); }
+  55%{ transform: rotate(2deg); }
+}
+
+@keyframes iconPin{
+  0%, 100%{ transform: translateY(0); }
+  40%{ transform: translateY(-2px); }
+  70%{ transform: translateY(1px); }
+}
+
+@keyframes iconPhone{
+  0%, 100%{ transform: rotate(0deg); }
+  30%{ transform: rotate(-6deg); }
+  40%{ transform: rotate(6deg); }
+  50%{ transform: rotate(-4deg); }
+  60%{ transform: rotate(2deg); }
+}
+
 @media (prefers-reduced-motion: reduce){
+  .homeGrid .homeTileIcon,
+  .homeGrid .homeTileIcon::after,
+  .homeGrid .homeTileIcon svg,
   .machineGauge,
+  .machineGauge::after,
+  .machineBody::before,
+  .machineSpout::before,
+  .machineSpout::after,
   .coffeeDrip,
   .cupCoffee,
   .loadingFill,
