@@ -1,3 +1,26 @@
+(function clearLegacyCaching() {
+  if (!("serviceWorker" in navigator)) return;
+
+  function clearCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.keys().then(function(keys) {
+      return Promise.all(keys.map(function(key) {
+        return /^millers-v/i.test(key) ? caches.delete(key) : Promise.resolve(false);
+      }));
+    });
+  }
+
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      registrations.forEach(function(reg) {
+        reg.unregister();
+      });
+    }).catch(function() {});
+
+    clearCaches().catch(function() {});
+  });
+})();
+
 (function setupPageTransitions() {
   var DIR_KEY = "pt-nav-dir";
   var INTERNAL_NAV_KEY = "pt-internal-nav";
