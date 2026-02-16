@@ -5,6 +5,9 @@
 
   <!-- Mobile sizing -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
 
   <!-- App-like behaviour -->
   <meta name="theme-color" content="#0b0b0c">
@@ -181,7 +184,7 @@
 
     <!-- FOOTER -->
     <div class="footer">
-      <a href="mailto:hello@millers.cafe" style="color:inherit;">
+      <a href="mailto:hello@millers.cafe" class="footerLink">
         hello@millers.cafe
       </a>
     </div>
@@ -189,184 +192,7 @@
   </main>
 
   <script src="./page-transitions.js"></script>
-  <script>
-    const addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
-    const businessTimezone = "Europe/London";
-    const openingSummary = "Tue-Sun: 12:00-17:00";
-    const weeklyHours = {
-      0: [["12:00", "17:00"]],
-      1: [],
-      2: [["12:00", "17:00"]],
-      3: [["12:00", "17:00"]],
-      4: [["12:00", "17:00"]],
-      5: [["12:00", "17:00"]],
-      6: [["12:00", "17:00"]]
-    };
-
-    function toMinutes(clock) {
-      const [hours, minutes] = clock.split(":").map(Number);
-      return (hours * 60) + minutes;
-    }
-
-    function formatDayHours(windows) {
-      if (!windows.length) return "Closed";
-      return windows.map(([start, end]) => `${start}-${end}`).join(" / ");
-    }
-
-    function getNowInBusinessTimezone() {
-      const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: businessTimezone,
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).formatToParts(new Date());
-
-      const weekday = parts.find((part) => part.type === "weekday")?.value || "Mon";
-      const hour = Number(parts.find((part) => part.type === "hour")?.value || "0");
-      const minute = Number(parts.find((part) => part.type === "minute")?.value || "0");
-      const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-      return {
-        dayIndex: dayMap[weekday] ?? 1,
-        minutesNow: (hour * 60) + minute
-      };
-    }
-
-    function updateOpeningStatus() {
-      const statusWrap = document.getElementById("heroStatus");
-      const statusText = document.getElementById("heroStatusText");
-      const heroHours = document.getElementById("heroHours");
-      if (!statusWrap || !statusText || !heroHours) return;
-
-      const { dayIndex, minutesNow } = getNowInBusinessTimezone();
-      const windows = weeklyHours[dayIndex] || [];
-      const isOpen = windows.some(([start, end]) => {
-        const startMin = toMinutes(start);
-        const endMin = toMinutes(end);
-        return minutesNow >= startMin && minutesNow < endMin;
-      });
-
-      statusWrap.classList.toggle("isOpen", isOpen);
-      statusWrap.classList.toggle("isClosed", !isOpen);
-      statusText.textContent = isOpen ? "Open now" : "Closed now";
-      heroHours.textContent = `${openingSummary} • Today: ${formatDayHours(windows)}`;
-    }
-
-    async function copyAddress() {
-      const feedback = document.getElementById("findCopyFeedback");
-      if (!feedback) return;
-
-      const done = (message) => {
-        feedback.textContent = message;
-        window.setTimeout(() => {
-          if (feedback.textContent === message) feedback.textContent = "";
-        }, 2200);
-      };
-
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(addressText);
-          done("Address copied");
-          return;
-        }
-      } catch (error) {
-        // Fallback below.
-      }
-
-      const temp = document.createElement("textarea");
-      temp.value = addressText;
-      temp.setAttribute("readonly", "");
-      temp.style.position = "absolute";
-      temp.style.left = "-9999px";
-      document.body.appendChild(temp);
-      temp.select();
-      const copied = document.execCommand("copy");
-      document.body.removeChild(temp);
-      done(copied ? "Address copied" : "Copy failed");
-    }
-
-    const intro = document.getElementById("intro");
-    if (intro) {
-      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      let internalNav = false;
-      try {
-        internalNav = window.sessionStorage.getItem("pt-internal-nav") === "1";
-        if (internalNav) window.sessionStorage.removeItem("pt-internal-nav");
-      } catch (e) {
-        internalNav = false;
-      }
-
-      if (reducedMotion || internalNav) {
-        intro.remove();
-      } else {
-        window.addEventListener("load", () => {
-          setTimeout(() => intro.classList.add("introDone"), 2400);
-          setTimeout(() => intro.remove(), 3200);
-        });
-      }
-    }
-
-    updateOpeningStatus();
-    window.setInterval(updateOpeningStatus, 60 * 1000);
-
-    const findCopyAddressBtn = document.getElementById("findCopyAddressBtn");
-    if (findCopyAddressBtn) {
-      findCopyAddressBtn.addEventListener("click", copyAddress);
-    }
-
-    const setupFlipTile = (tile) => {
-      if (!tile) return;
-
-      const setFlipped = (flipped) => {
-        tile.classList.toggle("isFlipped", flipped);
-        tile.setAttribute("aria-expanded", flipped ? "true" : "false");
-      };
-
-      tile.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-
-        if (target.closest(".flipNoToggle")) {
-          return;
-        }
-
-        if (target.closest(".flipBackBtn")) {
-          event.preventDefault();
-          setFlipped(false);
-          return;
-        }
-
-        setFlipped(!tile.classList.contains("isFlipped"));
-      });
-
-      tile.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          setFlipped(!tile.classList.contains("isFlipped"));
-        } else if (event.key === "Escape") {
-          setFlipped(false);
-        }
-      });
-
-      document.addEventListener("click", (event) => {
-        if (!(event.target instanceof Element)) return;
-        if (!tile.contains(event.target)) {
-          setFlipped(false);
-        }
-      });
-    };
-
-    setupFlipTile(document.getElementById("locationFlipTile"));
-    setupFlipTile(document.getElementById("contactFlipTile"));
-
-    // Register Service Worker (only works properly once the site is hosted on HTTPS)
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
-    }
-  </script>
+  <script src="./home.js"></script>
 
 </body>
 </html>

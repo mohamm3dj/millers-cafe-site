@@ -1,11 +1,14 @@
-const CACHE_NAME = "millers-v29";
+const CACHE_NAME = "millers-v30";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./page-transitions.js",
+  "./home.js",
   "./manifest.webmanifest",
   "./menu/",
   "./menu/index.html",
+  "./menu/menu.js",
   "./collection/",
   "./collection/index.html",
   "./delivery/",
@@ -31,6 +34,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );

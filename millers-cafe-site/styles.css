@@ -908,6 +908,10 @@ h1{
   border-top: 1px solid var(--line);
 }
 
+.footerLink{
+  color: inherit;
+}
+
 .footerHours{
   margin-top: 6px;
 }
@@ -954,6 +958,18 @@ h1{
   background: var(--accent-soft);
   border-color: rgba(15, 118, 110, .24);
   color: var(--accent-2);
+}
+
+.headerStack{
+  margin-left:12px;
+}
+
+.headerTitleNoMargin{
+  margin:0;
+}
+
+.simplePanel{
+  min-height:auto;
 }
 
 .menuSection{ min-height:auto; }

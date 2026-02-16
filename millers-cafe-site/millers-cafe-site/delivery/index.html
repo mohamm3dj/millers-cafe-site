@@ -3,26 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
   <main>
     <div class="header">
-      <a href="../" class="tile" style="min-height:auto;padding:12px 14px;display:inline-block;">← Back</a>
-      <div style="margin-left:12px">
-        <h1 style="margin:0">PAGE_TITLE</h1>
+      <a href="../" class="tile backBtn">← Back</a>
+      <div class="headerStack">
+        <h1 class="headerTitleNoMargin">PAGE_TITLE</h1>
         <p class="subtitle">Coming soon</p>
       </div>
     </div>
 
-    <div class="delivery" style="min-height:auto;">
+    <div class="delivery simplePanel">
       <div class="tileTitle">We’re working on this</div>
       <div class="tileSub">Check back soon — we’ll have this live for customers shortly.</div>
     </div>
 
     <div class="footer">
-      <a href="mailto:hello@millers.cafe" style="color:inherit;">hello@millers.cafe</a>
+      <a href="mailto:hello@millers.cafe" class="footerLink">hello@millers.cafe</a>
     </div>
   </main>
   <script src="../page-transitions.js"></script>
