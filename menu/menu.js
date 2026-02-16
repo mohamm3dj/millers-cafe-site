@@ -10,6 +10,14 @@ const menuSearchMeta = document.getElementById("menuSearchMeta");
 const knownCodes = new Set(["LC", "V", "VE", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
 const allSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
 const searchableSections = allSections.filter((section) => !section.classList.contains("menuLegend"));
+const chipMap = new Map();
+
+let prefersReducedMotion = false;
+try {
+  prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+} catch (error) {
+  prefersReducedMotion = false;
+}
 
 function decorateLabels() {
   document.querySelectorAll(".menuName").forEach((el) => {
@@ -81,37 +89,138 @@ function ensureSectionIds() {
   });
 }
 
-function setCollapsed(section, collapsed) {
+function getAccordionBody(section) {
+  return section.querySelector(":scope > .accordionBody");
+}
+
+function setCollapsed(section, collapsed, options = {}) {
   section.classList.toggle("collapsed", collapsed);
-  const title = section.querySelector(".tileTitle");
+
+  const title = section.querySelector(":scope > .tileTitle");
   if (title) title.setAttribute("aria-expanded", String(!collapsed));
+
+  const body = getAccordionBody(section);
+  if (!body) return;
+
+  const immediate = Boolean(options.immediate);
+
+  if (collapsed) {
+    if (!immediate) {
+      if (body.style.maxHeight === "none" || !body.style.maxHeight) {
+        body.style.maxHeight = `${body.scrollHeight}px`;
+        body.getBoundingClientRect();
+      }
+    }
+    body.style.maxHeight = "0px";
+    body.style.opacity = "0";
+  } else {
+    body.style.opacity = "1";
+    body.style.maxHeight = `${body.scrollHeight}px`;
+    if (immediate) body.style.maxHeight = "none";
+  }
 }
 
 function setupAccordions() {
-  document.querySelectorAll(".menuSection.menuGroup").forEach((section) => {
-    if (section.classList.contains("menuLegend")) return;
+  searchableSections.forEach((section) => {
     section.classList.add("accordion");
-    setCollapsed(section, true);
 
-    const title = section.querySelector(".tileTitle");
+    const title = section.querySelector(":scope > .tileTitle");
     if (!title) return;
+
+    let body = getAccordionBody(section);
+    if (!body) {
+      body = document.createElement("div");
+      body.className = "accordionBody";
+      while (title.nextSibling) {
+        body.appendChild(title.nextSibling);
+      }
+      section.appendChild(body);
+    }
+
+    body.addEventListener("transitionend", (event) => {
+      if (event.propertyName !== "max-height") return;
+      if (!section.classList.contains("collapsed")) {
+        body.style.maxHeight = "none";
+      }
+    });
+
     title.setAttribute("role", "button");
     title.setAttribute("tabindex", "0");
 
     const toggleSection = () => setCollapsed(section, !section.classList.contains("collapsed"));
     title.addEventListener("click", toggleSection);
-    title.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
+    title.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
         toggleSection();
       }
     });
+
+    setCollapsed(section, true, { immediate: true });
   });
+}
+
+function setupSectionReveal() {
+  allSections.forEach((section) => section.classList.add("sectionPreReveal"));
+
+  if (prefersReducedMotion || !("IntersectionObserver" in window)) {
+    allSections.forEach((section) => section.classList.add("isVisible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("isVisible");
+      obs.unobserve(entry.target);
+    });
+  }, {
+    threshold: 0.16,
+    rootMargin: "0px 0px -8% 0px"
+  });
+
+  allSections.forEach((section) => observer.observe(section));
+}
+
+function setActiveJumpChip(id) {
+  chipMap.forEach((button, sectionId) => {
+    const active = sectionId === id;
+    button.classList.toggle("isActive", active);
+    button.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
+function syncActiveJumpChipFromViewport() {
+  if (!chipMap.size) return;
+
+  let bestSection = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  const anchorY = Math.max(140, window.innerHeight * 0.24);
+
+  searchableSections.forEach((section) => {
+    if (section.classList.contains("noSearchMatch")) return;
+
+    const rect = section.getBoundingClientRect();
+    if (rect.bottom < 120 || rect.top > window.innerHeight - 70) return;
+
+    const score = Math.abs(rect.top - anchorY);
+    if (score < bestScore) {
+      bestScore = score;
+      bestSection = section;
+    }
+  });
+
+  if (!bestSection) {
+    bestSection = searchableSections.find((section) => !section.classList.contains("noSearchMatch")) || null;
+  }
+
+  if (bestSection) setActiveJumpChip(bestSection.id);
 }
 
 function buildJumpChips() {
   if (!menuJumpChips) return;
   menuJumpChips.innerHTML = "";
+  chipMap.clear();
 
   searchableSections
     .filter((section) => !section.classList.contains("noSearchMatch"))
@@ -123,12 +232,28 @@ function buildJumpChips() {
       chip.type = "button";
       chip.className = "jumpChip";
       chip.textContent = heading.textContent.trim();
+      chip.dataset.targetSection = section.id;
       chip.addEventListener("click", () => {
         setCollapsed(section, false);
         section.scrollIntoView({ behavior: "smooth", block: "start" });
+        setActiveJumpChip(section.id);
       });
+
       menuJumpChips.appendChild(chip);
+      chipMap.set(section.id, chip);
     });
+
+  syncActiveJumpChipFromViewport();
+}
+
+function refreshExpandedSectionsHeight() {
+  searchableSections.forEach((section) => {
+    if (section.classList.contains("collapsed")) return;
+    const body = getAccordionBody(section);
+    if (!body) return;
+    if (body.style.maxHeight === "none") return;
+    body.style.maxHeight = `${body.scrollHeight}px`;
+  });
 }
 
 function applySearch() {
@@ -142,8 +267,10 @@ function applySearch() {
       });
       setCollapsed(section, true);
     });
+
     if (menuSearchMeta) menuSearchMeta.textContent = "";
     buildJumpChips();
+    refreshExpandedSectionsHeight();
     return;
   }
 
@@ -192,6 +319,52 @@ function applySearch() {
   }
 
   buildJumpChips();
+  refreshExpandedSectionsHeight();
+}
+
+function setupStickySectionTracking() {
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      syncActiveJumpChipFromViewport();
+      ticking = false;
+    });
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", () => {
+    refreshExpandedSectionsHeight();
+    syncActiveJumpChipFromViewport();
+  });
+}
+
+function setupRipples() {
+  const selector = ".tile, .jumpChip, .searchClearBtn, .flipBackBtn, .flipLink";
+
+  document.querySelectorAll(selector).forEach((el) => {
+    if (el instanceof HTMLElement) el.classList.add("rippleHost");
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const host = target.closest(selector);
+    if (!(host instanceof HTMLElement)) return;
+
+    const rect = host.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.2;
+    const ripple = document.createElement("span");
+    ripple.className = "tileRipple";
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - rect.left}px`;
+    ripple.style.top = `${event.clientY - rect.top}px`;
+    host.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove());
+  });
 }
 
 if (labelsToggle) labelsToggle.addEventListener("change", applyToggles);
@@ -209,6 +382,9 @@ if (clearMenuSearch) {
 ensureSectionIds();
 decorateLabels();
 setupAccordions();
+setupSectionReveal();
 applyToggles();
 buildJumpChips();
 applySearch();
+setupStickySectionTracking();
+setupRipples();

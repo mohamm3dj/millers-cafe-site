@@ -32,6 +32,19 @@ body{
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+body::before{
+  content: "";
+  position: fixed;
+  inset: -20% -10%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(48% 42% at 12% 16%, rgba(79, 145, 181, .12), transparent 70%),
+    radial-gradient(42% 38% at 88% 12%, rgba(46, 169, 150, .12), transparent 72%);
+  animation: ambientDrift 26s ease-in-out infinite alternate;
 }
 
 @media (prefers-reduced-motion: no-preference){
@@ -114,6 +127,13 @@ main{
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes ambientDrift{
+  from{ transform: translate3d(-1.2%, -1%, 0) scale(1); opacity: .72; }
+  to{ transform: translate3d(1.6%, 1.4%, 0) scale(1.05); opacity: 1; }
 }
 
 .intro{
@@ -350,6 +370,8 @@ main{
 }
 
 .glassHero{
+  --px: 0;
+  --py: 0;
   position: relative;
   display: grid;
   justify-items: center;
@@ -399,6 +421,8 @@ main{
     0 18px 30px rgba(15, 23, 42, .12),
     0 0 0 1px rgba(255,255,255,.8),
     inset 0 1px 0 rgba(255,255,255,.96);
+  transform: translate3d(calc(var(--px) * 9px), calc(var(--py) * 8px), 0);
+  transition: transform 220ms ease;
 }
 
 .logoImg{
@@ -422,6 +446,8 @@ h1{
   letter-spacing: -.3px;
   color: #0b1220;
   text-shadow: 0 1px 0 rgba(255,255,255,.65);
+  transform: translate3d(calc(var(--px) * 5px), calc(var(--py) * 4px), 0);
+  transition: transform 230ms ease;
 }
 
 .subtitle{
@@ -438,6 +464,8 @@ h1{
   font-size: 14px;
   line-height: 1.45;
   color: #5b6677;
+  transform: translate3d(calc(var(--px) * 3px), calc(var(--py) * 2px), 0);
+  transition: transform 240ms ease;
 }
 
 .heroMeta{
@@ -478,6 +506,8 @@ h1{
   border: 1px solid rgba(255,255,255,.8);
   background: rgba(255,255,255,.58);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+  transform: translate3d(calc(var(--px) * 2px), calc(var(--py) * 1.5px), 0);
+  transition: transform 250ms ease;
 }
 
 .statusDot{
@@ -499,6 +529,42 @@ h1{
 
 .heroStatus.isClosed{
   color: #9f1239;
+}
+
+.heroStats{
+  margin-top: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(420px, 100%);
+  transform: translate3d(calc(var(--px) * 2px), calc(var(--py) * 2px), 0);
+  transition: transform 260ms ease;
+}
+
+.heroStat{
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  padding: 8px 7px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.82);
+  background: rgba(255,255,255,.52);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+.heroStatNum{
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1;
+}
+
+.heroStatLabel{
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: #64748b;
 }
 
 .grid{
@@ -678,6 +744,9 @@ h1{
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .5px;
@@ -693,11 +762,31 @@ h1{
   transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
+.homeGrid .homeTile .tileCta::before{
+  content: "";
+  position: absolute;
+  top: -190%;
+  left: -120%;
+  width: 72%;
+  height: 380%;
+  transform: rotate(23deg);
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+  opacity: .26;
+  animation: ctaSheen 8.4s ease-in-out infinite;
+  z-index: 0;
+}
+
 .homeGrid .homeTile .tileCta::after{
   content: "\2192";
   font-size: 12px;
   transform: translateX(0);
   transition: transform 160ms ease;
+  position: relative;
+  z-index: 1;
+}
+
+.homeGrid .homeTile .tileCta{
+  z-index: 1;
 }
 
 .homeGrid .homeTile:hover .tileCta{
@@ -759,6 +848,19 @@ h1{
   stroke-linejoin: round;
   animation: iconBreath 4.8s ease-in-out infinite;
 }
+
+.homeGrid .homeTileIcon svg > *{
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: iconTrace 900ms cubic-bezier(.23,.94,.3,1) forwards;
+}
+
+.homeGrid .homeTileMenu .homeTileIcon svg > *{ animation-delay: .06s; }
+.homeGrid .homeTileCollection .homeTileIcon svg > *{ animation-delay: .14s; }
+.homeGrid .homeTileDelivery .homeTileIcon svg > *{ animation-delay: .22s; }
+.homeGrid .homeTileBookings .homeTileIcon svg > *{ animation-delay: .30s; }
+.homeGrid .homeTileLocation .homeTileIcon svg > *{ animation-delay: .38s; }
+.homeGrid .homeTileContact .homeTileIcon svg > *{ animation-delay: .46s; }
 
 .homeGrid .homeTile:hover .homeTileIcon{
   transform: translateY(-2px) scale(1.04);
@@ -1333,6 +1435,17 @@ h1{
   100%{ transform: translateX(220%) rotate(24deg); opacity: 0; }
 }
 
+@keyframes ctaSheen{
+  0%, 66%{ transform: translateX(0) rotate(23deg); opacity: 0; }
+  72%{ opacity: .28; }
+  100%{ transform: translateX(240%) rotate(23deg); opacity: 0; }
+}
+
+@keyframes iconTrace{
+  from{ stroke-dashoffset: 120; opacity: .58; }
+  to{ stroke-dashoffset: 0; opacity: 1; }
+}
+
 @keyframes iconBook{
   0%, 100%{ transform: rotate(0deg) translateY(0); }
   45%{ transform: rotate(-6deg) translateY(-1px); }
@@ -1371,10 +1484,24 @@ h1{
   60%{ transform: rotate(2deg); }
 }
 
+@keyframes tileRippleOut{
+  0%{ transform: translate(-50%, -50%) scale(0); opacity: .82; }
+  100%{ transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+@keyframes copyPulse{
+  0%{ transform: scale(1); }
+  35%{ transform: scale(1.06); }
+  100%{ transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce){
+  body::before,
+  .homeGrid .homeTile .tileCta::before,
   .homeGrid .homeTileIcon,
   .homeGrid .homeTileIcon::after,
   .homeGrid .homeTileIcon svg,
+  .homeGrid .homeTileIcon svg > *,
   .machineGauge,
   .machineGauge::after,
   .machineBody::before,
@@ -1401,7 +1528,14 @@ h1{
 }
 
 .menuSection{ min-height:auto; }
-.menuTools{ min-height:auto; }
+.menuTools{
+  min-height:auto;
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 8px);
+  z-index: 20;
+  border: 1px solid rgba(255,255,255,.74);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, .1), inset 0 1px 0 rgba(255,255,255,.95);
+}
 
 .toolsRow{
   display:flex;
@@ -1454,14 +1588,23 @@ h1{
 .menuJumpChips{
   margin-top: 10px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 8px;
+}
+
+.menuJumpChips::-webkit-scrollbar{
+  display: none;
 }
 
 .jumpChip{
   border: 1px solid rgba(15, 23, 42, .12);
   border-radius: 999px;
   padding: 7px 11px;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -1474,6 +1617,13 @@ h1{
   border-color: rgba(15, 118, 110, .35);
   color: #0f172a;
   background: rgba(235, 248, 246, .85);
+}
+
+.jumpChip.isActive{
+  border-color: rgba(15, 118, 110, .55);
+  color: #ffffff;
+  background: linear-gradient(125deg, #0f766e, #14b8a6);
+  box-shadow: 0 8px 16px rgba(15, 118, 110, .24);
 }
 
 .menuSearchMeta{
@@ -1688,10 +1838,55 @@ h1{
   content:"▸";
 }
 
-.menuSection.accordion.collapsed > :not(.tileTitle){
-  display:none;
+.menuSection.accordion .accordionBody{
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height 460ms cubic-bezier(.22, 1, .36, 1),
+    opacity 320ms ease;
+}
+
+.menuSection.accordion:not(.collapsed) .accordionBody{
+  opacity: 1;
 }
 
 .menuSection.noSearchMatch{
   display: none;
+}
+
+.menuSection.menuGroup.sectionPreReveal{
+  opacity: 0;
+  transform: translateY(14px) scale(.992);
+  filter: saturate(.93);
+}
+
+.menuSection.menuGroup.sectionPreReveal.isVisible{
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: none;
+  transition:
+    opacity 560ms ease,
+    transform 560ms cubic-bezier(.19,.88,.3,1),
+    filter 560ms ease;
+}
+
+.rippleHost{
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.tileRipple{
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, rgba(255,255,255,.58) 0%, rgba(255,255,255,.2) 48%, rgba(255,255,255,0) 72%);
+  animation: tileRippleOut 620ms cubic-bezier(.16,.84,.34,1) forwards;
+  z-index: 2;
+}
+
+.copyPulse{
+  animation: copyPulse 560ms ease;
 }
