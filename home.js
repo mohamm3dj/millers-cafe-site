@@ -162,48 +162,6 @@ function setupHeroParallax() {
   window.addEventListener("blur", resetParallax);
 }
 
-function setupHeroCounters() {
-  const counters = Array.from(document.querySelectorAll(".heroStatNum"));
-  if (!counters.length) return;
-
-  const startCounters = () => {
-    counters.forEach((el, index) => {
-      if (!(el instanceof HTMLElement)) return;
-      if (el.dataset.counted === "1") return;
-      el.dataset.counted = "1";
-
-      const target = Number(el.dataset.target || "0");
-      const duration = 1200 + (index * 180);
-      const start = performance.now();
-
-      const tick = (now) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const value = Math.round(target * eased);
-        el.textContent = String(value);
-        if (progress < 1) window.requestAnimationFrame(tick);
-      };
-
-      window.requestAnimationFrame(tick);
-    });
-  };
-
-  const hero = document.querySelector(".glassHero");
-  if (!(hero instanceof Element) || prefersReducedMotion || !("IntersectionObserver" in window)) {
-    startCounters();
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries, obs) => {
-    if (entries.some((entry) => entry.isIntersecting)) {
-      startCounters();
-      obs.disconnect();
-    }
-  }, { threshold: 0.45 });
-
-  observer.observe(hero);
-}
-
 function setupRippleEffects() {
   const selector = ".tile, .flipLink, .flipBackBtn, .searchClearBtn";
 
@@ -271,7 +229,6 @@ function setupFlipTile(tile) {
 setupFlipTile(document.getElementById("locationFlipTile"));
 setupFlipTile(document.getElementById("contactFlipTile"));
 setupHeroParallax();
-setupHeroCounters();
 setupRippleEffects();
 
 if ("serviceWorker" in navigator) {
