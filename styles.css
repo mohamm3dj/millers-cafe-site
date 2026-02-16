@@ -972,6 +972,237 @@ h1{
   min-height:auto;
 }
 
+.comingSoonPanel{
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 26px 20px 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.72);
+  background:
+    radial-gradient(200px 140px at 22% 14%, rgba(184, 156, 107, .17), transparent 74%),
+    radial-gradient(220px 150px at 84% 20%, rgba(124, 143, 136, .16), transparent 76%),
+    linear-gradient(150deg, rgba(255,255,255,.72) 0%, rgba(246, 250, 254, .45) 56%, rgba(240, 247, 255, .46) 100%);
+  box-shadow:
+    0 16px 34px rgba(15, 23, 42, .10),
+    inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.coffeeMachine{
+  position: relative;
+  width: 220px;
+  height: 234px;
+}
+
+.machineTop{
+  width: 122px;
+  height: 16px;
+  margin: 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(62, 41, 28, .2);
+  background: linear-gradient(180deg, #fefefe 0%, #dde4ed 100%);
+}
+
+.machineBody{
+  position: relative;
+  width: 160px;
+  height: 112px;
+  margin: 6px auto 0;
+  border-radius: 16px 16px 12px 12px;
+  border: 1px solid rgba(62, 41, 28, .22);
+  background: linear-gradient(180deg, #ffffff 0%, #e7edf5 100%);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, .12);
+}
+
+.machineGauge{
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(55, 65, 81, .35);
+  background: radial-gradient(circle at 35% 30%, #ffffff, #d9e1eb 70%);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, .14);
+  animation: gaugePulse 3.2s ease-in-out infinite;
+}
+
+.machineSpout{
+  position: absolute;
+  left: 72px;
+  top: 12px;
+  width: 16px;
+  height: 56px;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid rgba(62, 41, 28, .25);
+  background: linear-gradient(180deg, #f8fafc 0%, #d8e1eb 100%);
+}
+
+.coffeeDrip{
+  position: absolute;
+  left: 79px;
+  top: 66px;
+  width: 4px;
+  height: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7b4a2e 0%, #4b2d1c 100%);
+  opacity: 0;
+  animation: dripLoop 3.2s ease-in-out infinite;
+}
+
+.machineBase{
+  width: 182px;
+  height: 14px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  border: 1px solid rgba(62, 41, 28, .2);
+  background: linear-gradient(180deg, #f8fafc 0%, #d8e1eb 100%);
+  box-shadow: 0 8px 15px rgba(15, 23, 42, .1);
+}
+
+.machineCup{
+  position: relative;
+  width: 118px;
+  height: 78px;
+  margin: 10px auto 0;
+  border: 2px solid rgba(62, 41, 28, .28);
+  border-radius: 0 0 18px 18px;
+  border-top: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(232, 238, 247, .86) 100%);
+  overflow: hidden;
+}
+
+.machineCup::before{
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: -10px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(62, 41, 28, .22);
+  background: linear-gradient(180deg, #ffffff 0%, #e7edf5 100%);
+}
+
+.machineCup::after{
+  content: "";
+  position: absolute;
+  right: -16px;
+  top: 18px;
+  width: 18px;
+  height: 26px;
+  border: 2px solid rgba(62, 41, 28, .24);
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+.cupCoffee{
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 0;
+  border-radius: 0 0 14px 14px;
+  background: linear-gradient(180deg, #916041 0%, #6e452d 58%, #4c2d1d 100%);
+  animation: cupFillLoop 3.2s cubic-bezier(.2,.76,.24,1) infinite;
+}
+
+.loadingTrack{
+  width: min(320px, 100%);
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(62, 41, 28, .17);
+  background: rgba(255,255,255,.65);
+  overflow: hidden;
+}
+
+.loadingFill{
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f452e 0%, #bc9f72 100%);
+  animation: loadingLoop 3.2s linear infinite;
+}
+
+.comingSoonText{
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4f2f1f;
+  opacity: 0;
+  animation: comingTextLoop 3.2s ease-in-out infinite;
+}
+
+.comingSoonPanel .tileSub{
+  max-width: 34ch;
+}
+
+@keyframes gaugePulse{
+  0%, 100%{ transform: scale(1); }
+  45%{ transform: scale(1.06); }
+}
+
+@keyframes dripLoop{
+  0%, 12%{
+    height: 0;
+    opacity: 0;
+  }
+  20%{
+    height: 26px;
+    opacity: .95;
+  }
+  72%{
+    height: 40px;
+    opacity: .95;
+  }
+  82%, 100%{
+    height: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes cupFillLoop{
+  0%, 10%{ height: 0; }
+  70%{ height: 66%; }
+  84%{ height: 66%; }
+  100%{ height: 0; }
+}
+
+@keyframes loadingLoop{
+  0%{ width: 0; }
+  84%{ width: 100%; }
+  100%{ width: 0; }
+}
+
+@keyframes comingTextLoop{
+  0%, 72%{ opacity: 0; transform: translateY(3px); }
+  82%, 94%{ opacity: 1; transform: translateY(0); }
+  100%{ opacity: 0; transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .machineGauge,
+  .coffeeDrip,
+  .cupCoffee,
+  .loadingFill,
+  .comingSoonText{
+    animation: none;
+  }
+
+  .cupCoffee{
+    height: 66%;
+  }
+
+  .loadingFill{
+    width: 100%;
+  }
+
+  .comingSoonText{
+    opacity: 1;
+  }
+}
+
 .menuSection{ min-height:auto; }
 .menuTools{ min-height:auto; }
 
