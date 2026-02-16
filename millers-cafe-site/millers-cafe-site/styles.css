@@ -458,13 +458,20 @@ main{
   inset: -20px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 22% 24%, rgba(255,255,255,.64) 0%, rgba(255,255,255,0) 42%),
-    radial-gradient(circle at 76% 26%, rgba(124, 211, 252, .54) 0%, rgba(124, 211, 252, 0) 54%),
-    radial-gradient(circle at 78% 74%, rgba(167, 139, 250, .46) 0%, rgba(167, 139, 250, 0) 58%),
-    radial-gradient(circle at 24% 76%, rgba(244, 114, 182, .43) 0%, rgba(244, 114, 182, 0) 58%);
-  filter: blur(12px) saturate(124%);
-  opacity: .68;
-  will-change: filter, opacity, background-position;
+    radial-gradient(circle at center, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 58%),
+    conic-gradient(
+      from 0deg,
+      rgba(255, 122, 164, .66) 0deg,
+      rgba(255, 189, 120, .62) 70deg,
+      rgba(143, 228, 255, .66) 150deg,
+      rgba(160, 152, 255, .62) 240deg,
+      rgba(255, 122, 164, .66) 360deg
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
+  filter: blur(10px) saturate(126%) hue-rotate(0deg);
+  opacity: .64;
+  will-change: filter, opacity, transform;
   z-index: -1;
   animation: logoGlassGlowShift 9.6s ease-in-out infinite;
 }
@@ -1564,19 +1571,14 @@ h1{
 
 @keyframes logoGlassGlowShift{
   0%, 100%{
-    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%;
     opacity: .56;
-    filter: blur(11px) saturate(118%) hue-rotate(0deg);
+    transform: scale(.985);
+    filter: blur(9px) saturate(116%) hue-rotate(0deg);
   }
-  33%{
-    background-position: 4% -3%, -6% -4%, 4% 5%, -4% 3%;
-    opacity: .76;
-    filter: blur(13px) saturate(132%) hue-rotate(38deg);
-  }
-  66%{
-    background-position: -5% 3%, 5% 2%, -3% -4%, 5% -2%;
-    opacity: .72;
-    filter: blur(12px) saturate(138%) hue-rotate(86deg);
+  50%{
+    opacity: .82;
+    transform: scale(1.03);
+    filter: blur(12px) saturate(142%) hue-rotate(128deg);
   }
 }
 
