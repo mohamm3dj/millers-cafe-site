@@ -6,6 +6,7 @@ const menuSearchInput = document.getElementById("menuSearchInput");
 const clearMenuSearch = document.getElementById("clearMenuSearch");
 const menuJumpChips = document.getElementById("menuJumpChips");
 const menuSearchMeta = document.getElementById("menuSearchMeta");
+const menuToolsPanel = document.querySelector(".menuTools");
 
 const knownCodes = new Set(["LC", "V", "VE", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
 const allSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
@@ -119,6 +120,31 @@ function toJumpLabel(rawHeading) {
   const words = withoutTail.split(" ");
   if (words.length >= 2) return `${words[0]} ${words[1]}`;
   return withoutTail.slice(0, 16).trim();
+}
+
+function getStickyToolsOffset() {
+  if (!(menuToolsPanel instanceof HTMLElement)) return 22;
+
+  const rect = menuToolsPanel.getBoundingClientRect();
+  const styles = window.getComputedStyle(menuToolsPanel);
+  const marginBottom = Number.parseFloat(styles.marginBottom || "0") || 0;
+  return Math.ceil(rect.height + marginBottom + 14);
+}
+
+function applySectionScrollMargins() {
+  const offset = getStickyToolsOffset();
+  searchableSections.forEach((section) => {
+    section.style.scrollMarginTop = `${offset}px`;
+  });
+}
+
+function scrollToSection(section) {
+  const offset = getStickyToolsOffset();
+  const top = section.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({
+    top: Math.max(0, top),
+    behavior: "smooth"
+  });
 }
 
 function getAccordionBody(section) {
@@ -271,7 +297,7 @@ function buildJumpChips() {
       chip.dataset.targetSection = section.id;
       chip.addEventListener("click", () => {
         setCollapsed(section, false);
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToSection(section);
         setActiveJumpChip(section.id);
       });
 
@@ -371,6 +397,7 @@ function setupStickySectionTracking() {
 
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", () => {
+    applySectionScrollMargins();
     refreshExpandedSectionsHeight();
     syncActiveJumpChipFromViewport();
   });
@@ -420,6 +447,7 @@ decorateLabels();
 setupAccordions();
 setupSectionReveal();
 applyToggles();
+applySectionScrollMargins();
 buildJumpChips();
 applySearch();
 setupStickySectionTracking();
