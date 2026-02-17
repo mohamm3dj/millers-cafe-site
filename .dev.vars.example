@@ -1,1 +1,5 @@
 BOOKINGS_FEED_TOKEN=replace-with-long-random-secret
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+BOOKINGS_EMAIL_FROM=Millers Cafe <bookings@mail.millers.cafe>
+BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe
+BOOKINGS_REPLY_TO=help@millers.cafe

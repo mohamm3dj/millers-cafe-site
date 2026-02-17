@@ -3,10 +3,21 @@
 const API_BASE = "/api/bookings";
 const BUSINESS_TIMEZONE = "Europe/London";
 const SERVICE_START_MINUTES = 12 * 60;
-const SERVICE_END_MINUTES = 17 * 60;
+const SERVICE_END_MINUTES = 16 * 60;
 const SLOT_STEP_MINUTES = 15;
 const DEFAULT_DURATION_MINUTES = 90;
+const MAX_BOOKING_LOOKAHEAD_DAYS = 120;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
+const OCCASION_OPTIONS = [
+  "None",
+  "Birthday",
+  "Anniversary",
+  "Engagement",
+  "Date Night",
+  "Business",
+  "Celebration"
+];
+const VALID_OCCASIONS = new Set(OCCASION_OPTIONS);
 
 const form = document.getElementById("bookingForm");
 const noticeEl = document.getElementById("bookingsNotice");
@@ -20,6 +31,7 @@ const emailInput = document.getElementById("bookingEmail");
 const dateInput = document.getElementById("bookingDate");
 const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
+const occasionSelect = document.getElementById("bookingOccasion");
 const notesInput = document.getElementById("bookingNotes");
 
 function pad2(value) {
@@ -70,16 +82,77 @@ function isBookableDay(isoDate) {
   return dayIndex !== null && OPEN_DAY_INDEXES.has(dayIndex);
 }
 
-function nextBookableISODate(fromISODate) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromISODate)) return fromISODate;
-  const [year, month, day] = fromISODate.split("-").map(Number);
+function displayDateLabel(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIMEZONE,
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(utcDate);
+}
+
+function buildBookableDateList(startISODate, maxDays) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startISODate)) return [];
+  const [year, month, day] = startISODate.split("-").map(Number);
   const cursor = new Date(Date.UTC(year, month - 1, day));
-  for (let i = 0; i < 8; i += 1) {
+  const results = [];
+
+  for (let i = 0; i < maxDays; i += 1) {
     const candidate = `${cursor.getUTCFullYear()}-${pad2(cursor.getUTCMonth() + 1)}-${pad2(cursor.getUTCDate())}`;
-    if (isBookableDay(candidate)) return candidate;
+    if (isBookableDay(candidate)) {
+      results.push(candidate);
+    }
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
-  return fromISODate;
+
+  return results;
+}
+
+function renderDateOptions() {
+  if (!dateInput) return;
+  const priorValue = dateInput.value;
+  const today = ukTodayISODate();
+  const options = buildBookableDateList(today, MAX_BOOKING_LOOKAHEAD_DAYS);
+
+  dateInput.innerHTML = "";
+  for (const isoDate of options) {
+    const option = document.createElement("option");
+    option.value = isoDate;
+    option.textContent = `${displayDateLabel(isoDate)} (${isoDate})`;
+    dateInput.appendChild(option);
+  }
+
+  if (priorValue && options.includes(priorValue)) {
+    dateInput.value = priorValue;
+  } else if (options.length > 0) {
+    dateInput.value = options[0];
+  }
+}
+
+function renderPartySizeOptions() {
+  if (!partySizeInput) return;
+  const priorSize = Number(partySizeInput.value || "2");
+  partySizeInput.innerHTML = "";
+  for (let size = 1; size <= 40; size += 1) {
+    const option = document.createElement("option");
+    option.value = String(size);
+    option.textContent = String(size);
+    partySizeInput.appendChild(option);
+  }
+  const normalized = Number.isInteger(priorSize) && priorSize >= 1 && priorSize <= 40 ? priorSize : 2;
+  partySizeInput.value = String(normalized);
+}
+
+function normalizePhoneField() {
+  if (!phoneInput) return;
+  const digits = phoneInput.value.replace(/\D/g, "").slice(0, 11);
+  phoneInput.value = digits.length <= 5
+    ? digits
+    : `${digits.slice(0, 5)} ${digits.slice(5)}`;
 }
 
 function setNotice(message, warning = false) {
@@ -159,7 +232,7 @@ async function loadAvailability() {
   const date = dateInput?.value || "";
   if (!date || isBookableDay(date)) {
     renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
-    setNotice("Service hours: Tue-Sun, 12:00-17:00. Bookings are in 15-minute intervals.", false);
+    setNotice("Service hours: Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.", false);
     return;
   }
 
@@ -172,14 +245,18 @@ function validateClientPayload(payload) {
     return "Please enter a valid name.";
   }
 
-  const digits = payload.phoneNumber.replace(/\D/g, "");
-  if (digits.length < 8) {
-    return "Please enter a valid phone number.";
+  if (!/^\d{5}\s\d{6}$/.test(payload.phoneNumber)) {
+    return "Phone number must be in format XXXXX XXXXXX.";
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
     return "Please choose a valid date.";
   }
+
+  if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return "Please enter a valid email address.";
+  }
+
   if (!isBookableDay(payload.date)) {
     return "Bookings are available Tue-Sun only.";
   }
@@ -192,7 +269,7 @@ function validateClientPayload(payload) {
     return "Please choose a valid time.";
   }
   if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return "Bookings must be between 12:00 and 17:00.";
+    return "Bookings must be between 12:00 and 16:00.";
   }
   if (minutes % SLOT_STEP_MINUTES !== 0) {
     return "Bookings must be in 15-minute intervals.";
@@ -204,6 +281,10 @@ function validateClientPayload(payload) {
 
   if (!Number.isInteger(payload.durationMinutes) || payload.durationMinutes < 15 || payload.durationMinutes > 240) {
     return "Duration must be between 15 and 240 minutes.";
+  }
+
+  if (!VALID_OCCASIONS.has(payload.specialOccasion)) {
+    return "Please choose a valid occasion.";
   }
 
   return null;
@@ -220,6 +301,7 @@ async function handleSubmit(event) {
     date: dateInput?.value || "",
     time: timeSelect?.value || "",
     partySize: Number(partySizeInput?.value || "0"),
+    specialOccasion: (occasionSelect?.value || "None").trim(),
     durationMinutes: DEFAULT_DURATION_MINUTES,
     notes: (notesInput?.value || "").trim()
   };
@@ -256,17 +338,19 @@ async function handleSubmit(event) {
 
     const assignedTables = Array.isArray(body.assignedTables) ? body.assignedTables.join(", ") : "";
     const reference = body.reference ? `Reference: ${body.reference}` : "";
+    const emailNote = "Confirmation emails sent to you and Millers Café.";
     const successMessage = assignedTables
       ? `Booking confirmed for ${payload.date} at ${payload.time}. Assigned table(s): ${assignedTables}.`
       : `Booking confirmed for ${payload.date} at ${payload.time}.`;
 
-    showResult(successMessage, reference);
+    showResult(`${successMessage} ${emailNote}`, reference);
     setNotice("Booking confirmed and synced to Millers Cafe POS feed.", false);
 
     const preservedDate = payload.date;
     form.reset();
     if (dateInput) dateInput.value = preservedDate;
     if (partySizeInput) partySizeInput.value = "2";
+    if (occasionSelect) occasionSelect.value = "None";
     await loadAvailability();
   } catch (error) {
     showError("Booking service is currently unavailable. Please try again shortly.");
@@ -278,17 +362,15 @@ async function handleSubmit(event) {
 function initialize() {
   if (!form) return;
 
-  const today = ukTodayISODate();
-  if (dateInput) {
-    dateInput.min = today;
-    dateInput.value = isBookableDay(today) ? today : nextBookableISODate(today);
-  }
-
+  renderDateOptions();
+  renderPartySizeOptions();
   renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
   loadAvailability();
 
   form.addEventListener("submit", handleSubmit);
   dateInput?.addEventListener("change", loadAvailability);
+  phoneInput?.addEventListener("input", normalizePhoneField);
+  phoneInput?.addEventListener("blur", normalizePhoneField);
 }
 
 initialize();

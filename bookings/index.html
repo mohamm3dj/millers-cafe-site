@@ -21,7 +21,7 @@
 
     <section class="tile simplePanel bookingsPanel">
       <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
-        <strong>Service hours:</strong> Tue-Sun, 12:00-17:00. Bookings are in 15-minute intervals.
+        <strong>Service hours:</strong> Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.
       </div>
 
       <form id="bookingForm" class="bookingForm" novalidate>
@@ -33,17 +33,17 @@
 
           <label class="bookingField">
             <span class="bookingLabel">Phone</span>
-            <input id="bookingPhone" name="phone" type="tel" maxlength="32" required autocomplete="tel">
+            <input id="bookingPhone" name="phone" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
           </label>
 
           <label class="bookingField bookingFieldWide">
-            <span class="bookingLabel">Email (optional)</span>
-            <input id="bookingEmail" name="email" type="email" maxlength="120" autocomplete="email">
+            <span class="bookingLabel">Email</span>
+            <input id="bookingEmail" name="email" type="email" maxlength="120" required autocomplete="email">
           </label>
 
           <label class="bookingField">
             <span class="bookingLabel">Date</span>
-            <input id="bookingDate" name="date" type="date" required>
+            <select id="bookingDate" name="date" required></select>
           </label>
 
           <label class="bookingField">
@@ -53,7 +53,20 @@
 
           <label class="bookingField">
             <span class="bookingLabel">Party size</span>
-            <input id="bookingPartySize" name="partySize" type="number" min="1" max="40" step="1" value="2" required>
+            <select id="bookingPartySize" name="partySize" required></select>
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Occasion</span>
+            <select id="bookingOccasion" name="specialOccasion">
+              <option value="None" selected>None</option>
+              <option value="Birthday">Birthday</option>
+              <option value="Anniversary">Anniversary</option>
+              <option value="Engagement">Engagement</option>
+              <option value="Date Night">Date Night</option>
+              <option value="Business">Business</option>
+              <option value="Celebration">Celebration</option>
+            </select>
           </label>
 
           <label class="bookingField bookingFieldWide">
@@ -75,6 +88,6 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="./bookings.js?v=20260217b"></script>
+  <script src="./bookings.js?v=20260217c"></script>
 </body>
 </html>

@@ -2,9 +2,18 @@
 
 const STORAGE_KEY = "bookings_v1";
 const SERVICE_START_MINUTES = 12 * 60;
-const SERVICE_END_MINUTES = 17 * 60;
+const SERVICE_END_MINUTES = 16 * 60;
 const SLOT_STEP_MINUTES = 15;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat
+const VALID_OCCASIONS = new Set([
+  "None",
+  "Birthday",
+  "Anniversary",
+  "Engagement",
+  "Date Night",
+  "Business",
+  "Celebration"
+]);
 
 const TABLE_CAPACITIES = {
   1: 4, 2: 4, 3: 4, 4: 2, 5: 6, 6: 4, 7: 4, 8: 4, 9: 4, 10: 4,
@@ -92,6 +101,18 @@ function normalizePhoneDigits(phone) {
   return String(phone || "").replace(/\D/g, "");
 }
 
+function isLikelyEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function normalizeSpecialOccasion(rawOccasion) {
+  const value = String(rawOccasion || "").trim();
+  if (VALID_OCCASIONS.has(value)) {
+    return value;
+  }
+  return "None";
+}
+
 function normalizedStatus(status) {
   return String(status || "").trim().toLowerCase().replace(/\s+/g, "_");
 }
@@ -131,7 +152,7 @@ export function validateBookingWindow(isoDate, clock) {
     return { ok: false, status: 400, error: "Time must be in HH:mm format." };
   }
   if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return { ok: false, status: 400, error: "Bookings must be between 12:00 and 17:00." };
+    return { ok: false, status: 400, error: "Bookings must be between 12:00 and 16:00." };
   }
   if (minutes % SLOT_STEP_MINUTES !== 0) {
     return { ok: false, status: 400, error: "Bookings must be in 15-minute intervals." };
@@ -195,6 +216,7 @@ function normalizeBookingRecord(raw) {
     time: String(raw.time),
     partySize,
     durationMinutes: normalizeDuration(raw.durationMinutes),
+    specialOccasion: normalizeSpecialOccasion(raw.specialOccasion),
     notes: String(raw.notes || "").trim(),
     status: normalizedStatus(raw.status || "approved"),
     source: String(raw.source || "Millers Cafe Website"),
@@ -225,6 +247,7 @@ export async function saveBookings(env, bookings) {
     time: booking.time,
     partySize: booking.partySize,
     durationMinutes: booking.durationMinutes,
+    specialOccasion: normalizeSpecialOccasion(booking.specialOccasion),
     notes: booking.notes,
     status: booking.status,
     source: booking.source,
@@ -338,8 +361,12 @@ function validatePayloadShape(payload) {
   if (!String(payload.customerName || "").trim()) {
     return { ok: false, status: 400, error: "Customer name is required." };
   }
-  if (normalizePhoneDigits(payload.phoneNumber || "").length < 8) {
-    return { ok: false, status: 400, error: "A valid phone number is required." };
+  if (!/^\d{5}\s\d{6}$/.test(String(payload.phoneNumber || "").trim())) {
+    return { ok: false, status: 400, error: "Phone number must be in format XXXXX XXXXXX." };
+  }
+
+  if (!isLikelyEmail(payload.email || "")) {
+    return { ok: false, status: 400, error: "A valid email address is required." };
   }
 
   const partySize = normalizePartySize(payload.partySize);
@@ -354,6 +381,7 @@ function validatePayloadShape(payload) {
 
   const date = String(payload.date || "");
   const time = String(payload.time || "");
+  const specialOccasion = normalizeSpecialOccasion(payload.specialOccasion);
   const windowCheck = validateBookingWindow(date, time);
   if (!windowCheck.ok) {
     return windowCheck;
@@ -370,6 +398,7 @@ function validatePayloadShape(payload) {
       time,
       partySize,
       durationMinutes,
+      specialOccasion,
       notes: String(payload.notes || "").trim()
     }
   };
@@ -417,6 +446,7 @@ export function createBookingRecord(bookings, payload) {
     time: data.time,
     partySize: data.partySize,
     durationMinutes: data.durationMinutes,
+    specialOccasion: data.specialOccasion,
     notes: data.notes,
     status: "approved",
     source: "Millers Cafe Website",
@@ -458,10 +488,14 @@ export function feedRows(bookings, includePast = false) {
       guest_email: booking.email,
       people: booking.partySize,
       duration: booking.durationMinutes,
+      special_occasion: normalizeSpecialOccasion(booking.specialOccasion),
       status: booking.status,
       payment_amount: "",
       payment_status: "",
       payment_type: "",
+      comments: booking.specialOccasion && booking.specialOccasion !== "None"
+        ? `Occasion: ${booking.specialOccasion}`
+        : "",
       notes: booking.notes,
       source: booking.source,
       created_at: booking.createdAt
@@ -485,10 +519,12 @@ export function toCSV(rows) {
     "guest_email",
     "people",
     "duration",
+    "special_occasion",
     "status",
     "payment_amount",
     "payment_status",
     "payment_type",
+    "comments",
     "notes",
     "source",
     "created_at"

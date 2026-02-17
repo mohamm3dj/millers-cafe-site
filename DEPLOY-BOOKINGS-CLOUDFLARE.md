@@ -4,9 +4,9 @@ This repo is now ready for online bookings + app feed, but it must run on Cloudf
 
 ## What is already done in code
 
-- Website booking form with validation and live slot checks:
+- Website booking form with server-side availability checks:
   - Tue-Sun only
-  - 12:00-17:00 only
+  - 12:00-16:00 only
   - 15-minute intervals only
   - blocks fully-booked slots
 - Server endpoints:
@@ -29,12 +29,22 @@ This repo is now ready for online bookings + app feed, but it must run on Cloudf
 5. In DNS, point `millers.cafe` to Cloudflare Pages as instructed by Cloudflare.
 6. Remove/disable previous GitHub Pages domain routing for `millers.cafe` to avoid conflicts.
 
-## Optional but recommended
+## Optional
 
 1. Add Pages environment variable:
    - `BOOKINGS_FEED_TOKEN=<long-random-secret>`
 2. Use tokenized app feed URL:
    - `https://millers.cafe/bookings/feed.csv?token=<secret>`
+
+## Required for booking confirmations
+
+Add email confirmation variables:
+   - `RESEND_API_KEY=<your-resend-api-key>`
+   - `BOOKINGS_EMAIL_FROM=Millers Cafe <bookings@your-verified-domain>`
+   - `BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe`
+   - `BOOKINGS_REPLY_TO=help@millers.cafe`
+
+If these are missing or delivery fails, booking creation is rejected.
 
 ## Final app setting
 

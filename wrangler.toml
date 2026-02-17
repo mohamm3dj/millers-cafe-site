@@ -4,12 +4,12 @@ pages_build_output_dir = "."
 
 # Static site at repository root, with Pages Functions in /functions.
 
-# Optional: uncomment after creating a KV namespace.
-# [[kv_namespaces]]
-# binding = "BOOKINGS_KV"
-# id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
-# preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "BOOKINGS_KV"
+id = "03f49e1de7d4404192bfe6856f518157"
+preview_id = "2777eb98b74e45e3a6edf8c953836da2"
 
-# Optional: feed token (recommended in production).
-# [vars]
-# BOOKINGS_FEED_TOKEN = "replace-with-long-random-secret"
+[vars]
+BOOKINGS_NOTIFICATION_EMAIL = "help@millers.cafe"
+BOOKINGS_REPLY_TO = "help@millers.cafe"
+BOOKINGS_EMAIL_FROM = "Millers Cafe <help@millers.cafe>"
