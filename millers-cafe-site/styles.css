@@ -455,18 +455,18 @@ main{
 .glassHero .logo::before{
   content: "";
   position: absolute;
-  inset: -20px;
+  inset: -16px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at center, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 54%),
-    radial-gradient(circle at center, rgba(106, 205, 255, .92) 36%, rgba(106, 205, 255, .52) 52%, rgba(106, 205, 255, 0) 66%);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
-  filter: blur(10px) saturate(126%) hue-rotate(0deg);
-  opacity: .7;
-  will-change: filter, opacity, transform;
+  background: radial-gradient(circle at center, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 66%);
+  border: 2px solid rgba(20, 184, 166, .34);
+  filter: blur(6px);
+  opacity: .62;
+  will-change: opacity, border-color, box-shadow;
+  box-shadow:
+    0 0 0 2px rgba(20, 184, 166, .18),
+    0 0 26px rgba(20, 184, 166, .34);
   z-index: -1;
-  animation: logoGlassGlowShift 10.5s linear infinite;
+  animation: logoGlassGlowShift 11s ease-in-out infinite;
 }
 
 .glassHero .logo::after{
@@ -627,12 +627,12 @@ h1{
 .tile:hover{
   background: var(--card2);
   border-color: rgba(15, 118, 110, .32);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 /* “Pressed” state on mobile */
 .tile:active{
-  transform: scale(.985);
+  transform: none;
 }
 
 .tileWide{
@@ -744,7 +744,7 @@ h1{
 }
 
 .homeGrid .homeTile:hover{
-  transform: translateY(-2px) scale(1.005);
+  transform: translateY(-1px);
   border-color: rgba(255,255,255,.62);
   box-shadow:
     0 20px 32px rgba(15, 23, 42, .12),
@@ -798,7 +798,7 @@ h1{
   transform: rotate(23deg);
   background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
   opacity: .26;
-  animation: ctaSheen 8.4s ease-in-out infinite;
+  animation: none;
   z-index: 0;
 }
 
@@ -816,7 +816,7 @@ h1{
 }
 
 .homeGrid .homeTile:hover .tileCta{
-  transform: translateY(-1px);
+  transform: none;
   background: rgba(255,255,255,.72);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.95),
@@ -849,6 +849,16 @@ h1{
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
   animation: iconFloat 4.8s ease-in-out infinite;
+}
+
+.homeGrid .homeTileIcon::before{
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  border: 1px solid currentColor;
+  opacity: .2;
+  animation: iconHaloPulse 3.4s ease-in-out infinite;
 }
 
 .homeGrid .homeTileIcon::after{
@@ -889,7 +899,7 @@ h1{
 .homeGrid .homeTileContact .homeTileIcon svg > *{ animation-delay: .46s; }
 
 .homeGrid .homeTile:hover .homeTileIcon{
-  transform: translateY(-2px) scale(1.04);
+  transform: translateY(-1px);
   border-color: rgba(255,255,255,.68);
   box-shadow:
     0 14px 24px rgba(15, 23, 42, .16),
@@ -937,6 +947,7 @@ h1{
   padding: 0;
   cursor: pointer;
   min-height: 176px;
+  perspective: 1200px;
 }
 
 .homeGrid .homeFlipTile:hover,
@@ -969,6 +980,9 @@ h1{
   min-height: 176px;
   height: 100%;
   isolation: isolate;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 460ms cubic-bezier(.2,.82,.24,1);
 }
 
 .homeFlipFace{
@@ -982,30 +996,32 @@ h1{
   gap: 10px;
   padding: 20px 18px;
   border-radius: inherit;
-  transition: opacity 220ms ease;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .homeFlipFront{
-  z-index: 2;
-  opacity: 1;
+  z-index: 1;
 }
 
 .homeFlipBack{
-  z-index: 3;
-  opacity: 0;
+  transform: rotateY(180deg);
+  z-index: 2;
 }
 
 .homeFlipTile:not(.isFlipped) .homeFlipBack{
   pointer-events: none;
 }
 
+.homeFlipTile.isFlipped .homeFlipInner{
+  transform: rotateY(180deg);
+}
+
 .homeFlipTile.isFlipped .homeFlipFront{
-  opacity: 0;
   pointer-events: none;
 }
 
 .homeFlipTile.isFlipped .homeFlipBack{
-  opacity: 1;
   pointer-events: auto;
 }
 
@@ -1522,6 +1538,17 @@ h1{
   60%{ transform: rotate(2deg); }
 }
 
+@keyframes iconHaloPulse{
+  0%, 100%{
+    transform: scale(.9);
+    opacity: .16;
+  }
+  50%{
+    transform: scale(1.08);
+    opacity: .3;
+  }
+}
+
 @keyframes tileRippleOut{
   0%{ transform: translate(-50%, -50%) scale(0); opacity: .82; }
   100%{ transform: translate(-50%, -50%) scale(1); opacity: 0; }
@@ -1535,29 +1562,29 @@ h1{
 
 @keyframes logoGlassGlowShift{
   0%{
-    opacity: .56;
-    transform: scale(.985);
-    filter: blur(9px) saturate(118%) hue-rotate(0deg);
+    opacity: .58;
+    border-color: rgba(20, 184, 166, .36);
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, .2), 0 0 26px rgba(20, 184, 166, .36);
   }
   25%{
-    opacity: .74;
-    transform: scale(1.01);
-    filter: blur(11px) saturate(132%) hue-rotate(85deg);
+    opacity: .66;
+    border-color: rgba(56, 189, 248, .38);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, .22), 0 0 28px rgba(56, 189, 248, .38);
   }
   50%{
-    opacity: .84;
-    transform: scale(1.03);
-    filter: blur(12px) saturate(142%) hue-rotate(165deg);
+    opacity: .72;
+    border-color: rgba(99, 102, 241, .38);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, .22), 0 0 30px rgba(99, 102, 241, .4);
   }
   75%{
-    opacity: .74;
-    transform: scale(1.01);
-    filter: blur(11px) saturate(134%) hue-rotate(245deg);
+    opacity: .66;
+    border-color: rgba(236, 72, 153, .36);
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, .2), 0 0 28px rgba(236, 72, 153, .34);
   }
   100%{
-    opacity: .56;
-    transform: scale(.985);
-    filter: blur(9px) saturate(118%) hue-rotate(360deg);
+    opacity: .58;
+    border-color: rgba(20, 184, 166, .36);
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, .2), 0 0 26px rgba(20, 184, 166, .36);
   }
 }
 
@@ -1959,105 +1986,4 @@ h1{
 
 .copyPulse{
   animation: copyPulse 560ms ease;
-}
-
-/* Static mode: disable UI motion on pages that add body.no-motion */
-.no-motion,
-.no-motion::before,
-.no-motion *::before,
-.no-motion *::after,
-.no-motion *{
-  animation: none !important;
-  transition: none !important;
-}
-
-.no-motion{
-  transform: none !important;
-}
-
-.no-motion .tile,
-.no-motion .tile:hover,
-.no-motion .tile:active,
-.no-motion .homeGrid .homeTile,
-.no-motion .homeGrid .homeTile:hover,
-.no-motion .homeGrid .homeTile:active,
-.no-motion .homeGrid .homeTileIcon,
-.no-motion .homeGrid .homeTile:hover .homeTileIcon,
-.no-motion .homeGrid .homeTile .tileCta,
-.no-motion .homeGrid .homeTile:hover .tileCta,
-.no-motion .homeGrid .homeTile:hover .tileCta::after,
-.no-motion .glassHero,
-.no-motion .glassHero h1,
-.no-motion .glassHero .heroStatus,
-.no-motion .glassHero .logo,
-.no-motion .glassHero .logo::before,
-.no-motion .glassHero .logo::after{
-  transform: none !important;
-}
-
-/* Stable, non-animated flip behavior for Find Us / Contact Us */
-.no-motion .homeFlipTile{
-  min-height: 176px;
-}
-
-.no-motion .homeFlipInner{
-  min-height: 176px;
-  height: auto;
-}
-
-.no-motion .homeFlipFace{
-  position: static;
-  height: auto;
-}
-
-.no-motion .homeFlipBack{
-  display: none;
-  opacity: 1;
-}
-
-.no-motion .homeFlipTile.isFlipped .homeFlipFront{
-  display: none;
-  opacity: 1;
-}
-
-.no-motion .homeFlipTile.isFlipped .homeFlipBack{
-  display: grid;
-}
-
-/* Hard stability lock for touch devices: no tile growth/jump */
-.tile,
-.tile:hover,
-.tile:active,
-.homeGrid .homeTile,
-.homeGrid .homeTile:hover,
-.homeGrid .homeTile:active,
-.homeGrid .homeTileIcon,
-.homeGrid .homeTile:hover .homeTileIcon,
-.homeGrid .homeTile .tileCta,
-.homeGrid .homeTile:hover .tileCta,
-.homeGrid .homeTile:hover .tileCta::after,
-.homeGrid .homeFlipTile,
-.homeGrid .homeFlipTile:hover,
-.homeGrid .homeFlipTile:active,
-.homeGrid .homeFlipTile.isFlipped,
-.glassHero,
-.glassHero h1,
-.glassHero .heroStatus,
-.glassHero .logo,
-.glassHero .logo::before,
-.glassHero .logo::after {
-  transform: none !important;
-}
-
-/* Disable hero/logo ambient animations on home */
-.glassHero .logo::before,
-.glassHero .logo::after,
-.homeGrid .homeTile,
-.homeGrid .homeTileIcon,
-.homeGrid .homeTileIcon::after,
-.homeGrid .homeTile .tileCta::before,
-.homeGrid .homeTile .tileCta::after,
-.rippleHost,
-.tileRipple {
-  animation: none !important;
 }
