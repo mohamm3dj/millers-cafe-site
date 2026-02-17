@@ -138,8 +138,7 @@ function setJumpMenuCollapsed(collapsed, options = {}) {
   if (!menuJumpWrap || !jumpMenuToggle || !menuJumpChips) return;
 
   menuJumpWrap.classList.toggle("isCollapsed", collapsed);
-  jumpMenuToggle.textContent = collapsed ? "Show sections" : "Hide sections";
-  jumpMenuToggle.setAttribute("aria-expanded", String(!collapsed));
+  jumpMenuToggle.checked = !collapsed;
   menuJumpChips.setAttribute("aria-hidden", String(collapsed));
   menuJumpChips.hidden = collapsed;
 
@@ -166,9 +165,9 @@ function setupJumpMenuToggle() {
 
   setJumpMenuCollapsed(shouldCollapse, { persist: false });
 
-  jumpMenuToggle.addEventListener("click", () => {
-    const collapsed = menuJumpWrap.classList.contains("isCollapsed");
-    setJumpMenuCollapsed(!collapsed);
+  jumpMenuToggle.addEventListener("change", () => {
+    const shouldShow = Boolean(jumpMenuToggle.checked);
+    setJumpMenuCollapsed(!shouldShow);
   });
 }
 

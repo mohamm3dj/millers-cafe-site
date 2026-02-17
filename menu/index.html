@@ -46,15 +46,11 @@
       <div id="menuJumpWrap" class="menuJumpWrap">
         <div class="menuJumpHeader">
           <p class="menuJumpLabel">Jump to section</p>
-          <button
-            id="jumpMenuToggle"
-            class="jumpMenuToggle"
-            type="button"
-            aria-controls="menuJumpChips"
-            aria-expanded="true"
-          >
-            Minimise
-          </button>
+          <label class="toggle jumpToggleControl">
+            <input id="jumpMenuToggle" type="checkbox" checked aria-controls="menuJumpChips" />
+            <span class="toggleUi" aria-hidden="true"></span>
+            <span>Show jump sections</span>
+          </label>
         </div>
         <div id="menuJumpChips" class="menuJumpChips" aria-label="Jump to menu section"></div>
       </div>
@@ -388,6 +384,6 @@
 
   </main>
 
-  <script src="./menu.js?v=20260217k"></script>
+  <script src="./menu.js?v=20260217l"></script>
 </body>
 </html>
