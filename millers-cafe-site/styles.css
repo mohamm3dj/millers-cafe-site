@@ -10,8 +10,8 @@
   --line: rgba(15, 23, 42, .10);
   --radius: 18px;
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
-  --font-body: "Avenir Next", "SF Pro Text", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "SF Pro Display", "Avenir Next", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", "SF Pro Text", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
 }
 
 *{ box-sizing: border-box; }
@@ -21,6 +21,7 @@ html, body {
   margin: 0;
   font-family: var(--font-body);
   line-height: 1.42;
+  letter-spacing: .002em;
   color: var(--text);
 
   /* Clean contemporary background */
@@ -310,8 +311,8 @@ main{
 .introWordmark{
   text-align: center;
   font-size: clamp(24px, 4.8vw, 36px);
-  font-weight: 800;
-  letter-spacing: .5px;
+  font-weight: 650;
+  letter-spacing: .02em;
   color: #10233a;
   text-shadow: 0 8px 24px rgba(198, 213, 228, .7);
   opacity: 0;
@@ -501,10 +502,10 @@ h1{
   margin: 0;
   font-family: var(--font-display);
   font-size: 31px;
-  font-weight: 760;
+  font-weight: 650;
   line-height: 1.04;
   color: var(--accent-2);
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
 }
 
 .glassHero h1{
@@ -552,7 +553,7 @@ h1{
 .heroHours{
   margin: 2px 0 0;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550;
   letter-spacing: .2px;
   color: #334155;
   background: rgba(255,255,255,.58);
@@ -568,7 +569,7 @@ h1{
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 740;
+  font-weight: 620;
   border-radius: 999px;
   padding: 7px 12px;
   border: 1px solid rgba(255,255,255,.8);
@@ -649,10 +650,10 @@ h1{
 .tileTitle{
   font-family: var(--font-display);
   font-size: 23px;
-  font-weight: 740;
+  font-weight: 640;
   line-height: 1.08;
   color: var(--accent-2);
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
 }
 
 .tileSub{
@@ -762,7 +763,7 @@ h1{
 
 .homeGrid .homeTile .tileTitle{
   font-size: 23px;
-  font-weight: 720;
+  font-weight: 640;
   letter-spacing: -.02em;
   color: #111827;
   text-shadow: 0 1px 0 rgba(255,255,255,.55);
@@ -1038,7 +1039,7 @@ h1{
 
 .flipLink{
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 540;
   color: #0f172a;
   text-decoration: none;
   border: 1px solid rgba(255,255,255,.68);
@@ -1056,7 +1057,7 @@ h1{
   appearance: none;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 560;
   line-height: normal;
   color: #0f172a;
   cursor: pointer;
@@ -1077,7 +1078,7 @@ h1{
   padding: 6px 12px;
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 560;
   color: #334155;
   background: rgba(255,255,255,.55);
   cursor: pointer;
@@ -1160,7 +1161,7 @@ h1{
 .headerTitleNoMargin{
   margin:0;
   font-family: var(--font-display);
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
 }
 
 .simplePanel{
@@ -1404,7 +1405,7 @@ h1{
 .comingSoonText{
   margin-top: 2px;
   font-size: 16px;
-  font-weight: 740;
+  font-weight: 620;
   color: #4f2f1f;
   opacity: 0;
   letter-spacing: .01em;
@@ -1676,7 +1677,7 @@ h1{
   margin: 0;
   font-family: var(--font-display);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: #516074;
@@ -1705,7 +1706,7 @@ h1{
   padding: 10px 12px;
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   color: #1f2937;
   background: rgba(255,255,255,.76);
   cursor: pointer;
@@ -1736,7 +1737,7 @@ h1{
   overflow: hidden;
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   line-height: 1;
   min-width: 96px;
   text-align: center;
@@ -1779,11 +1780,11 @@ h1{
 .menuLeft{ flex:1; }
 
 .menuName{
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size:16px;
-  font-weight:740;
+  font-weight:600;
   line-height:1.24;
-  letter-spacing: -.01em;
+  letter-spacing: .002em;
   color: #232935;
 }
 
@@ -1802,12 +1803,12 @@ h1{
 }
 
 .menuPrice{
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size:16px;
-  font-weight:770;
+  font-weight:650;
   white-space:nowrap;
   color: #0b1324;
-  letter-spacing: -.01em;
+  letter-spacing: .002em;
 }
 
 /* Labels (chips) */
@@ -1820,7 +1821,7 @@ h1{
   background:var(--accent-soft);
   color: var(--accent-2);
   font-size:12px;
-  font-weight:700;
+  font-weight:620;
   letter-spacing:.2px;
 }
 
@@ -1887,7 +1888,7 @@ h1{
 .legendTitle{
   font-family: var(--font-display);
   font-size: 17px;
-  font-weight: 780;
+  font-weight: 660;
   letter-spacing: -.01em;
 }
 .legendClose{
@@ -1952,7 +1953,7 @@ h1{
   text-transform:none;
   letter-spacing:.01em;
   color:var(--accent);
-  font-weight: 760;
+  font-weight: 640;
 }
 
 .menuNote{
