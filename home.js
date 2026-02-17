@@ -229,5 +229,6 @@ function setupFlipTile(tile) {
 setupFlipTile(document.getElementById("locationFlipTile"));
 setupFlipTile(document.getElementById("contactFlipTile"));
 setupHeroParallax();
-setupRippleEffects();
+// disabled: static mode
+// setupRippleEffects();
 

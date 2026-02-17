@@ -387,4 +387,5 @@ applyToggles();
 buildJumpChips();
 applySearch();
 setupStickySectionTracking();
-setupRipples();
+// disabled: static mode
+// setupRipples();

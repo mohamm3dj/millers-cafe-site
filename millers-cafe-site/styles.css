@@ -1960,3 +1960,66 @@ h1{
 .copyPulse{
   animation: copyPulse 560ms ease;
 }
+
+/* Static mode: disable UI motion on pages that add body.no-motion */
+.no-motion,
+.no-motion::before,
+.no-motion *::before,
+.no-motion *::after,
+.no-motion *{
+  animation: none !important;
+  transition: none !important;
+}
+
+.no-motion{
+  transform: none !important;
+}
+
+.no-motion .tile,
+.no-motion .tile:hover,
+.no-motion .tile:active,
+.no-motion .homeGrid .homeTile,
+.no-motion .homeGrid .homeTile:hover,
+.no-motion .homeGrid .homeTile:active,
+.no-motion .homeGrid .homeTileIcon,
+.no-motion .homeGrid .homeTile:hover .homeTileIcon,
+.no-motion .homeGrid .homeTile .tileCta,
+.no-motion .homeGrid .homeTile:hover .tileCta,
+.no-motion .homeGrid .homeTile:hover .tileCta::after,
+.no-motion .glassHero,
+.no-motion .glassHero h1,
+.no-motion .glassHero .heroStatus,
+.no-motion .glassHero .logo,
+.no-motion .glassHero .logo::before,
+.no-motion .glassHero .logo::after{
+  transform: none !important;
+}
+
+/* Stable, non-animated flip behavior for Find Us / Contact Us */
+.no-motion .homeFlipTile{
+  min-height: 176px;
+}
+
+.no-motion .homeFlipInner{
+  min-height: 176px;
+  height: auto;
+}
+
+.no-motion .homeFlipFace{
+  position: static;
+  height: auto;
+}
+
+.no-motion .homeFlipBack{
+  display: none;
+  opacity: 1;
+}
+
+.no-motion .homeFlipTile.isFlipped .homeFlipFront{
+  display: none;
+  opacity: 1;
+}
+
+.no-motion .homeFlipTile.isFlipped .homeFlipBack{
+  display: grid;
+}
