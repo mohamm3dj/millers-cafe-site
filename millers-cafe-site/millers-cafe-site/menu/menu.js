@@ -11,6 +11,19 @@ const knownCodes = new Set(["LC", "V", "VE", "M", "ME", "MS", "HT", "VH", "G", "
 const allSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
 const searchableSections = allSections.filter((section) => !section.classList.contains("menuLegend"));
 const chipMap = new Map();
+const jumpLabelOverrides = new Map([
+  ["Timeless Classics", "Classics"],
+  ["Biryani Dishes", "Biryani"],
+  ["Tandoori Dishes", "Tandoori"],
+  ["Vegetarian Specialities", "Vegetarian"],
+  ["Medium Dishes", "Medium"],
+  ["Hot Dishes", "Hot"],
+  ["Very Hot Dishes", "Very Hot"],
+  ["Bread & Snacks", "Bread & Snacks"],
+  ["Side Dishes", "Side Dishes"],
+  ["Mumbai Sizzle Burger Style", "Burgers"],
+  ["Kiddies Corner", "Kiddies"]
+]);
 
 let prefersReducedMotion = false;
 try {
@@ -76,8 +89,9 @@ function ensureSectionIds() {
   const used = new Set();
   searchableSections.forEach((section, index) => {
     const heading = section.querySelector(".tileTitle");
+    const rawHeading = (heading?.textContent || "").replace(/\s+/g, " ").trim();
     const fallback = `section-${index + 1}`;
-    const base = slugify((heading?.textContent || "").trim()) || fallback;
+    const base = slugify(rawHeading) || fallback;
     let id = base;
     let num = 2;
     while (used.has(id) || document.getElementById(id)) {
@@ -85,8 +99,26 @@ function ensureSectionIds() {
       num += 1;
     }
     section.id = id;
+    section.dataset.jumpTitle = rawHeading;
     used.add(id);
   });
+}
+
+function toJumpLabel(rawHeading) {
+  if (!rawHeading) return "Section";
+  const normalized = rawHeading.replace(/\s+/g, " ").trim();
+  if (jumpLabelOverrides.has(normalized)) return jumpLabelOverrides.get(normalized);
+
+  const withoutTail = normalized
+    .replace(/\bDishes\b/gi, "")
+    .replace(/\bSpecialities\b/gi, "Specials")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (withoutTail.length <= 16) return withoutTail;
+  const words = withoutTail.split(" ");
+  if (words.length >= 2) return `${words[0]} ${words[1]}`;
+  return withoutTail.slice(0, 16).trim();
 }
 
 function getAccordionBody(section) {
@@ -227,11 +259,15 @@ function buildJumpChips() {
     .forEach((section) => {
       const heading = section.querySelector(".tileTitle");
       if (!heading) return;
+      const fullHeading = (section.dataset.jumpTitle || heading.textContent || "").replace(/\s+/g, " ").trim();
+      const jumpLabel = toJumpLabel(fullHeading);
 
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "jumpChip";
-      chip.textContent = heading.textContent.trim();
+      chip.textContent = jumpLabel;
+      chip.title = fullHeading;
+      chip.setAttribute("aria-label", `Jump to ${fullHeading}`);
       chip.dataset.targetSection = section.id;
       chip.addEventListener("click", () => {
         setCollapsed(section, false);
@@ -387,4 +423,5 @@ applyToggles();
 buildJumpChips();
 applySearch();
 setupStickySectionTracking();
-setupRipples();
+// disabled: static mode
+// setupRipples();
