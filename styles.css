@@ -10,6 +10,8 @@
   --line: rgba(15, 23, 42, .10);
   --radius: 18px;
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
+  --font-body: "Avenir Next", "SF Pro Text", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "SF Pro Display", "Avenir Next", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
 *{ box-sizing: border-box; }
@@ -17,7 +19,8 @@
 html, body {
   height: 100%;
   margin: 0;
-  font-family: "SF Pro Display", "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+  font-family: var(--font-body);
+  line-height: 1.42;
   color: var(--text);
 
   /* Clean contemporary background */
@@ -116,7 +119,7 @@ body::before{
 
 /* Center the app “screen” and respect iPhone safe areas */
 main{
-  width: min(620px, 100%);
+  width: min(660px, 100%);
   min-height: 100vh;
   padding:
     calc(env(safe-area-inset-top) + 18px)
@@ -126,7 +129,7 @@ main{
 
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 18px;
+  gap: 20px;
   position: relative;
   z-index: 1;
 }
@@ -365,7 +368,7 @@ main{
 .header{
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding-top: 4px;
 }
 
@@ -496,11 +499,12 @@ main{
 
 h1{
   margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1;
+  font-family: var(--font-display);
+  font-size: 31px;
+  font-weight: 760;
+  line-height: 1.04;
   color: var(--accent-2);
-  letter-spacing: -.2px;
+  letter-spacing: -.02em;
 }
 
 .glassHero h1{
@@ -515,9 +519,10 @@ h1{
 .subtitle{
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0;
   text-transform: none;
+  line-height: 1.35;
 }
 
 .glassHero .subtitle{
@@ -532,7 +537,8 @@ h1{
 
 .heroMeta{
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.3;
   color: #475467;
   max-width: 100%;
   text-align: center;
@@ -545,7 +551,7 @@ h1{
 
 .heroHours{
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: .2px;
   color: #334155;
@@ -561,8 +567,8 @@ h1{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 740;
   border-radius: 999px;
   padding: 7px 12px;
   border: 1px solid rgba(255,255,255,.8);
@@ -605,7 +611,7 @@ h1{
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
   min-height: 142px;
 
   display: grid;
@@ -641,16 +647,18 @@ h1{
 }
 
 .tileTitle{
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.1;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 740;
+  line-height: 1.08;
   color: var(--accent-2);
+  letter-spacing: -.02em;
 }
 
 .tileSub{
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
-  line-height: 1.3;
+  line-height: 1.38;
 }
 
 .homeGrid{
@@ -753,9 +761,9 @@ h1{
 }
 
 .homeGrid .homeTile .tileTitle{
-  font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -.1px;
+  font-size: 23px;
+  font-weight: 720;
+  letter-spacing: -.02em;
   color: #111827;
   text-shadow: 0 1px 0 rgba(255,255,255,.55);
 }
@@ -763,6 +771,8 @@ h1{
 .homeGrid .homeTile .tileSub{
   max-width: 30ch;
   color: #5e6978;
+  font-size: 14px;
+  line-height: 1.38;
 }
 
 .homeGrid .homeTile .tileCta{
@@ -1084,13 +1094,15 @@ h1{
 .footer{
   text-align: center;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.4;
   padding: 10px 0 6px;
   border-top: 1px solid var(--line);
 }
 
 .footerLink{
   color: inherit;
+  text-underline-offset: 2px;
 }
 
 .footerHours{
@@ -1147,6 +1159,8 @@ h1{
 
 .headerTitleNoMargin{
   margin:0;
+  font-family: var(--font-display);
+  letter-spacing: -.02em;
 }
 
 .simplePanel{
@@ -1390,15 +1404,17 @@ h1{
 .comingSoonText{
   margin-top: 2px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 740;
   color: #4f2f1f;
   opacity: 0;
-  letter-spacing: .2px;
+  letter-spacing: .01em;
   animation: comingTextLoop 3.8s ease-in-out infinite;
 }
 
 .comingSoonPanel .tileSub{
   max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 @keyframes gaugePulse{
@@ -1727,7 +1743,7 @@ h1{
 .menuSearchMeta{
   margin: 8px 0 0;
   min-height: 18px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -1745,31 +1761,35 @@ h1{
 .menuLeft{ flex:1; }
 
 .menuName{
-  font-size:15px;
-  font-weight:750;
-  line-height:1.25;
+  font-family: var(--font-display);
+  font-size:16px;
+  font-weight:740;
+  line-height:1.24;
+  letter-spacing: -.01em;
   color: #232935;
 }
 
 .labelText{
   margin-left:6px;
   color:var(--muted);
-  font-size:12px;
-  font-weight:650;
+  font-size:13px;
+  font-weight:620;
 }
 
 .menuDesc{
   margin-top:4px;
   font-size:13px;
   color:var(--muted);
-  line-height:1.35;
+  line-height:1.45;
 }
 
 .menuPrice{
-  font-size:15px;
-  font-weight:800;
+  font-family: var(--font-display);
+  font-size:16px;
+  font-weight:770;
   white-space:nowrap;
   color: #0b1324;
+  letter-spacing: -.01em;
 }
 
 /* Labels (chips) */
@@ -1846,7 +1866,12 @@ h1{
   padding:16px 16px 10px;
   border-bottom:1px solid var(--line);
 }
-.legendTitle{ font-size:16px; font-weight:850; }
+.legendTitle{
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 780;
+  letter-spacing: -.01em;
+}
 .legendClose{
   background:transparent;
   border:1px solid var(--line);
@@ -1862,6 +1887,7 @@ h1{
   gap:10px 14px;
   padding:14px 16px;
   font-size:14px;
+  line-height: 1.38;
   color:#36404e;
 }
 @media (max-width:420px){
@@ -1903,11 +1929,12 @@ h1{
 
 .menuSubhead{
   margin:16px 0 6px;
-  font-size:14px;
+  font-family: var(--font-display);
+  font-size:15px;
   text-transform:none;
-  letter-spacing:.2px;
+  letter-spacing:.01em;
   color:var(--accent);
-  font-weight: 800;
+  font-weight: 760;
 }
 
 .menuNote{
