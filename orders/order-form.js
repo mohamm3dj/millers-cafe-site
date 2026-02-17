@@ -45,16 +45,23 @@ const address2Input = document.getElementById("orderAddress2");
 const townInput = document.getElementById("orderTown");
 const postcodeInput = document.getElementById("orderPostcode");
 
-const menuCategorySelect = document.getElementById("menuCategory");
-const menuItemSelect = document.getElementById("menuItem");
-const menuQuantitySelect = document.getElementById("menuQuantity");
-const addItemButton = document.getElementById("orderAddItem");
+const menuSearchInput = document.getElementById("menuSearch");
+const menuCategoryChips = document.getElementById("menuCategoryChips");
+const menuItemsList = document.getElementById("menuItemsList");
+
+const basketToggleBtn = document.getElementById("orderBasketToggle");
+const basketCountEl = document.getElementById("orderBasketCount");
+const basketInlineTotalEl = document.getElementById("orderBasketTotalInline");
+const basketPanel = document.getElementById("orderBasketPanel");
+const basketCloseBtn = document.getElementById("orderBasketClose");
+
 const modifierPanel = document.getElementById("orderModifierPanel");
 const modifierTitle = document.getElementById("orderModifierTitle");
 const modifierFields = document.getElementById("orderModifierFields");
 const modifierError = document.getElementById("orderModifierError");
 const modifierCancelBtn = document.getElementById("orderModifierCancel");
 const modifierConfirmBtn = document.getElementById("orderModifierConfirm");
+
 const cartList = document.getElementById("orderCartList");
 const cartEmpty = document.getElementById("orderCartEmpty");
 const orderTotalEl = document.getElementById("orderTotal");
@@ -70,6 +77,8 @@ let hasSelectableTime = true;
 let cartItems = [];
 let nextCartId = 1;
 let activeDraft = null;
+let selectedCategory = "All";
+let searchQuery = "";
 
 const normalizedMenu = normalizeMenuCatalog(window.MILLERS_ORDER_MENU);
 
@@ -362,8 +371,7 @@ function updateSubmitButtonState() {
   if (!submitBtn) return;
   const orderType = String(orderTypeField?.value || "collection").toLowerCase();
   const idleLabel = orderType === "delivery" ? "Place delivery order" : "Place collection order";
-  const hasItems = cartItems.length > 0;
-  submitBtn.disabled = isSubmitting || !hasSelectableTime || !hasItems;
+  submitBtn.disabled = isSubmitting || !hasSelectableTime || cartItems.length === 0;
   submitBtn.textContent = isSubmitting ? "Submitting..." : idleLabel;
 }
 
@@ -391,7 +399,6 @@ function normalizeMenuCatalog(rawCatalog) {
   return rawCatalog
     .map((category) => {
       const categoryName = normalizeText(category?.name);
-      const source = normalizeText(category?.source);
       if (!categoryName || !Array.isArray(category?.items)) return null;
 
       const items = category.items
@@ -406,10 +413,9 @@ function normalizeMenuCatalog(rawCatalog) {
                 const groupName = normalizeText(group?.name);
                 if (!groupName) return null;
 
-                const rawType = normalizeText(group?.selectionType).toLowerCase();
-                const selectionType = rawType === "multiple" ? "multiple" : "single";
-                const isTextInput = Boolean(group?.isTextInput);
-                const isRequired = Boolean(group?.isRequired);
+                const selectionType = normalizeText(group?.selectionType).toLowerCase() === "multiple"
+                  ? "multiple"
+                  : "single";
 
                 const options = Array.isArray(group?.options)
                   ? group.options
@@ -425,24 +431,32 @@ function normalizeMenuCatalog(rawCatalog) {
                     .filter(Boolean)
                   : [];
 
-                const maxSelections = Number(group?.maxSelections || (selectionType === "multiple" ? options.length : 1));
+                const maxSelectionsRaw = Number(group?.maxSelections);
+                const computedMax = selectionType === "multiple"
+                  ? (Number.isInteger(maxSelectionsRaw) && maxSelectionsRaw > 0 ? maxSelectionsRaw : Math.max(1, options.length))
+                  : 1;
 
                 return {
                   name: groupName,
                   selectionType,
-                  isTextInput,
-                  isRequired,
-                  maxSelections: Number.isInteger(maxSelections) && maxSelections > 0 ? maxSelections : 1,
+                  isRequired: Boolean(group?.isRequired),
+                  isTextInput: Boolean(group?.isTextInput),
+                  maxSelections: computedMax,
                   options
                 };
               })
               .filter(Boolean)
             : [];
 
+          const tags = Array.isArray(item?.tags)
+            ? item.tags.map((tag) => normalizeText(tag)).filter(Boolean)
+            : [];
+
           return {
             name: itemName,
             basePrice: roundMoney(basePrice),
-            modifierGroups
+            modifierGroups,
+            tags
           };
         })
         .filter(Boolean);
@@ -451,89 +465,148 @@ function normalizeMenuCatalog(rawCatalog) {
 
       return {
         name: categoryName,
-        source,
         items
       };
     })
     .filter(Boolean);
 }
 
-function getSelectedCategory() {
-  const index = Number(menuCategorySelect?.value);
-  if (!Number.isInteger(index) || index < 0 || index >= normalizedMenu.length) return null;
-  return normalizedMenu[index];
+function categoryNames() {
+  return ["All", ...normalizedMenu.map((category) => category.name)];
 }
 
-function getSelectedItem() {
-  const category = getSelectedCategory();
-  if (!category) return null;
-  const itemIndex = Number(menuItemSelect?.value);
-  if (!Number.isInteger(itemIndex) || itemIndex < 0 || itemIndex >= category.items.length) return null;
-  return category.items[itemIndex];
-}
-
-function selectedQuantity() {
-  const quantity = Number(menuQuantitySelect?.value || "1");
-  if (!Number.isInteger(quantity)) return 1;
-  return Math.min(MAX_ITEM_QUANTITY, Math.max(1, quantity));
-}
-
-function renderMenuCategoryOptions() {
-  if (!menuCategorySelect) return;
-  const priorValue = menuCategorySelect.value;
-  menuCategorySelect.innerHTML = "";
-
-  normalizedMenu.forEach((category, index) => {
-    const option = document.createElement("option");
-    option.value = String(index);
-    option.textContent = category.name;
-    menuCategorySelect.appendChild(option);
+function allMenuEntries() {
+  const entries = [];
+  normalizedMenu.forEach((category, categoryIndex) => {
+    category.items.forEach((item, itemIndex) => {
+      entries.push({
+        categoryName: category.name,
+        categoryIndex,
+        itemIndex,
+        item
+      });
+    });
   });
-
-  if (priorValue && [...menuCategorySelect.options].some((option) => option.value === priorValue)) {
-    menuCategorySelect.value = priorValue;
-  } else if (menuCategorySelect.options.length > 0) {
-    menuCategorySelect.value = menuCategorySelect.options[0].value;
-  }
+  return entries;
 }
 
-function renderMenuItemOptions() {
-  if (!menuItemSelect) return;
-  const category = getSelectedCategory();
-  const priorValue = menuItemSelect.value;
+function menuEntriesForView() {
+  const query = searchQuery.toLowerCase();
+  return allMenuEntries().filter((entry) => {
+    const categoryPass = selectedCategory === "All" || entry.categoryName === selectedCategory;
+    if (!categoryPass) return false;
 
-  menuItemSelect.innerHTML = "";
-  if (!category) return;
+    if (!query) return true;
 
-  category.items.forEach((item, index) => {
-    const option = document.createElement("option");
-    option.value = String(index);
-    option.textContent = `${item.name} (${formatGBP(item.basePrice)})`;
-    menuItemSelect.appendChild(option);
+    const haystack = [entry.item.name, entry.categoryName, ...(entry.item.tags || [])].join(" ").toLowerCase();
+    return haystack.includes(query);
   });
-
-  if (priorValue && [...menuItemSelect.options].some((option) => option.value === priorValue)) {
-    menuItemSelect.value = priorValue;
-  } else if (menuItemSelect.options.length > 0) {
-    menuItemSelect.value = menuItemSelect.options[0].value;
-  }
 }
 
-function renderQuantityOptions() {
-  if (!menuQuantitySelect) return;
-  const prior = menuQuantitySelect.value;
-  menuQuantitySelect.innerHTML = "";
-  for (let qty = 1; qty <= 10; qty += 1) {
-    const option = document.createElement("option");
-    option.value = String(qty);
-    option.textContent = String(qty);
-    menuQuantitySelect.appendChild(option);
+function renderCategoryChips() {
+  if (!menuCategoryChips) return;
+
+  const names = categoryNames();
+  if (!names.includes(selectedCategory)) {
+    selectedCategory = "All";
   }
-  if (prior && [...menuQuantitySelect.options].some((option) => option.value === prior)) {
-    menuQuantitySelect.value = prior;
-  } else {
-    menuQuantitySelect.value = "1";
+
+  menuCategoryChips.innerHTML = "";
+  names.forEach((name) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "orderCategoryChip";
+    if (name === selectedCategory) {
+      button.classList.add("isActive");
+      button.setAttribute("aria-selected", "true");
+    } else {
+      button.setAttribute("aria-selected", "false");
+    }
+    button.dataset.category = name;
+    button.textContent = name;
+    menuCategoryChips.appendChild(button);
+  });
+}
+
+function buildMenuCard(entry) {
+  const article = document.createElement("article");
+  article.className = "orderMenuCard";
+
+  const main = document.createElement("div");
+  main.className = "orderMenuMain";
+
+  const top = document.createElement("div");
+  top.className = "orderMenuTop";
+
+  const name = document.createElement("strong");
+  name.className = "orderMenuName";
+  name.textContent = entry.item.name;
+
+  const price = document.createElement("span");
+  price.className = "orderMenuPrice";
+  price.textContent = formatGBP(entry.item.basePrice);
+
+  top.appendChild(name);
+  top.appendChild(price);
+
+  const meta = document.createElement("div");
+  meta.className = "orderMenuMeta";
+  const canCustomize = entry.item.modifierGroups.length > 0;
+  meta.textContent = canCustomize
+    ? `${entry.categoryName} • Customize available`
+    : entry.categoryName;
+
+  main.appendChild(top);
+  main.appendChild(meta);
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "orderMenuAdd";
+  action.dataset.categoryIndex = String(entry.categoryIndex);
+  action.dataset.itemIndex = String(entry.itemIndex);
+  action.textContent = canCustomize ? "Customize" : "Add";
+
+  article.appendChild(main);
+  article.appendChild(action);
+  return article;
+}
+
+function renderMenuItems() {
+  if (!menuItemsList) return;
+
+  const entries = menuEntriesForView();
+  menuItemsList.innerHTML = "";
+
+  if (entries.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "orderMenuEmpty";
+    empty.textContent = "No menu items match this filter.";
+    menuItemsList.appendChild(empty);
+    return;
   }
+
+  entries.forEach((entry) => {
+    menuItemsList.appendChild(buildMenuCard(entry));
+  });
+}
+
+function clearModifierError() {
+  if (!modifierError) return;
+  modifierError.hidden = true;
+  modifierError.textContent = "";
+}
+
+function showModifierError(message) {
+  if (!modifierError) return;
+  modifierError.hidden = false;
+  modifierError.textContent = message;
+}
+
+function hideModifierPanel() {
+  if (modifierPanel) modifierPanel.hidden = true;
+  if (modifierFields) modifierFields.innerHTML = "";
+  clearModifierError();
+  activeDraft = null;
 }
 
 function modifierOptionLabel(option) {
@@ -567,7 +640,6 @@ function createModifierGroupField(group, groupIndex) {
     input.maxLength = 120;
     input.className = "orderModifierText";
     input.dataset.groupIndex = String(groupIndex);
-    input.dataset.groupType = "text";
     input.placeholder = `Enter ${group.name.toLowerCase()}`;
     if (group.isRequired) input.required = true;
     wrapper.appendChild(input);
@@ -586,7 +658,6 @@ function createModifierGroupField(group, groupIndex) {
       checkbox.type = "checkbox";
       checkbox.dataset.groupIndex = String(groupIndex);
       checkbox.dataset.optionIndex = String(optionIndex);
-      checkbox.dataset.groupType = "multiple";
 
       const text = document.createElement("span");
       text.textContent = modifierOptionLabel(option);
@@ -603,7 +674,6 @@ function createModifierGroupField(group, groupIndex) {
   const select = document.createElement("select");
   select.className = "orderModifierSelect";
   select.dataset.groupIndex = String(groupIndex);
-  select.dataset.groupType = "single";
 
   if (!group.isRequired) {
     const noneOption = document.createElement("option");
@@ -627,48 +697,29 @@ function createModifierGroupField(group, groupIndex) {
   return wrapper;
 }
 
-function clearModifierError() {
-  if (!modifierError) return;
-  modifierError.hidden = true;
-  modifierError.textContent = "";
-}
-
-function showModifierError(message) {
-  if (!modifierError) return;
-  modifierError.hidden = false;
-  modifierError.textContent = message;
-}
-
-function hideModifierPanel() {
-  if (modifierPanel) modifierPanel.hidden = true;
-  if (modifierFields) modifierFields.innerHTML = "";
-  clearModifierError();
-  activeDraft = null;
-}
-
-function startItemDraft() {
+function startItemDraft(item, quantity = 1) {
   clearFeedback();
   clearModifierError();
 
-  const item = getSelectedItem();
   if (!item) {
-    showError("Please select a menu item.");
+    showError("Please choose a valid item.");
     return;
   }
 
-  const quantity = selectedQuantity();
-  activeDraft = { item, quantity };
+  activeDraft = {
+    item,
+    quantity: Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)))
+  };
 
-  const groups = Array.isArray(item.modifierGroups) ? item.modifierGroups : [];
-  const hasGroups = groups.length > 0;
-
-  if (!hasGroups) {
-    addDraftToCart([]);
+  const groups = item.modifierGroups || [];
+  if (groups.length === 0) {
+    addItemToCart(item, [], activeDraft.quantity, true);
+    activeDraft = null;
     return;
   }
 
   if (modifierTitle) {
-    modifierTitle.textContent = `${item.name} x${quantity}`;
+    modifierTitle.textContent = `${item.name} x${activeDraft.quantity}`;
   }
 
   if (modifierFields) {
@@ -683,7 +734,7 @@ function startItemDraft() {
 
 function selectedModifiersFromDraft() {
   if (!activeDraft || !Array.isArray(activeDraft.item?.modifierGroups)) {
-    return { ok: false, error: "No item is selected." };
+    return { ok: false, error: "No item selected." };
   }
 
   const selections = [];
@@ -723,9 +774,10 @@ function selectedModifiersFromDraft() {
         return { ok: false, error: `You can select up to ${group.maxSelections} option(s) for ${group.name}.` };
       }
 
-      for (const checkbox of checked) {
+      checked.forEach((checkbox) => {
         const optionIndex = Number(checkbox.dataset.optionIndex);
-        if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= group.options.length) continue;
+        if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= group.options.length) return;
+
         const option = group.options[optionIndex];
         selections.push({
           groupName: group.name,
@@ -733,22 +785,22 @@ function selectedModifiersFromDraft() {
           priceAdjustment: Number(option.priceAdjustment || 0),
           isTextInput: false
         });
-      }
+      });
 
       continue;
     }
 
     const select = modifierFields?.querySelector(`select[data-group-index="${groupIndex}"]`);
-    const value = String(select?.value || "");
+    const raw = String(select?.value || "");
 
-    if (value.length === 0) {
+    if (raw.length === 0) {
       if (group.isRequired) {
         return { ok: false, error: `${group.name} is required.` };
       }
       continue;
     }
 
-    const optionIndex = Number(value);
+    const optionIndex = Number(raw);
     if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= group.options.length) {
       return { ok: false, error: `Please choose a valid option for ${group.name}.` };
     }
@@ -762,37 +814,62 @@ function selectedModifiersFromDraft() {
     });
   }
 
-  return { ok: true, selections };
-}
-
-function cartLineTotals(basePrice, selections, quantity) {
-  const modifierTotal = selections.reduce((sum, selection) => sum + Number(selection.priceAdjustment || 0), 0);
-  const unitPrice = roundMoney(basePrice + modifierTotal);
-  const linePrice = roundMoney(unitPrice * quantity);
   return {
-    unitPrice,
-    linePrice
+    ok: true,
+    selections
   };
 }
 
-function addDraftToCart(modifierSelections) {
-  if (!activeDraft) return;
-  const quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(activeDraft.quantity || 1)));
-  const { unitPrice, linePrice } = cartLineTotals(activeDraft.item.basePrice, modifierSelections, quantity);
+function cartLineTotals(basePrice, selections, quantity) {
+  const modifierTotal = selections.reduce((sum, entry) => sum + Number(entry.priceAdjustment || 0), 0);
+  const unitPrice = roundMoney(basePrice + modifierTotal);
+  const linePrice = roundMoney(unitPrice * quantity);
+  return { unitPrice, linePrice };
+}
 
-  cartItems.push({
-    id: nextCartId,
-    itemName: activeDraft.item.name,
-    basePrice: activeDraft.item.basePrice,
-    quantity,
-    modifierSelections,
-    unitPrice,
-    linePrice
-  });
-  nextCartId += 1;
+function cartLineSignature(itemName, modifierSelections) {
+  const modKey = (modifierSelections || [])
+    .map((entry) => `${entry.groupName}::${entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
+    .sort()
+    .join("||");
+  return `${itemName}__${modKey}`;
+}
 
-  hideModifierPanel();
+function recalculateCartItem(item) {
+  const quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(item.quantity || 1)));
+  const totals = cartLineTotals(item.basePrice, item.modifierSelections || [], quantity);
+  item.quantity = quantity;
+  item.unitPrice = totals.unitPrice;
+  item.linePrice = totals.linePrice;
+}
+
+function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
+  const cleanQty = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)));
+  const signature = cartLineSignature(item.name, modifierSelections);
+
+  const existing = cartItems.find((entry) => entry.signature === signature);
+  if (existing) {
+    existing.quantity = Math.min(MAX_ITEM_QUANTITY, existing.quantity + cleanQty);
+    recalculateCartItem(existing);
+  } else {
+    const totals = cartLineTotals(item.basePrice, modifierSelections, cleanQty);
+    cartItems.push({
+      id: nextCartId,
+      signature,
+      itemName: item.name,
+      basePrice: item.basePrice,
+      modifierSelections,
+      quantity: cleanQty,
+      unitPrice: totals.unitPrice,
+      linePrice: totals.linePrice
+    });
+    nextCartId += 1;
+  }
+
   renderCart();
+  if (openBasket) {
+    setBasketOpen(true);
+  }
 }
 
 function modifierSummary(selection) {
@@ -804,18 +881,14 @@ function modifierSummary(selection) {
   return `${base} (${sign}${formatGBP(Math.abs(adjustment))})`;
 }
 
-function recalculateCartItem(item) {
-  const quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(item.quantity || 1)));
-  const totals = cartLineTotals(item.basePrice, item.modifierSelections || [], quantity);
-  item.quantity = quantity;
-  item.unitPrice = totals.unitPrice;
-  item.linePrice = totals.linePrice;
-}
-
 function lineSummary(item) {
   const name = summarySafeText(item.itemName);
   const quantityText = `${item.quantity}x`;
-  const modifierText = (item.modifierSelections || []).map(modifierSummary).map(summarySafeText).filter(Boolean).join(" | ");
+  const modifierText = (item.modifierSelections || [])
+    .map(modifierSummary)
+    .map(summarySafeText)
+    .filter(Boolean)
+    .join(" | ");
   const base = modifierText ? `${quantityText} ${name} [${modifierText}]` : `${quantityText} ${name}`;
   return `${base} = ${formatGBP(item.linePrice)}`;
 }
@@ -832,10 +905,28 @@ function syncItemsSummary() {
   const lines = cartItems.map(lineSummary);
   const total = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
   lines.push(`Total = ${formatGBP(total)}`);
-  itemsInput.value = lines.join("\n");
 
+  itemsInput.value = lines.join("\n");
   if (orderSummaryPreview) {
     orderSummaryPreview.textContent = `${cartItems.length} line item(s). Total ${formatGBP(total)}.`;
+  }
+}
+
+function setBasketOpen(open) {
+  if (!basketPanel || !basketToggleBtn) return;
+
+  const canOpen = cartItems.length > 0;
+  const nextState = Boolean(open) && canOpen;
+  basketPanel.hidden = !nextState;
+  basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+}
+
+function updateBasketSummary(totalPrice, totalQuantity) {
+  if (basketCountEl) {
+    basketCountEl.textContent = `${totalQuantity} item${totalQuantity === 1 ? "" : "s"}`;
+  }
+  if (basketInlineTotalEl) {
+    basketInlineTotalEl.textContent = formatGBP(totalPrice);
   }
 }
 
@@ -855,23 +946,14 @@ function renderCart() {
   }
 
   cartItems.forEach(recalculateCartItem);
+
   cartList.innerHTML = "";
+  let totalPrice = 0;
+  let totalQuantity = 0;
 
-  if (cartItems.length === 0) {
-    cartEmpty.hidden = false;
-    cartList.hidden = true;
-    orderTotalEl.textContent = formatGBP(0);
-    syncItemsSummary();
-    updateSubmitButtonState();
-    return;
-  }
-
-  cartEmpty.hidden = true;
-  cartList.hidden = false;
-
-  let total = 0;
-  for (const item of cartItems) {
-    total += Number(item.linePrice || 0);
+  cartItems.forEach((item) => {
+    totalPrice += Number(item.linePrice || 0);
+    totalQuantity += Number(item.quantity || 0);
 
     const li = document.createElement("li");
     li.className = "orderCartItem";
@@ -897,11 +979,12 @@ function renderCart() {
 
     const modifiers = document.createElement("div");
     modifiers.className = "orderCartModifiers";
-    const modifierLines = (item.modifierSelections || []).map(modifierSummary);
-    modifiers.textContent = modifierLines.length > 0 ? modifierLines.join(" | ") : "No modifiers";
+    const lines = (item.modifierSelections || []).map(modifierSummary);
+    modifiers.textContent = lines.length > 0 ? lines.join(" | ") : "No modifiers";
 
     const actions = document.createElement("div");
     actions.className = "orderCartActionsRow";
+
     actions.appendChild(createActionButton("decrease", "−"));
 
     const qtyPill = document.createElement("span");
@@ -918,9 +1001,20 @@ function renderCart() {
     li.appendChild(actions);
 
     cartList.appendChild(li);
+  });
+
+  const roundedTotal = roundMoney(totalPrice);
+  const hasItems = cartItems.length > 0;
+
+  cartEmpty.hidden = hasItems;
+  cartList.hidden = !hasItems;
+  orderTotalEl.textContent = formatGBP(roundedTotal);
+
+  updateBasketSummary(roundedTotal, totalQuantity);
+  if (!hasItems) {
+    setBasketOpen(false);
   }
 
-  orderTotalEl.textContent = formatGBP(roundMoney(total));
   syncItemsSummary();
   updateSubmitButtonState();
 }
@@ -928,7 +1022,10 @@ function renderCart() {
 function updateCartQuantity(cartId, delta) {
   const item = cartItems.find((entry) => entry.id === cartId);
   if (!item) return;
-  item.quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, item.quantity + delta));
+
+  const next = Math.max(1, Math.min(MAX_ITEM_QUANTITY, item.quantity + delta));
+  item.quantity = next;
+  recalculateCartItem(item);
   renderCart();
 }
 
@@ -939,95 +1036,16 @@ function removeCartLine(cartId) {
 
 function resetOrderBuilder() {
   cartItems = [];
+  nextCartId = 1;
+  selectedCategory = "All";
+  searchQuery = "";
+  if (menuSearchInput) menuSearchInput.value = "";
+
   hideModifierPanel();
-  renderMenuCategoryOptions();
-  renderMenuItemOptions();
-  if (menuQuantitySelect) menuQuantitySelect.value = "1";
+  setBasketOpen(false);
+  renderCategoryChips();
+  renderMenuItems();
   renderCart();
-}
-
-function initializeOrderBuilder() {
-  if (!menuCategorySelect || !menuItemSelect || !menuQuantitySelect || !addItemButton || !itemsInput) {
-    return false;
-  }
-
-  if (normalizedMenu.length === 0) {
-    addItemButton.disabled = true;
-    if (menuCategorySelect) menuCategorySelect.disabled = true;
-    if (menuItemSelect) menuItemSelect.disabled = true;
-    if (menuQuantitySelect) menuQuantitySelect.disabled = true;
-    setNotice("Menu is temporarily unavailable. Please try again shortly.", true);
-    return false;
-  }
-
-  renderMenuCategoryOptions();
-  renderMenuItemOptions();
-  renderQuantityOptions();
-  renderCart();
-
-  menuCategorySelect.addEventListener("change", () => {
-    clearFeedback();
-    hideModifierPanel();
-    renderMenuItemOptions();
-  });
-
-  addItemButton.addEventListener("click", startItemDraft);
-
-  modifierCancelBtn?.addEventListener("click", hideModifierPanel);
-  modifierConfirmBtn?.addEventListener("click", () => {
-    clearModifierError();
-    const result = selectedModifiersFromDraft();
-    if (!result.ok) {
-      showModifierError(result.error || "Please check your selections.");
-      return;
-    }
-    addDraftToCart(result.selections);
-  });
-
-  modifierFields?.addEventListener("change", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    if (target.type !== "checkbox") return;
-
-    const groupIndex = Number(target.dataset.groupIndex);
-    if (!Number.isInteger(groupIndex) || !activeDraft) return;
-
-    const group = activeDraft.item.modifierGroups[groupIndex];
-    if (!group || group.selectionType !== "multiple") return;
-
-    const checked = [...modifierFields.querySelectorAll(`input[type="checkbox"][data-group-index="${groupIndex}"]:checked`)];
-    if (checked.length > group.maxSelections) {
-      target.checked = false;
-      showModifierError(`You can select up to ${group.maxSelections} option(s) for ${group.name}.`);
-    } else {
-      clearModifierError();
-    }
-  });
-
-  cartList?.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-
-    const button = target.closest("button[data-action]");
-    if (!(button instanceof HTMLButtonElement)) return;
-
-    const row = button.closest("li[data-cart-id]");
-    if (!(row instanceof HTMLLIElement)) return;
-
-    const cartId = Number(row.dataset.cartId);
-    if (!Number.isInteger(cartId)) return;
-
-    const action = button.dataset.action;
-    if (action === "increase") {
-      updateCartQuantity(cartId, 1);
-    } else if (action === "decrease") {
-      updateCartQuantity(cartId, -1);
-    } else if (action === "remove") {
-      removeCartLine(cartId);
-    }
-  });
-
-  return true;
 }
 
 function validatePayload(payload) {
@@ -1066,6 +1084,7 @@ function validatePayload(payload) {
   if (payload.time !== ASAP_VALUE) {
     const minutes = clockToMinutes(payload.time);
     const earliestScheduled = earliestScheduledMinutesForOrderType(payload.orderType);
+
     if (!Number.isFinite(minutes)) {
       return "Please choose a valid time.";
     }
@@ -1164,6 +1183,7 @@ async function handleSubmit(event) {
     const whenText = payload.time === ASAP_VALUE
       ? "as soon as possible"
       : `for ${payload.date} at ${payload.time}`;
+
     const successMessage = `${orderLabel} order confirmed ${whenText}. Confirmation emails sent to you and Millers Café.`;
     const reference = body.reference ? `Reference: ${body.reference}` : "";
 
@@ -1193,13 +1213,130 @@ async function handleSubmit(event) {
   }
 }
 
+function initializeMenuInteractions() {
+  if (!menuItemsList || !menuCategoryChips || !menuSearchInput) return false;
+
+  if (normalizedMenu.length === 0) {
+    menuItemsList.innerHTML = "<div class=\"orderMenuEmpty\">Menu is temporarily unavailable.</div>";
+    setNotice("Menu is temporarily unavailable. Please try again shortly.", true);
+    return false;
+  }
+
+  renderCategoryChips();
+  renderMenuItems();
+  renderCart();
+
+  menuCategoryChips.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const button = target.closest("button[data-category]");
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    selectedCategory = String(button.dataset.category || "All");
+    renderCategoryChips();
+    renderMenuItems();
+  });
+
+  menuSearchInput.addEventListener("input", () => {
+    searchQuery = normalizeText(menuSearchInput.value || "");
+    renderMenuItems();
+  });
+
+  menuItemsList.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const button = target.closest("button.orderMenuAdd");
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    const categoryIndex = Number(button.dataset.categoryIndex);
+    const itemIndex = Number(button.dataset.itemIndex);
+
+    const category = normalizedMenu[categoryIndex];
+    const item = category?.items?.[itemIndex];
+    if (!item) return;
+
+    startItemDraft(item, 1);
+  });
+
+  basketToggleBtn?.addEventListener("click", () => {
+    const currentlyOpen = basketToggleBtn.getAttribute("aria-expanded") === "true";
+    setBasketOpen(!currentlyOpen);
+  });
+
+  basketCloseBtn?.addEventListener("click", () => {
+    setBasketOpen(false);
+  });
+
+  cartList?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const button = target.closest("button[data-action]");
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    const row = button.closest("li[data-cart-id]");
+    if (!(row instanceof HTMLLIElement)) return;
+
+    const cartId = Number(row.dataset.cartId);
+    if (!Number.isInteger(cartId)) return;
+
+    const action = button.dataset.action;
+    if (action === "increase") {
+      updateCartQuantity(cartId, 1);
+    } else if (action === "decrease") {
+      updateCartQuantity(cartId, -1);
+    } else if (action === "remove") {
+      removeCartLine(cartId);
+    }
+  });
+
+  modifierCancelBtn?.addEventListener("click", hideModifierPanel);
+
+  modifierConfirmBtn?.addEventListener("click", () => {
+    clearModifierError();
+    const result = selectedModifiersFromDraft();
+    if (!result.ok) {
+      showModifierError(result.error || "Please check your selections.");
+      return;
+    }
+
+    if (!activeDraft) return;
+    addItemToCart(activeDraft.item, result.selections, activeDraft.quantity, true);
+    hideModifierPanel();
+  });
+
+  modifierFields?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    if (target.type !== "checkbox") return;
+
+    const groupIndex = Number(target.dataset.groupIndex);
+    if (!Number.isInteger(groupIndex) || !activeDraft) return;
+
+    const group = activeDraft.item.modifierGroups[groupIndex];
+    if (!group || group.selectionType !== "multiple") return;
+
+    const checked = [...modifierFields.querySelectorAll(`input[type="checkbox"][data-group-index="${groupIndex}"]:checked`)];
+    if (checked.length > group.maxSelections) {
+      target.checked = false;
+      showModifierError(`You can select up to ${group.maxSelections} option(s) for ${group.name}.`);
+    } else {
+      clearModifierError();
+    }
+  });
+
+  return true;
+}
+
 function initialize() {
   if (!form) return;
 
   renderDateOptions();
   renderTimeOptions();
   renderOccasionOptions();
-  initializeOrderBuilder();
+  initializeMenuInteractions();
 
   form.addEventListener("submit", handleSubmit);
   dateSelect?.addEventListener("change", () => {

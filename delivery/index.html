@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260217k">
+  <link rel="stylesheet" href="../styles.css?v=20260217m">
 </head>
 <body>
   <main>
@@ -88,24 +88,36 @@
 
           <div class="bookingField bookingFieldWide">
             <span class="bookingLabel">Your order</span>
-            <div class="orderComposer">
-              <div class="orderComposerTop">
-                <label class="orderMiniField">
-                  <span>Category</span>
-                  <select id="menuCategory" aria-label="Menu category"></select>
-                </label>
+            <div class="orderHub">
+              <label class="orderSearchWrap">
+                <span>Search menu</span>
+                <input id="menuSearch" type="search" maxlength="80" placeholder="Type dish name..." autocomplete="off">
+              </label>
 
-                <label class="orderMiniField">
-                  <span>Item</span>
-                  <select id="menuItem" aria-label="Menu item"></select>
-                </label>
+              <div id="menuCategoryChips" class="orderCategoryChips" role="tablist" aria-label="Menu categories"></div>
+              <div id="menuItemsList" class="orderMenuList" aria-live="polite"></div>
 
-                <label class="orderMiniField orderMiniFieldQty">
-                  <span>Qty</span>
-                  <select id="menuQuantity" aria-label="Item quantity"></select>
-                </label>
+              <button id="orderBasketToggle" class="orderBasketToggle" type="button" aria-expanded="false" aria-controls="orderBasketPanel">
+                <span id="orderBasketCount">0 items</span>
+                <strong id="orderBasketTotalInline">£0.00</strong>
+              </button>
 
-                <button id="orderAddItem" class="orderAddBtn" type="button">Customize + add</button>
+              <div id="orderBasketPanel" class="orderBasketPanel" hidden>
+                <div class="orderBasketHead">
+                  <strong>Your order</strong>
+                  <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
+                </div>
+
+                <div id="orderCartEmpty" class="orderCartEmpty">No items added yet.</div>
+                <ul id="orderCartList" class="orderCartList" hidden></ul>
+
+                <div class="orderCartTotal">
+                  <span>Total</span>
+                  <strong id="orderTotal">£0.00</strong>
+                </div>
+
+                <p id="orderSummaryPreview" class="bookingMeta">Add items to build your order.</p>
+                <input id="orderItems" name="itemsSummary" type="hidden">
               </div>
 
               <div id="orderModifierPanel" class="orderModifierPanel" hidden>
@@ -119,17 +131,6 @@
                   <button id="orderModifierConfirm" class="orderConfirmBtn" type="button">Add to order</button>
                 </div>
               </div>
-
-              <div id="orderCartEmpty" class="orderCartEmpty">No items added yet.</div>
-              <ul id="orderCartList" class="orderCartList" hidden></ul>
-
-              <div class="orderCartTotal">
-                <span>Total</span>
-                <strong id="orderTotal">£0.00</strong>
-              </div>
-
-              <p id="orderSummaryPreview" class="bookingMeta">Add items to build your order.</p>
-              <input id="orderItems" name="itemsSummary" type="hidden">
             </div>
           </div>
 
@@ -157,6 +158,6 @@
     </div>
   </main>
   <script src="../orders/menu-catalog.js?v=20260217a"></script>
-  <script src="../orders/order-form.js?v=20260217c"></script>
+  <script src="../orders/order-form.js?v=20260217d"></script>
 </body>
 </html>
