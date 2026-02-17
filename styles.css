@@ -1732,6 +1732,13 @@ h1{
   gap: 8px;
 }
 
+.menuJumpHeader{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .menuJumpLabel{
   margin: 0;
   font-family: var(--font-display);
@@ -1740,6 +1747,23 @@ h1{
   letter-spacing: .06em;
   text-transform: uppercase;
   color: #516074;
+}
+
+.jumpMenuToggle{
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: .02em;
+  color: #334155;
+  background: rgba(255, 255, 255, .76);
+  cursor: pointer;
+}
+
+.jumpMenuToggle:hover{
+  background: rgba(255, 255, 255, .96);
 }
 
 .menuSearchInput{
@@ -1781,10 +1805,20 @@ h1{
   overflow-x: visible;
   scrollbar-width: none;
   gap: 8px;
+  max-height: 280px;
+  opacity: 1;
+  transition: max-height 240ms ease, opacity 180ms ease;
 }
 
 .menuJumpChips::-webkit-scrollbar{
   display: none;
+}
+
+.menuJumpWrap.isCollapsed .menuJumpChips{
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .jumpChip{
@@ -2265,6 +2299,11 @@ h1{
     padding: 9px 10px;
   }
 
+  .menuJumpLabel{
+    font-size: 11px;
+    letter-spacing: .05em;
+  }
+
   .menuItem{
     gap: 10px;
     padding: 9px 0;
@@ -2274,7 +2313,3 @@ h1{
     font-size: 13px;
   }
 }
-  .menuJumpLabel{
-    font-size: 11px;
-    letter-spacing: .05em;
-  }

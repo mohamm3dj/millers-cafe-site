@@ -43,8 +43,19 @@
         />
         <button id="clearMenuSearch" class="searchClearBtn" type="button">Clear</button>
       </div>
-      <div class="menuJumpWrap">
-        <p class="menuJumpLabel">Jump to section</p>
+      <div id="menuJumpWrap" class="menuJumpWrap">
+        <div class="menuJumpHeader">
+          <p class="menuJumpLabel">Jump to section</p>
+          <button
+            id="jumpMenuToggle"
+            class="jumpMenuToggle"
+            type="button"
+            aria-controls="menuJumpChips"
+            aria-expanded="true"
+          >
+            Minimise
+          </button>
+        </div>
         <div id="menuJumpChips" class="menuJumpChips" aria-label="Jump to menu section"></div>
       </div>
       <p id="menuSearchMeta" class="menuSearchMeta" aria-live="polite"></p>

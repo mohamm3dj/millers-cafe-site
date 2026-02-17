@@ -7,6 +7,9 @@ const clearMenuSearch = document.getElementById("clearMenuSearch");
 const menuJumpChips = document.getElementById("menuJumpChips");
 const menuSearchMeta = document.getElementById("menuSearchMeta");
 const menuToolsPanel = document.querySelector(".menuTools");
+const menuJumpWrap = document.getElementById("menuJumpWrap");
+const jumpMenuToggle = document.getElementById("jumpMenuToggle");
+const jumpCollapsedStorageKey = "millers.menu.jump-collapsed";
 
 const knownCodes = new Set(["LC", "V", "VE", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
 const allSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
@@ -129,6 +132,43 @@ function getStickyToolsOffset() {
   const styles = window.getComputedStyle(menuToolsPanel);
   const marginBottom = Number.parseFloat(styles.marginBottom || "0") || 0;
   return Math.ceil(rect.height + marginBottom + 14);
+}
+
+function setJumpMenuCollapsed(collapsed, options = {}) {
+  if (!menuJumpWrap || !jumpMenuToggle || !menuJumpChips) return;
+
+  menuJumpWrap.classList.toggle("isCollapsed", collapsed);
+  jumpMenuToggle.textContent = collapsed ? "Show" : "Minimise";
+  jumpMenuToggle.setAttribute("aria-expanded", String(!collapsed));
+  menuJumpChips.setAttribute("aria-hidden", String(collapsed));
+
+  if (options.persist !== false) {
+    try {
+      window.localStorage.setItem(jumpCollapsedStorageKey, collapsed ? "1" : "0");
+    } catch (error) {
+      // ignore storage failures (private mode / blocked storage)
+    }
+  }
+
+  applySectionScrollMargins();
+}
+
+function setupJumpMenuToggle() {
+  if (!menuJumpWrap || !jumpMenuToggle) return;
+
+  let shouldCollapse = false;
+  try {
+    shouldCollapse = window.localStorage.getItem(jumpCollapsedStorageKey) === "1";
+  } catch (error) {
+    shouldCollapse = false;
+  }
+
+  setJumpMenuCollapsed(shouldCollapse, { persist: false });
+
+  jumpMenuToggle.addEventListener("click", () => {
+    const collapsed = menuJumpWrap.classList.contains("isCollapsed");
+    setJumpMenuCollapsed(!collapsed);
+  });
 }
 
 function applySectionScrollMargins() {
@@ -447,6 +487,7 @@ decorateLabels();
 setupAccordions();
 setupSectionReveal();
 applyToggles();
+setupJumpMenuToggle();
 applySectionScrollMargins();
 buildJumpChips();
 applySearch();
