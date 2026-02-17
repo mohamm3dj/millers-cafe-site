@@ -1,3 +1,4 @@
 .DS_Store
 .tmp_menu_images/
 .autopush.pid
+.dev.vars

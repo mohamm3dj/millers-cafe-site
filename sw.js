@@ -1,4 +1,4 @@
-const CACHE_NAME = "millers-v35";
+const CACHE_NAME = "millers-v36";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,7 +15,8 @@ const ASSETS = [
   "./delivery/",
   "./delivery/index.html",
   "./bookings/",
-  "./bookings/index.html"
+  "./bookings/index.html",
+  "./bookings/bookings.js"
 ];
 
 self.addEventListener("install", (event) => {

@@ -1,0 +1,15 @@
+name = "millers-cafe-site"
+compatibility_date = "2026-02-17"
+pages_build_output_dir = "."
+
+# Static site at repository root, with Pages Functions in /functions.
+
+# Optional: uncomment after creating a KV namespace.
+# [[kv_namespaces]]
+# binding = "BOOKINGS_KV"
+# id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
+# preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
+# Optional: feed token (recommended in production).
+# [vars]
+# BOOKINGS_FEED_TOKEN = "replace-with-long-random-secret"
