@@ -2994,3 +2994,93 @@ h1{
     bottom: 6px;
   }
 }
+
+/* =========================
+   Ordering tweaks
+   ========================= */
+
+.orderMenuActions{
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.orderMenuAdd{
+  min-width: 94px;
+}
+
+.orderMenuAdd.isSingle{
+  min-width: 118px;
+}
+
+.orderMenuCustomize{
+  color: #0f172a;
+  background: rgba(226, 232, 240, .95);
+  border: 1px solid rgba(15, 23, 42, .16);
+  box-shadow: none;
+}
+
+.orderMenuCustomize:hover{
+  filter: none;
+  background: rgba(203, 213, 225, .95);
+}
+
+.orderModifierPanel{
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 4;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, .16);
+  max-height: none;
+  overflow: visible;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px){
+  .orderMenuActions{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .orderMenuAdd.isSingle{
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+}
+
+/* Fix checkbox modifier option wrapping */
+.orderModifierOption{
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  justify-content: start;
+  gap: 7px;
+  width: 100%;
+}
+
+.orderModifierOption input[type="checkbox"]{
+  margin: 2px 0 0;
+  width: 22px;
+  height: 22px;
+}
+
+.orderModifierOptionText{
+  display: block;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+  text-align: left;
+}
+
+/* Ensure JS hidden toggles always win for order UI */
+.orderModifierPanel[hidden],
+.orderBasketPanel[hidden],
+.orderCartList[hidden],
+.orderCartEmpty[hidden],
+.bookingResult[hidden],
+.bookingError[hidden]{
+  display: none !important;
+}

@@ -12,17 +12,29 @@ const COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
 const DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
 const MAX_ORDER_LOOKAHEAD_DAYS = 90;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
-const OCCASION_OPTIONS = [
-  "None",
-  "Birthday",
-  "Anniversary",
-  "Engagement",
-  "Date Night",
-  "Business",
-  "Celebration"
-];
-const VALID_OCCASIONS = new Set(OCCASION_OPTIONS);
 const MAX_ITEM_QUANTITY = 20;
+
+const HIDDEN_ORDER_CATEGORY_KEYS = new Set([
+  "beer",
+  "wine by glass",
+  "soft drinks",
+  "spirits",
+  "red wine bottles",
+  "white wine bottles",
+  "white win bottles",
+  "rose wine bottles",
+  "rose wine bottle",
+  "champagne and sparkling",
+  "champagne and sparking"
+]);
+
+const FORCE_CUSTOMIZE_CATEGORY_KEYS = new Set([
+  "desi crust",
+  "wraps",
+  "wings",
+  "mumbai sizzle",
+  "kiddies corner"
+]);
 
 const form = document.getElementById("orderForm");
 const noticeEl = document.getElementById("orderNotice");
@@ -36,7 +48,6 @@ const phoneInput = document.getElementById("orderPhone");
 const emailInput = document.getElementById("orderEmail");
 const dateSelect = document.getElementById("orderDate");
 const timeSelect = document.getElementById("orderTime");
-const occasionSelect = document.getElementById("orderOccasion");
 const itemsInput = document.getElementById("orderItems");
 const notesInput = document.getElementById("orderNotes");
 
@@ -48,6 +59,7 @@ const postcodeInput = document.getElementById("orderPostcode");
 const menuSearchInput = document.getElementById("menuSearch");
 const menuCategoryChips = document.getElementById("menuCategoryChips");
 const menuItemsList = document.getElementById("menuItemsList");
+const orderHub = document.querySelector(".orderHub");
 
 const basketToggleBtn = document.getElementById("orderBasketToggle");
 const basketCountEl = document.getElementById("orderBasketCount");
@@ -77,6 +89,7 @@ let hasSelectableTime = true;
 let cartItems = [];
 let nextCartId = 1;
 let activeDraft = null;
+let activeDraftAnchor = null;
 let selectedCategory = "All";
 let searchQuery = "";
 
@@ -100,6 +113,17 @@ function summarySafeText(value) {
 
 function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function normalizeKey(value) {
+  const cleaned = normalizeText(value).toLowerCase().replace(/&/g, " and ");
+  let normalized = cleaned;
+  try {
+    normalized = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  } catch (error) {
+    normalized = cleaned;
+  }
+  return normalized.replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function minutesToClock(totalMinutes) {
@@ -301,26 +325,6 @@ function renderTimeOptions() {
   updateTimeNotice(orderType, selectedDate, slots, asapEnabled);
 }
 
-function renderOccasionOptions() {
-  if (!occasionSelect) return;
-  const priorValue = occasionSelect.value || "None";
-  occasionSelect.innerHTML = "";
-
-  for (const occasion of OCCASION_OPTIONS) {
-    const option = document.createElement("option");
-    option.value = occasion;
-    option.textContent = occasion;
-    if (occasion === "None") option.defaultSelected = true;
-    occasionSelect.appendChild(option);
-  }
-
-  if (VALID_OCCASIONS.has(priorValue)) {
-    occasionSelect.value = priorValue;
-  } else {
-    occasionSelect.value = "None";
-  }
-}
-
 function clearFeedback() {
   if (resultEl) {
     resultEl.hidden = true;
@@ -393,13 +397,23 @@ function updateTimeNotice(orderType, isoDate, slots, asapEnabled) {
   setNotice(`${label} defaults to ASAP today. Scheduled times must be at least ${lead} minutes from now.${earliest}`, false);
 }
 
+function itemHasModifiers(item) {
+  return Array.isArray(item?.modifierGroups) && item.modifierGroups.length > 0;
+}
+
+function itemHasRequiredModifiers(item) {
+  return itemHasModifiers(item) && item.modifierGroups.some((group) => Boolean(group?.isRequired));
+}
+
 function normalizeMenuCatalog(rawCatalog) {
   if (!Array.isArray(rawCatalog)) return [];
 
   return rawCatalog
     .map((category) => {
       const categoryName = normalizeText(category?.name);
+      const categoryKey = normalizeKey(categoryName);
       if (!categoryName || !Array.isArray(category?.items)) return null;
+      if (HIDDEN_ORDER_CATEGORY_KEYS.has(categoryKey)) return null;
 
       const items = category.items
         .map((item) => {
@@ -465,6 +479,7 @@ function normalizeMenuCatalog(rawCatalog) {
 
       return {
         name: categoryName,
+        categoryKey,
         items
       };
     })
@@ -481,6 +496,7 @@ function allMenuEntries() {
     category.items.forEach((item, itemIndex) => {
       entries.push({
         categoryName: category.name,
+        categoryKey: category.categoryKey,
         categoryIndex,
         itemIndex,
         item
@@ -501,6 +517,10 @@ function menuEntriesForView() {
     const haystack = [entry.item.name, entry.categoryName, ...(entry.item.tags || [])].join(" ").toLowerCase();
     return haystack.includes(query);
   });
+}
+
+function entryRequiresCustomize(entry) {
+  return FORCE_CUSTOMIZE_CATEGORY_KEYS.has(entry.categoryKey) || itemHasRequiredModifiers(entry.item);
 }
 
 function renderCategoryChips() {
@@ -528,6 +548,22 @@ function renderCategoryChips() {
   });
 }
 
+function createMenuActionButton(label, actionType, entry, secondary = false, single = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = secondary ? "orderMenuAdd orderMenuCustomize" : "orderMenuAdd";
+  button.classList.add("orderMenuActionBtn");
+  if (single) {
+    button.classList.add("isSingle");
+  }
+
+  button.dataset.actionType = actionType;
+  button.dataset.categoryIndex = String(entry.categoryIndex);
+  button.dataset.itemIndex = String(entry.itemIndex);
+  button.textContent = label;
+  return button;
+}
+
 function buildMenuCard(entry) {
   const article = document.createElement("article");
   article.className = "orderMenuCard";
@@ -551,28 +587,41 @@ function buildMenuCard(entry) {
 
   const meta = document.createElement("div");
   meta.className = "orderMenuMeta";
-  const canCustomize = entry.item.modifierGroups.length > 0;
-  meta.textContent = canCustomize
-    ? `${entry.categoryName} • Customize available`
-    : entry.categoryName;
+
+  const hasModifiers = itemHasModifiers(entry.item);
+  const requiresCustomize = entryRequiresCustomize(entry);
+  if (requiresCustomize) {
+    meta.textContent = `${entry.categoryName} • Customize required`;
+  } else if (hasModifiers) {
+    meta.textContent = `${entry.categoryName} • Customize optional`;
+  } else {
+    meta.textContent = entry.categoryName;
+  }
 
   main.appendChild(top);
   main.appendChild(meta);
 
-  const action = document.createElement("button");
-  action.type = "button";
-  action.className = "orderMenuAdd";
-  action.dataset.categoryIndex = String(entry.categoryIndex);
-  action.dataset.itemIndex = String(entry.itemIndex);
-  action.textContent = canCustomize ? "Customize" : "Add";
+  const actions = document.createElement("div");
+  actions.className = "orderMenuActions";
+
+  if (hasModifiers && !requiresCustomize) {
+    actions.appendChild(createMenuActionButton("Customize", "customize", entry, true));
+  }
+
+  const primaryLabel = requiresCustomize ? "Customize" : "Add";
+  const primaryAction = requiresCustomize ? "customize" : "add";
+  const singleButton = !hasModifiers || requiresCustomize;
+  actions.appendChild(createMenuActionButton(primaryLabel, primaryAction, entry, false, singleButton));
 
   article.appendChild(main);
-  article.appendChild(action);
+  article.appendChild(actions);
   return article;
 }
 
 function renderMenuItems() {
   if (!menuItemsList) return;
+
+  hideModifierPanel();
 
   const entries = menuEntriesForView();
   menuItemsList.innerHTML = "";
@@ -603,10 +652,31 @@ function showModifierError(message) {
 }
 
 function hideModifierPanel() {
-  if (modifierPanel) modifierPanel.hidden = true;
+  if (!modifierPanel) return;
+
+  modifierPanel.hidden = true;
   if (modifierFields) modifierFields.innerHTML = "";
   clearModifierError();
+
+  if (orderHub && modifierPanel.parentElement !== orderHub) {
+    orderHub.appendChild(modifierPanel);
+  }
+
   activeDraft = null;
+  activeDraftAnchor = null;
+}
+
+function positionModifierPanel() {
+  if (!modifierPanel) return;
+
+  if (activeDraftAnchor && activeDraftAnchor.parentElement) {
+    activeDraftAnchor.insertAdjacentElement("afterend", modifierPanel);
+    return;
+  }
+
+  if (orderHub) {
+    orderHub.appendChild(modifierPanel);
+  }
 }
 
 function modifierOptionLabel(option) {
@@ -660,6 +730,7 @@ function createModifierGroupField(group, groupIndex) {
       checkbox.dataset.optionIndex = String(optionIndex);
 
       const text = document.createElement("span");
+      text.className = "orderModifierOptionText";
       text.textContent = modifierOptionLabel(option);
 
       label.appendChild(checkbox);
@@ -697,7 +768,7 @@ function createModifierGroupField(group, groupIndex) {
   return wrapper;
 }
 
-function startItemDraft(item, quantity = 1) {
+function startItemDraft(item, quantity = 1, anchorCard = null) {
   clearFeedback();
   clearModifierError();
 
@@ -710,11 +781,13 @@ function startItemDraft(item, quantity = 1) {
     item,
     quantity: Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)))
   };
+  activeDraftAnchor = anchorCard instanceof HTMLElement ? anchorCard : null;
 
   const groups = item.modifierGroups || [];
   if (groups.length === 0) {
     addItemToCart(item, [], activeDraft.quantity, true);
     activeDraft = null;
+    activeDraftAnchor = null;
     return;
   }
 
@@ -729,6 +802,7 @@ function startItemDraft(item, quantity = 1) {
     });
   }
 
+  positionModifierPanel();
   if (modifierPanel) modifierPanel.hidden = false;
 }
 
@@ -1110,10 +1184,6 @@ function validatePayload(payload) {
     }
   }
 
-  if (!VALID_OCCASIONS.has(payload.specialOccasion || "None")) {
-    return "Please choose a valid occasion.";
-  }
-
   if (!payload.itemsSummary || payload.itemsSummary.length < 3) {
     return "Please add at least one menu item.";
   }
@@ -1140,7 +1210,7 @@ async function handleSubmit(event) {
     email: (emailInput?.value || "").trim(),
     date: dateSelect?.value || "",
     time: timeSelect?.value || "",
-    specialOccasion: (occasionSelect?.value || "None").trim(),
+    specialOccasion: "None",
     itemsSummary: (itemsInput?.value || "").trim(),
     notes: (notesInput?.value || "").trim(),
     addressLine1: (address1Input?.value || "").trim(),
@@ -1195,7 +1265,6 @@ async function handleSubmit(event) {
 
     form.reset();
     if (orderTypeField) orderTypeField.value = orderType;
-    renderOccasionOptions();
 
     if (dateSelect) dateSelect.value = preservedDate;
     if (timeSelect) {
@@ -1247,17 +1316,25 @@ function initializeMenuInteractions() {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
 
-    const button = target.closest("button.orderMenuAdd");
+    const button = target.closest("button.orderMenuActionBtn");
     if (!(button instanceof HTMLButtonElement)) return;
 
     const categoryIndex = Number(button.dataset.categoryIndex);
     const itemIndex = Number(button.dataset.itemIndex);
+    const actionType = String(button.dataset.actionType || "add").toLowerCase();
 
     const category = normalizedMenu[categoryIndex];
     const item = category?.items?.[itemIndex];
     if (!item) return;
 
-    startItemDraft(item, 1);
+    const card = button.closest(".orderMenuCard");
+
+    if (actionType === "add") {
+      addItemToCart(item, [], 1, true);
+      return;
+    }
+
+    startItemDraft(item, 1, card instanceof HTMLElement ? card : null);
   });
 
   basketToggleBtn?.addEventListener("click", () => {
@@ -1335,7 +1412,6 @@ function initialize() {
 
   renderDateOptions();
   renderTimeOptions();
-  renderOccasionOptions();
   initializeMenuInteractions();
 
   form.addEventListener("submit", handleSubmit);
