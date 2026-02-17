@@ -15,33 +15,105 @@
       <a href="../" class="tile backBtn">← Back</a>
       <div class="headerStack">
         <h1 class="headerTitleNoMargin">Delivery</h1>
-        <p class="subtitle">Coming soon</p>
+        <p class="subtitle">Order online to your door</p>
       </div>
     </div>
 
-    <div class="delivery simplePanel comingSoonPanel">
-      <div class="coffeeMachine" aria-hidden="true">
-        <div class="machineTop"></div>
-        <div class="machineBody">
-          <div class="machineGauge"></div>
-          <div class="machineSpout"></div>
-          <div class="coffeeDrip"></div>
-        </div>
-        <div class="machineBase"></div>
-        <div class="machineCup">
-          <div class="cupCoffee"></div>
-        </div>
+    <section class="tile simplePanel bookingsPanel">
+      <div class="bookingsNotice" id="orderNotice" role="status" aria-live="polite">
+        <strong>Delivery hours:</strong> Tue-Sun, 12:00-17:00. Delivery slots are in 15-minute intervals.
       </div>
-      <div class="loadingTrack" aria-hidden="true">
-        <div class="loadingFill"></div>
-      </div>
-      <div class="comingSoonText">Coming soon</div>
-      <div class="tileSub">Delivery ordering is brewing right now. Check back shortly.</div>
-    </div>
+
+      <form id="orderForm" class="bookingForm" novalidate>
+        <input type="hidden" id="orderType" name="orderType" value="delivery">
+
+        <div class="bookingGrid">
+          <label class="bookingField">
+            <span class="bookingLabel">Name</span>
+            <input id="orderName" name="customerName" type="text" maxlength="80" required autocomplete="name">
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Phone</span>
+            <input id="orderPhone" name="phoneNumber" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
+          </label>
+
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Email</span>
+            <input id="orderEmail" name="email" type="email" maxlength="120" required autocomplete="email">
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Delivery date</span>
+            <select id="orderDate" name="requestedDate" required></select>
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Delivery time</span>
+            <select id="orderTime" name="requestedTime" required></select>
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Occasion (optional)</span>
+            <select id="orderOccasion" name="specialOccasion">
+              <option value="None" selected>None</option>
+              <option value="Birthday">Birthday</option>
+              <option value="Anniversary">Anniversary</option>
+              <option value="Engagement">Engagement</option>
+              <option value="Date Night">Date Night</option>
+              <option value="Business">Business</option>
+              <option value="Celebration">Celebration</option>
+            </select>
+          </label>
+
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Address line 1</span>
+            <input id="orderAddress1" name="addressLine1" type="text" maxlength="120" required autocomplete="address-line1">
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Address line 2 (optional)</span>
+            <input id="orderAddress2" name="addressLine2" type="text" maxlength="120" autocomplete="address-line2">
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Town / City</span>
+            <input id="orderTown" name="townCity" type="text" maxlength="80" required autocomplete="address-level2">
+          </label>
+
+          <label class="bookingField">
+            <span class="bookingLabel">Postcode</span>
+            <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code">
+          </label>
+
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Your order</span>
+            <textarea id="orderItems" name="itemsSummary" rows="4" maxlength="1000" placeholder="List dishes and quantities (for example: 2 x Chicken Tikka Masala, 1 x Pilau Rice)." required></textarea>
+          </label>
+
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Delivery notes (optional)</span>
+            <textarea id="orderNotes" name="notes" rows="2" maxlength="400" placeholder="Gate code, landmark, allergy notes, etc."></textarea>
+          </label>
+        </div>
+
+        <div class="bookingActions">
+          <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Place delivery order</button>
+          <div class="tileSub">
+            Need the menu first?
+            <a href="../menu/" class="footerLink">View menu</a>
+          </div>
+        </div>
+      </form>
+
+      <div id="orderResult" class="bookingResult" hidden></div>
+      <div id="orderError" class="bookingError" role="alert" hidden></div>
+    </section>
 
     <div class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
+  <script src="../orders/order-form.js?v=20260217b"></script>
 </body>
 </html>
