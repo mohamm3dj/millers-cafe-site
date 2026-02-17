@@ -458,15 +458,15 @@ main{
   inset: -20px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 56%),
-    radial-gradient(circle at center, rgba(118, 198, 255, .92) 34%, rgba(118, 198, 255, .48) 50%, rgba(118, 198, 255, 0) 64%);
+    radial-gradient(circle at center, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 54%),
+    radial-gradient(circle at center, rgba(106, 205, 255, .92) 36%, rgba(106, 205, 255, .52) 52%, rgba(106, 205, 255, 0) 66%);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 3px));
   filter: blur(10px) saturate(126%) hue-rotate(0deg);
-  opacity: .64;
+  opacity: .7;
   will-change: filter, opacity, transform;
   z-index: -1;
-  animation: logoGlassGlowShift 9.6s ease-in-out infinite;
+  animation: logoGlassGlowShift 10.5s linear infinite;
 }
 
 .glassHero .logo::after{
@@ -474,11 +474,7 @@ main{
   position: absolute;
   inset: 6px;
   border-radius: 50%;
-  background:
-    linear-gradient(165deg, rgba(255,255,255,.52) 8%, rgba(255,255,255,.16) 34%, rgba(255,255,255,0) 54%),
-    linear-gradient(125deg, rgba(255,255,255,0) 34%, rgba(255,255,255,.58) 48%, rgba(255,255,255,0) 66%);
-  background-size: 100% 100%, 220% 220%;
-  background-position: 0 0, 45% 0;
+  background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 44%);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
   pointer-events: none;
 }
@@ -940,7 +936,7 @@ h1{
 .homeFlipTile{
   padding: 0;
   cursor: pointer;
-  perspective: 1200px;
+  min-height: 176px;
 }
 
 .homeGrid .homeFlipTile:hover,
@@ -973,8 +969,6 @@ h1{
   min-height: 176px;
   height: 100%;
   isolation: isolate;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
 }
 
 .homeFlipFace{
@@ -988,22 +982,16 @@ h1{
   gap: 10px;
   padding: 20px 18px;
   border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-  transition: transform 620ms cubic-bezier(.22,.82,.24,1), opacity 320ms ease;
+  transition: opacity 220ms ease;
 }
 
 .homeFlipFront{
   z-index: 2;
-  transform: rotateY(0deg);
   opacity: 1;
 }
 
 .homeFlipBack{
   z-index: 3;
-  transform: rotateY(180deg);
   opacity: 0;
 }
 
@@ -1012,13 +1000,11 @@ h1{
 }
 
 .homeFlipTile.isFlipped .homeFlipFront{
-  transform: rotateY(-180deg);
   opacity: 0;
   pointer-events: none;
 }
 
 .homeFlipTile.isFlipped .homeFlipBack{
-  transform: rotateY(0deg);
   opacity: 1;
   pointer-events: auto;
 }
@@ -1548,15 +1534,30 @@ h1{
 }
 
 @keyframes logoGlassGlowShift{
-  0%, 100%{
-    opacity: .58;
+  0%{
+    opacity: .56;
     transform: scale(.985);
-    filter: blur(9px) saturate(116%) hue-rotate(0deg);
+    filter: blur(9px) saturate(118%) hue-rotate(0deg);
+  }
+  25%{
+    opacity: .74;
+    transform: scale(1.01);
+    filter: blur(11px) saturate(132%) hue-rotate(85deg);
   }
   50%{
-    opacity: .82;
+    opacity: .84;
     transform: scale(1.03);
-    filter: blur(12px) saturate(142%) hue-rotate(180deg);
+    filter: blur(12px) saturate(142%) hue-rotate(165deg);
+  }
+  75%{
+    opacity: .74;
+    transform: scale(1.01);
+    filter: blur(11px) saturate(134%) hue-rotate(245deg);
+  }
+  100%{
+    opacity: .56;
+    transform: scale(.985);
+    filter: blur(9px) saturate(118%) hue-rotate(360deg);
   }
 }
 
