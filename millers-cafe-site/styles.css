@@ -2023,3 +2023,41 @@ h1{
 .no-motion .homeFlipTile.isFlipped .homeFlipBack{
   display: grid;
 }
+
+/* Hard stability lock for touch devices: no tile growth/jump */
+.tile,
+.tile:hover,
+.tile:active,
+.homeGrid .homeTile,
+.homeGrid .homeTile:hover,
+.homeGrid .homeTile:active,
+.homeGrid .homeTileIcon,
+.homeGrid .homeTile:hover .homeTileIcon,
+.homeGrid .homeTile .tileCta,
+.homeGrid .homeTile:hover .tileCta,
+.homeGrid .homeTile:hover .tileCta::after,
+.homeGrid .homeFlipTile,
+.homeGrid .homeFlipTile:hover,
+.homeGrid .homeFlipTile:active,
+.homeGrid .homeFlipTile.isFlipped,
+.glassHero,
+.glassHero h1,
+.glassHero .heroStatus,
+.glassHero .logo,
+.glassHero .logo::before,
+.glassHero .logo::after {
+  transform: none !important;
+}
+
+/* Disable hero/logo ambient animations on home */
+.glassHero .logo::before,
+.glassHero .logo::after,
+.homeGrid .homeTile,
+.homeGrid .homeTileIcon,
+.homeGrid .homeTileIcon::after,
+.homeGrid .homeTile .tileCta::before,
+.homeGrid .homeTile .tileCta::after,
+.rippleHost,
+.tileRipple {
+  animation: none !important;
+}
