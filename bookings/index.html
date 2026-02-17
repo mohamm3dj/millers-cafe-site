@@ -7,17 +7,29 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260217j">
+  <link rel="stylesheet" href="../styles.css?v=20260217k">
 </head>
 <body>
-  <main>
-    <div class="header">
+  <main class="bookingsPage">
+    <div class="bookingsTopBar">
       <a href="../" class="tile backBtn">← Back</a>
-      <div class="headerStack">
-        <h1 class="headerTitleNoMargin">Bookings</h1>
-        <p class="subtitle">Book online in real time</p>
-      </div>
     </div>
+
+    <section class="header glassHero bookingsHero">
+      <div class="logo">
+        <span class="logoSteam logoSteam1" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam2" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam3" aria-hidden="true"></span>
+        <img class="logoImg" src="../assets/millers-logo.jpg" alt="Millers Cafe logo">
+      </div>
+      <h1>Bookings</h1>
+      <p class="subtitle">Book online in real time</p>
+      <div class="bookingsHeroPills" aria-hidden="true">
+        <span class="bookingsHeroPill">Tue-Sun, 12:00-16:00</span>
+        <span class="bookingsHeroPill">15-minute slots</span>
+        <span class="bookingsHeroPill">Instant confirmation</span>
+      </div>
+    </section>
 
     <section class="tile simplePanel bookingsPanel">
       <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
