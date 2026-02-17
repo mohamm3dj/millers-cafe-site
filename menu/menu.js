@@ -138,9 +138,10 @@ function setJumpMenuCollapsed(collapsed, options = {}) {
   if (!menuJumpWrap || !jumpMenuToggle || !menuJumpChips) return;
 
   menuJumpWrap.classList.toggle("isCollapsed", collapsed);
-  jumpMenuToggle.textContent = collapsed ? "Show" : "Minimise";
+  jumpMenuToggle.textContent = collapsed ? "Show sections" : "Hide sections";
   jumpMenuToggle.setAttribute("aria-expanded", String(!collapsed));
   menuJumpChips.setAttribute("aria-hidden", String(collapsed));
+  menuJumpChips.hidden = collapsed;
 
   if (options.persist !== false) {
     try {

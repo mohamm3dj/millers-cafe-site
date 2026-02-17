@@ -1752,13 +1752,16 @@ h1{
 .jumpMenuToggle{
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 7px 12px;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 620;
-  letter-spacing: .02em;
+  line-height: 1;
+  letter-spacing: .045em;
+  text-transform: uppercase;
   color: #334155;
-  background: rgba(255, 255, 255, .76);
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, .06);
   cursor: pointer;
 }
 
@@ -1805,9 +1808,6 @@ h1{
   overflow-x: visible;
   scrollbar-width: none;
   gap: 8px;
-  max-height: 280px;
-  opacity: 1;
-  transition: max-height 240ms ease, opacity 180ms ease;
 }
 
 .menuJumpChips::-webkit-scrollbar{
@@ -1815,10 +1815,7 @@ h1{
 }
 
 .menuJumpWrap.isCollapsed .menuJumpChips{
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
+  display: none;
 }
 
 .jumpChip{
