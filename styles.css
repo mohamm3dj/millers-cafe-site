@@ -448,8 +448,8 @@ main{
     0 0 0 1px rgba(255,255,255,.84),
     inset 0 2px 1px rgba(255,255,255,.98),
     inset 0 -8px 16px rgba(162, 184, 205, .2);
-  transform: translate3d(calc(var(--px) * 9px), calc(var(--py) * 8px), 0);
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transform: none;
+  transition: box-shadow 220ms ease;
 }
 
 .glassHero .logo::before{
@@ -460,13 +460,13 @@ main{
   background: radial-gradient(circle at center, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 66%);
   border: 2px solid rgba(20, 184, 166, .34);
   filter: blur(6px);
-  opacity: .62;
-  will-change: opacity, border-color, box-shadow;
+  opacity: .5;
+  will-change: auto;
   box-shadow:
-    0 0 0 2px rgba(20, 184, 166, .18),
-    0 0 26px rgba(20, 184, 166, .34);
+    0 0 0 2px rgba(20, 184, 166, .14),
+    0 0 18px rgba(20, 184, 166, .2);
   z-index: -1;
-  animation: logoGlassGlowShift 11s ease-in-out infinite;
+  animation: none;
 }
 
 .glassHero .logo::after{
@@ -508,8 +508,8 @@ h1{
   letter-spacing: -.3px;
   color: #0b1220;
   text-shadow: 0 1px 0 rgba(255,255,255,.65);
-  transform: translate3d(calc(var(--px) * 5px), calc(var(--py) * 4px), 0);
-  transition: transform 230ms ease;
+  transform: none;
+  transition: none;
 }
 
 .subtitle{
@@ -526,8 +526,8 @@ h1{
   font-size: 14px;
   line-height: 1.45;
   color: #5b6677;
-  transform: translate3d(calc(var(--px) * 3px), calc(var(--py) * 2px), 0);
-  transition: transform 240ms ease;
+  transform: none;
+  transition: none;
 }
 
 .heroMeta{
@@ -568,8 +568,8 @@ h1{
   border: 1px solid rgba(255,255,255,.8);
   background: rgba(255,255,255,.58);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
-  transform: translate3d(calc(var(--px) * 2px), calc(var(--py) * 1.5px), 0);
-  transition: transform 250ms ease;
+  transform: none;
+  transition: none;
 }
 
 .statusDot{
@@ -980,9 +980,7 @@ h1{
   min-height: 176px;
   height: 100%;
   isolation: isolate;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-  transition: transform 460ms cubic-bezier(.2,.82,.24,1);
+  transition: transform 420ms cubic-bezier(.2,.82,.24,1);
 }
 
 .homeFlipFace{
@@ -996,32 +994,35 @@ h1{
   gap: 10px;
   padding: 20px 18px;
   border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transition: transform 420ms cubic-bezier(.2,.82,.24,1), opacity 280ms ease;
+  transform-origin: center center;
 }
 
 .homeFlipFront{
   z-index: 1;
+  transform: perspective(960px) rotateY(0deg);
+  opacity: 1;
 }
 
 .homeFlipBack{
-  transform: rotateY(180deg);
+  transform: perspective(960px) rotateY(90deg);
   z-index: 2;
+  opacity: 0;
 }
 
 .homeFlipTile:not(.isFlipped) .homeFlipBack{
   pointer-events: none;
 }
 
-.homeFlipTile.isFlipped .homeFlipInner{
-  transform: rotateY(180deg);
-}
-
 .homeFlipTile.isFlipped .homeFlipFront{
+  transform: perspective(960px) rotateY(-90deg);
+  opacity: 0;
   pointer-events: none;
 }
 
 .homeFlipTile.isFlipped .homeFlipBack{
+  transform: perspective(960px) rotateY(0deg);
+  opacity: 1;
   pointer-events: auto;
 }
 

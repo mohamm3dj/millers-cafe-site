@@ -228,7 +228,7 @@ function setupFlipTile(tile) {
 
 setupFlipTile(document.getElementById("locationFlipTile"));
 setupFlipTile(document.getElementById("contactFlipTile"));
-setupHeroParallax();
+// Hero motion intentionally disabled for a cleaner static header.
+// setupHeroParallax();
 // disabled: static mode
 // setupRippleEffects();
-
