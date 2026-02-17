@@ -5,11 +5,11 @@ const BUSINESS_TIMEZONE = "Europe/London";
 const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 17 * 60;
 const SLOT_STEP_MINUTES = 15;
+const DEFAULT_DURATION_MINUTES = 90;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
 
 const form = document.getElementById("bookingForm");
 const noticeEl = document.getElementById("bookingsNotice");
-const metaEl = document.getElementById("bookingMeta");
 const resultEl = document.getElementById("bookingResult");
 const errorEl = document.getElementById("bookingError");
 const submitBtn = document.getElementById("bookingSubmit");
@@ -20,7 +20,6 @@ const emailInput = document.getElementById("bookingEmail");
 const dateInput = document.getElementById("bookingDate");
 const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
-const durationSelect = document.getElementById("bookingDuration");
 const notesInput = document.getElementById("bookingNotes");
 
 function pad2(value) {
@@ -87,11 +86,6 @@ function setNotice(message, warning = false) {
   if (!noticeEl) return;
   noticeEl.textContent = message;
   noticeEl.classList.toggle("isWarning", warning);
-}
-
-function setMeta(message) {
-  if (!metaEl) return;
-  metaEl.textContent = message;
 }
 
 function clearFeedback() {
@@ -163,58 +157,14 @@ function renderTimeOptions(slotRows) {
 async function loadAvailability() {
   clearFeedback();
   const date = dateInput?.value || "";
-  const partySize = Number(partySizeInput?.value || "2");
-  const durationMinutes = Number(durationSelect?.value || "90");
-
-  if (!date) {
+  if (!date || isBookableDay(date)) {
     renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
-    setMeta("Choose a date to load live availability.");
-    return;
-  }
-
-  if (!isBookableDay(date)) {
-    renderTimeOptions(slotTimes().map((time) => ({ time, available: false })));
-    setNotice("Bookings are available Tue-Sun only. Please choose another date.", true);
-    setMeta("Selected day is closed for table bookings.");
-    return;
-  }
-
-  const params = new URLSearchParams({
-    date,
-    partySize: String(Math.max(1, partySize || 1)),
-    durationMinutes: String(Math.max(15, durationMinutes || 90))
-  });
-
-  try {
-    const response = await fetch(`${API_BASE}/slots?${params.toString()}`, {
-      method: "GET",
-      headers: { Accept: "application/json" }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Availability service returned ${response.status}.`);
-    }
-
-    const payload = await response.json();
-    const rows = Array.isArray(payload.slots) ? payload.slots : [];
-    renderTimeOptions(rows);
-
-    const availableCount = rows.filter((row) => row.available).length;
-    if (payload.open === false) {
-      setNotice(payload.message || "Selected date is closed for bookings.", true);
-      setMeta("Selected day is closed.");
-      return;
-    }
-
     setNotice("Service hours: Tue-Sun, 12:00-17:00. Bookings are in 15-minute intervals.", false);
-    setMeta(availableCount > 0
-      ? `Live availability loaded. ${availableCount} time slot${availableCount === 1 ? "" : "s"} available.`
-      : "No availability left for this date.");
-  } catch (error) {
-    renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
-    setNotice("Live availability is temporarily unavailable. Final checks happen when you submit.", true);
-    setMeta("Could not load live availability.");
+    return;
   }
+
+  renderTimeOptions(slotTimes().map((time) => ({ time, available: false })));
+  setNotice("Bookings are available Tue-Sun only. Please choose another date.", true);
 }
 
 function validateClientPayload(payload) {
@@ -270,7 +220,7 @@ async function handleSubmit(event) {
     date: dateInput?.value || "",
     time: timeSelect?.value || "",
     partySize: Number(partySizeInput?.value || "0"),
-    durationMinutes: Number(durationSelect?.value || "90"),
+    durationMinutes: DEFAULT_DURATION_MINUTES,
     notes: (notesInput?.value || "").trim()
   };
 
@@ -301,7 +251,6 @@ async function handleSubmit(event) {
 
     if (!response.ok) {
       showError(body.error || "Booking failed. Please try another slot.");
-      await loadAvailability();
       return;
     }
 
@@ -318,7 +267,6 @@ async function handleSubmit(event) {
     form.reset();
     if (dateInput) dateInput.value = preservedDate;
     if (partySizeInput) partySizeInput.value = "2";
-    if (durationSelect) durationSelect.value = "90";
     await loadAvailability();
   } catch (error) {
     showError("Booking service is currently unavailable. Please try again shortly.");
@@ -341,8 +289,6 @@ function initialize() {
 
   form.addEventListener("submit", handleSubmit);
   dateInput?.addEventListener("change", loadAvailability);
-  partySizeInput?.addEventListener("input", loadAvailability);
-  durationSelect?.addEventListener("change", loadAvailability);
 }
 
 initialize();

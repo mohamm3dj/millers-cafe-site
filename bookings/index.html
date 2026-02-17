@@ -56,17 +56,6 @@
             <input id="bookingPartySize" name="partySize" type="number" min="1" max="40" step="1" value="2" required>
           </label>
 
-          <label class="bookingField">
-            <span class="bookingLabel">Duration (mins)</span>
-            <select id="bookingDuration" name="durationMinutes">
-              <option value="60">60</option>
-              <option value="75">75</option>
-              <option value="90" selected>90</option>
-              <option value="105">105</option>
-              <option value="120">120</option>
-            </select>
-          </label>
-
           <label class="bookingField bookingFieldWide">
             <span class="bookingLabel">Notes (optional)</span>
             <textarea id="bookingNotes" name="notes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
@@ -75,7 +64,6 @@
 
         <div class="bookingActions">
           <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Book table</button>
-          <p class="bookingMeta" id="bookingMeta">Availability updates automatically for your selected date.</p>
         </div>
       </form>
 
@@ -87,6 +75,6 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="./bookings.js?v=20260217a"></script>
+  <script src="./bookings.js?v=20260217b"></script>
 </body>
 </html>
