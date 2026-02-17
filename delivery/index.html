@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260217j">
+  <link rel="stylesheet" href="../styles.css?v=20260217k">
 </head>
 <body>
   <main>
@@ -86,10 +86,52 @@
             <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code">
           </label>
 
-          <label class="bookingField bookingFieldWide">
+          <div class="bookingField bookingFieldWide">
             <span class="bookingLabel">Your order</span>
-            <textarea id="orderItems" name="itemsSummary" rows="4" maxlength="1000" placeholder="List dishes and quantities (for example: 2 x Chicken Tikka Masala, 1 x Pilau Rice)." required></textarea>
-          </label>
+            <div class="orderComposer">
+              <div class="orderComposerTop">
+                <label class="orderMiniField">
+                  <span>Category</span>
+                  <select id="menuCategory" aria-label="Menu category"></select>
+                </label>
+
+                <label class="orderMiniField">
+                  <span>Item</span>
+                  <select id="menuItem" aria-label="Menu item"></select>
+                </label>
+
+                <label class="orderMiniField orderMiniFieldQty">
+                  <span>Qty</span>
+                  <select id="menuQuantity" aria-label="Item quantity"></select>
+                </label>
+
+                <button id="orderAddItem" class="orderAddBtn" type="button">Customize + add</button>
+              </div>
+
+              <div id="orderModifierPanel" class="orderModifierPanel" hidden>
+                <div class="orderModifierHead">
+                  <strong id="orderModifierTitle">Customize item</strong>
+                </div>
+                <div id="orderModifierFields" class="orderModifierFields"></div>
+                <div id="orderModifierError" class="orderModifierError" role="alert" hidden></div>
+                <div class="orderModifierActions">
+                  <button id="orderModifierCancel" class="orderCancelBtn" type="button">Cancel</button>
+                  <button id="orderModifierConfirm" class="orderConfirmBtn" type="button">Add to order</button>
+                </div>
+              </div>
+
+              <div id="orderCartEmpty" class="orderCartEmpty">No items added yet.</div>
+              <ul id="orderCartList" class="orderCartList" hidden></ul>
+
+              <div class="orderCartTotal">
+                <span>Total</span>
+                <strong id="orderTotal">£0.00</strong>
+              </div>
+
+              <p id="orderSummaryPreview" class="bookingMeta">Add items to build your order.</p>
+              <input id="orderItems" name="itemsSummary" type="hidden">
+            </div>
+          </div>
 
           <label class="bookingField bookingFieldWide">
             <span class="bookingLabel">Delivery notes (optional)</span>
@@ -114,6 +156,7 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="../orders/order-form.js?v=20260217b"></script>
+  <script src="../orders/menu-catalog.js?v=20260217a"></script>
+  <script src="../orders/order-form.js?v=20260217c"></script>
 </body>
 </html>

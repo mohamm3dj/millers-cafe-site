@@ -7,6 +7,8 @@ const SLOT_STEP_MINUTES = 15;
 const ASAP_VALUE = "ASAP";
 const COLLECTION_MIN_LEAD_MINUTES = 30;
 const DELIVERY_MIN_LEAD_MINUTES = 60;
+const COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
+const DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat
 const VALID_ORDER_TYPES = new Set(["collection", "delivery"]);
 const VALID_OCCASIONS = new Set([
@@ -71,6 +73,12 @@ function normalizeOrderType(rawType) {
 
 function leadMinutesForOrderType(orderType) {
   return orderType === "delivery" ? DELIVERY_MIN_LEAD_MINUTES : COLLECTION_MIN_LEAD_MINUTES;
+}
+
+function earliestScheduledMinutesForOrderType(orderType) {
+  return orderType === "delivery"
+    ? DELIVERY_EARLIEST_SCHEDULED_MINUTES
+    : COLLECTION_EARLIEST_SCHEDULED_MINUTES;
 }
 
 function normalizePhoneDigits(phone) {
@@ -146,6 +154,7 @@ export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection")
 
   const orderType = normalizeOrderType(orderTypeRaw) || "collection";
   const timeValue = String(clock || "").trim().toUpperCase();
+  const earliestScheduled = earliestScheduledMinutesForOrderType(orderType);
   const now = londonNowDateAndMinutes();
   const isToday = isoDate === now.dateISO;
 
@@ -164,8 +173,13 @@ export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection")
     return { ok: false, status: 400, error: "Time must be in HH:mm format or ASAP." };
   }
 
-  if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return { ok: false, status: 400, error: "Orders must be between 12:00 and 17:00." };
+  if (minutes < earliestScheduled || minutes > SERVICE_END_MINUTES) {
+    const orderLabel = orderType === "delivery" ? "Delivery" : "Collection";
+    return {
+      ok: false,
+      status: 400,
+      error: `${orderLabel} scheduled times must be between ${minutesToClock(earliestScheduled)} and 17:00.`
+    };
   }
 
   if (minutes % SLOT_STEP_MINUTES !== 0) {
@@ -174,7 +188,7 @@ export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection")
 
   if (isToday) {
     const minimum = Math.max(
-      SERVICE_START_MINUTES,
+      earliestScheduled,
       roundUpToStep(now.minutesNow + leadMinutesForOrderType(orderType), SLOT_STEP_MINUTES)
     );
 

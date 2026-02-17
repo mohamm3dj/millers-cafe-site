@@ -1,4 +1,4 @@
-const CACHE_NAME = "millers-v39";
+const CACHE_NAME = "millers-v40";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,6 +15,7 @@ const ASSETS = [
   "./delivery/",
   "./delivery/index.html",
   "./orders/order-form.js",
+  "./orders/menu-catalog.js",
   "./bookings/",
   "./bookings/index.html",
   "./bookings/bookings.js"

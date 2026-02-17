@@ -2447,3 +2447,319 @@ h1{
     font-size: 13px;
   }
 }
+
+/* =========================
+   Orders composer
+   ========================= */
+
+.orderComposer{
+  display: grid;
+  gap: 10px;
+  padding: 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, .12);
+  background: rgba(248, 250, 252, .84);
+}
+
+.orderComposerTop{
+  display: grid;
+  grid-template-columns: 1.3fr 1.6fr .6fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.orderMiniField{
+  display: grid;
+  gap: 4px;
+}
+
+.orderMiniField span{
+  font-size: 11px;
+  font-weight: 610;
+  color: #475569;
+  letter-spacing: .02em;
+}
+
+.orderMiniField select{
+  width: 100%;
+  border-radius: 11px;
+  border: 1px solid rgba(15, 23, 42, .15);
+  background: rgba(255,255,255,.95);
+  color: #0f172a;
+  min-height: 42px;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.orderMiniField select:focus{
+  outline: 2px solid rgba(15, 118, 110, .3);
+  outline-offset: 1px;
+  border-color: rgba(15, 118, 110, .4);
+}
+
+.orderMiniFieldQty{
+  min-width: 80px;
+}
+
+.orderAddBtn{
+  border: 0;
+  border-radius: 11px;
+  padding: 11px 13px;
+  min-height: 42px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 630;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f766e, #164e63);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, .16);
+  cursor: pointer;
+}
+
+.orderAddBtn:hover{
+  filter: brightness(1.04);
+}
+
+.orderAddBtn:disabled{
+  opacity: .62;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.orderModifierPanel{
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(15, 118, 110, .26);
+  background: rgba(240, 253, 250, .72);
+}
+
+.orderModifierHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.orderModifierFields{
+  display: grid;
+  gap: 10px;
+}
+
+.orderModifierGroup{
+  border: 1px solid rgba(15, 23, 42, .1);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(255,255,255,.9);
+  display: grid;
+  gap: 7px;
+}
+
+.orderModifierLegend{
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 620;
+  color: #0f172a;
+}
+
+.orderModifierHint{
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.orderModifierSelect,
+.orderModifierText{
+  width: 100%;
+  border-radius: 9px;
+  border: 1px solid rgba(15, 23, 42, .14);
+  background: rgba(255,255,255,.95);
+  color: #0f172a;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.orderModifierOptions{
+  display: grid;
+  gap: 6px;
+}
+
+.orderModifierOption{
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.orderModifierError{
+  border-radius: 10px;
+  border: 1px solid rgba(220, 38, 38, .22);
+  background: rgba(254, 242, 242, .92);
+  color: #7f1d1d;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.orderModifierActions{
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.orderCancelBtn,
+.orderConfirmBtn{
+  border: 0;
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 610;
+  cursor: pointer;
+}
+
+.orderCancelBtn{
+  color: #334155;
+  background: rgba(226, 232, 240, .9);
+}
+
+.orderConfirmBtn{
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f766e, #0f172a);
+}
+
+.orderCartEmpty{
+  border-radius: 10px;
+  border: 1px dashed rgba(15, 23, 42, .2);
+  background: rgba(255,255,255,.75);
+  color: #64748b;
+  font-size: 13px;
+  padding: 10px 11px;
+}
+
+.orderCartList{
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.orderCartItem{
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, .12);
+  background: rgba(255,255,255,.95);
+  padding: 9px;
+  display: grid;
+  gap: 6px;
+}
+
+.orderCartTop{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.orderCartName{
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.orderCartPrice{
+  font-size: 13px;
+  font-weight: 640;
+  color: #0f172a;
+}
+
+.orderCartUnit{
+  font-size: 12px;
+  color: #475569;
+}
+
+.orderCartModifiers{
+  font-size: 12px;
+  color: #334155;
+}
+
+.orderCartActionsRow{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orderCartBtn{
+  border: 0;
+  border-radius: 8px;
+  min-height: 30px;
+  min-width: 30px;
+  padding: 6px 8px;
+  background: rgba(226, 232, 240, .92);
+  color: #0f172a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.orderCartBtnDanger{
+  margin-left: auto;
+  color: #7f1d1d;
+  background: rgba(254, 226, 226, .95);
+}
+
+.orderCartQty{
+  border-radius: 8px;
+  min-width: 30px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(226, 232, 240, .72);
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.orderCartTotal{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(15, 23, 42, .12);
+  padding-top: 7px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.orderCartTotal strong{
+  font-size: 16px;
+}
+
+@media (max-width: 940px){
+  .orderComposerTop{
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .orderMiniFieldQty{
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px){
+  .orderComposerTop{
+    grid-template-columns: 1fr;
+  }
+
+  .orderModifierActions{
+    justify-content: stretch;
+  }
+
+  .orderCancelBtn,
+  .orderConfirmBtn{
+    flex: 1;
+  }
+}
