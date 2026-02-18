@@ -2258,6 +2258,10 @@ h1{
   overflow: hidden;
 }
 
+.orderPage .bookingsPanel{
+  overflow: visible;
+}
+
 .bookingsPanel::before{
   content: "";
   position: absolute;
@@ -4162,7 +4166,7 @@ h1{
 
 .stickyCheckoutBar{
   position: sticky;
-  top: 10px;
+  top: calc(env(safe-area-inset-top) + 8px);
   display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -4178,7 +4182,7 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.95);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  z-index: 7;
+  z-index: 24;
 }
 
 .stickyCheckoutBar.isVisible{
@@ -4291,7 +4295,7 @@ h1{
   }
 
   .stickyCheckoutBar{
-    top: 8px;
+    top: calc(env(safe-area-inset-top) + 6px);
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px;
     padding: 7px 8px;
