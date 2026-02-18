@@ -50,6 +50,15 @@ const FORCE_CUSTOMIZE_CATEGORY_KEYS = new Set([
   "kiddies corner"
 ]);
 
+const POPULAR_ITEM_NAME_KEYS = new Set([
+  "butter chicken",
+  "chicken tikka masala",
+  "tandoori mixed starter",
+  "garlic naan",
+  "keema naan",
+  "chicken biryani"
+].map((name) => normalizeKey(name)));
+
 const form = document.getElementById("orderForm");
 const noticeEl = document.getElementById("orderNotice");
 const resultEl = document.getElementById("orderResult");
@@ -81,6 +90,7 @@ const deliveryAreaHint = document.getElementById("deliveryAreaHint");
 
 const menuSearchInput = document.getElementById("menuSearch");
 const menuCategoryChips = document.getElementById("menuCategoryChips");
+const orderActiveCategoryPill = document.getElementById("orderActiveCategoryPill");
 const menuItemsList = document.getElementById("menuItemsList");
 const orderHub = document.querySelector(".orderHub");
 
@@ -135,6 +145,11 @@ let orderCalendarViewMonthUTC = null;
 let isOrderCalendarOpen = false;
 let lastRenderedTimeRows = [];
 let currentOrderStep = 1;
+let menuCardElements = [];
+let activeCategorySyncRaf = null;
+let lastActiveCategoryPillText = "";
+let pendingRemovedCartLine = null;
+let removeUndoTimer = null;
 
 const normalizedMenu = normalizeMenuCatalog(window.MILLERS_ORDER_MENU);
 
@@ -357,39 +372,67 @@ function normalizePostcodeField() {
   postcodeInput.value = normalizeUkPostcode(postcodeInput.value);
 }
 
+function renderDeliveryAreaHint(primaryText, secondaryText = "", state = "") {
+  if (!deliveryAreaHint) return;
+
+  deliveryAreaHint.replaceChildren();
+  deliveryAreaHint.classList.remove("isWarning", "isOk");
+
+  if (!primaryText) return;
+
+  const primary = document.createElement("span");
+  primary.className = "deliveryAreaHintLine";
+  primary.textContent = primaryText;
+  deliveryAreaHint.appendChild(primary);
+
+  if (secondaryText) {
+    const secondary = document.createElement("span");
+    secondary.className = "deliveryAreaHintLine isSecondary";
+    secondary.textContent = secondaryText;
+    deliveryAreaHint.appendChild(secondary);
+  }
+
+  if (state === "warning") deliveryAreaHint.classList.add("isWarning");
+  if (state === "ok") deliveryAreaHint.classList.add("isOk");
+}
+
 function updateDeliveryAreaHint() {
   if (!deliveryAreaHint || !postcodeInput) return;
   const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
   if (!isDelivery) {
-    deliveryAreaHint.textContent = "";
-    deliveryAreaHint.classList.remove("isWarning", "isOk");
+    renderDeliveryAreaHint("");
     return;
   }
 
   const value = normalizeUkPostcode(postcodeInput.value);
   if (!value) {
-    deliveryAreaHint.textContent = "";
-    deliveryAreaHint.classList.remove("isWarning", "isOk");
+    renderDeliveryAreaHint("");
     return;
   }
 
   if (!UK_POSTCODE_REGEX.test(value)) {
-    deliveryAreaHint.textContent = "Use a valid UK postcode format, e.g. DN37 0JZ.";
-    deliveryAreaHint.classList.add("isWarning");
-    deliveryAreaHint.classList.remove("isOk");
+    renderDeliveryAreaHint(
+      "Use a valid UK postcode format, e.g. DN37 0JZ.",
+      "",
+      "warning"
+    );
     return;
   }
 
   if (!isLikelyDeliveryPostcode(value)) {
-    deliveryAreaHint.textContent = "This postcode may be outside our normal delivery area. We will confirm after checkout.";
-    deliveryAreaHint.classList.add("isWarning");
-    deliveryAreaHint.classList.remove("isOk");
+    renderDeliveryAreaHint(
+      "This postcode may be outside our normal delivery area.",
+      "Estimated fee and ETA will be confirmed after checkout.",
+      "warning"
+    );
     return;
   }
 
-  deliveryAreaHint.textContent = "This postcode looks within our usual delivery area.";
-  deliveryAreaHint.classList.remove("isWarning");
-  deliveryAreaHint.classList.add("isOk");
+  renderDeliveryAreaHint(
+    "This postcode looks within our usual delivery area.",
+    "Typical delivery fee from £2.00. Typical arrival: 35-55 minutes.",
+    "ok"
+  );
 }
 
 function ensureInlineErrorElement(input) {
@@ -527,6 +570,22 @@ function updateOrderReviewRow() {
   orderReviewText.textContent = `${typeLabel} · ${totalQuantity} ${dishLabel} · ${formatGBP(totalPrice)} · ${dateLabel} at ${timeLabel}`;
 }
 
+function updateOrderFlowStepLabels() {
+  const stepOneText = "Step 1 of 2 · Select dishes";
+  const stepTwoText = "Step 2 of 2 · Confirm order";
+
+  if (orderStepBadge1) {
+    orderStepBadge1.textContent = stepOneText;
+    orderStepBadge1.setAttribute("aria-current", currentOrderStep === 1 ? "step" : "false");
+  }
+
+  if (orderStepBadge2) {
+    orderStepBadge2.textContent = stepTwoText;
+    orderStepBadge2.setAttribute("aria-current", currentOrderStep === 2 ? "step" : "false");
+    orderStepBadge2.classList.toggle("isLocked", cartItems.length === 0 && currentOrderStep === 1);
+  }
+}
+
 function setOrderStep(step, options = {}) {
   const nextStep = step === 2 ? 2 : 1;
   const hasItems = cartItems.length > 0;
@@ -546,6 +605,7 @@ function setOrderStep(step, options = {}) {
 
   orderStepBadge1?.classList.toggle("isActive", currentOrderStep === 1);
   orderStepBadge2?.classList.toggle("isActive", currentOrderStep === 2);
+  updateOrderFlowStepLabels();
 
   if (currentOrderStep === 2) {
     setBasketOpen(false);
@@ -798,6 +858,7 @@ function updateStickyCheckoutBar() {
   if (orderHub) {
     orderHub.classList.toggle("hasStickySummary", showBar);
   }
+  queueActiveCategoryPillSync();
 }
 
 function renderTimeOptions() {
@@ -885,16 +946,51 @@ function showResult(message, referenceText) {
   resultEl.hidden = false;
   resultEl.textContent = "";
 
-  const text = document.createElement("div");
-  text.textContent = message;
-  resultEl.appendChild(text);
+  const card = document.createElement("section");
+  card.className = "orderResultCard";
+
+  const title = document.createElement("h3");
+  title.className = "orderResultTitle";
+  title.textContent = "Order sent";
+  card.appendChild(title);
+
+  const lead = document.createElement("p");
+  lead.className = "orderResultLead";
+  lead.textContent = message;
+  card.appendChild(lead);
 
   if (referenceText) {
-    const reference = document.createElement("div");
-    reference.className = "bookingRef";
+    const reference = document.createElement("p");
+    reference.className = "bookingRef orderResultRef";
     reference.textContent = referenceText;
-    resultEl.appendChild(reference);
+    card.appendChild(reference);
   }
+
+  const actions = document.createElement("div");
+  actions.className = "orderResultActions";
+
+  const trackButton = document.createElement("button");
+  trackButton.type = "button";
+  trackButton.className = "orderResultActionBtn";
+  trackButton.dataset.resultAction = "track";
+  trackButton.textContent = "Track order";
+  actions.appendChild(trackButton);
+
+  const newOrderButton = document.createElement("button");
+  newOrderButton.type = "button";
+  newOrderButton.className = "orderResultActionBtn";
+  newOrderButton.dataset.resultAction = "new";
+  newOrderButton.textContent = "New order";
+  actions.appendChild(newOrderButton);
+
+  const callLink = document.createElement("a");
+  callLink.className = "orderResultActionBtn isLink";
+  callLink.href = "tel:01472828600";
+  callLink.textContent = "Call us";
+  actions.appendChild(callLink);
+
+  card.appendChild(actions);
+  resultEl.appendChild(card);
 }
 
 function stopStatusPolling() {
@@ -1227,6 +1323,76 @@ function entryRequiresCustomize(entry) {
   return FORCE_CUSTOMIZE_CATEGORY_KEYS.has(entry.categoryKey) || itemHasRequiredModifiers(entry.item);
 }
 
+function itemBadgeDescriptors(entry) {
+  const tags = new Set((entry.item.tags || []).map((tag) => normalizeKey(tag)));
+  const itemKey = normalizeKey(entry.item.name);
+  const descriptors = [];
+
+  if (tags.has("popular") || POPULAR_ITEM_NAME_KEYS.has(itemKey)) {
+    descriptors.push({ label: "Popular", className: "isPopular" });
+  }
+  if (tags.has("spicy") || tags.has("hot") || tags.has("very hot")) {
+    descriptors.push({ label: "Spicy", className: "isSpicy" });
+  }
+  if (tags.has("vegetarian") || tags.has("vegan")) {
+    descriptors.push({ label: tags.has("vegan") ? "Vegan" : "Veg", className: "isVeg" });
+  }
+
+  return descriptors.slice(0, 3);
+}
+
+function activeCategoryFromViewport() {
+  if (menuCardElements.length === 0) return "";
+
+  const viewportOffset = stickyCheckoutBar?.classList.contains("isVisible")
+    ? Math.max(stickyCheckoutBar.getBoundingClientRect().height + 32, 120)
+    : 120;
+
+  let fallbackCategory = menuCardElements[0]?.dataset.category || "";
+  for (const card of menuCardElements) {
+    const rect = card.getBoundingClientRect();
+    if (rect.bottom <= viewportOffset) continue;
+    fallbackCategory = card.dataset.category || fallbackCategory;
+    break;
+  }
+
+  return fallbackCategory;
+}
+
+function updateActiveCategoryPill(force = false) {
+  if (!orderActiveCategoryPill) return;
+
+  let category = "";
+  if (searchQuery) {
+    category = activeCategoryFromViewport();
+  } else {
+    category = selectedCategory || defaultCategoryName();
+  }
+
+  if (!category) {
+    orderActiveCategoryPill.hidden = true;
+    orderActiveCategoryPill.textContent = "";
+    lastActiveCategoryPillText = "";
+    return;
+  }
+
+  const text = searchQuery ? `Showing: ${category}` : `Section: ${category}`;
+  if (!force && text === lastActiveCategoryPillText) return;
+
+  lastActiveCategoryPillText = text;
+  orderActiveCategoryPill.hidden = false;
+  orderActiveCategoryPill.textContent = text;
+}
+
+function queueActiveCategoryPillSync() {
+  if (!searchQuery) return;
+  if (activeCategorySyncRaf) cancelAnimationFrame(activeCategorySyncRaf);
+  activeCategorySyncRaf = requestAnimationFrame(() => {
+    activeCategorySyncRaf = null;
+    updateActiveCategoryPill();
+  });
+}
+
 function renderCategoryChips() {
   if (!menuCategoryChips) return;
 
@@ -1276,6 +1442,7 @@ function createMenuActionButton(label, actionType, entry, secondary = false, sin
 function buildMenuCard(entry) {
   const article = document.createElement("article");
   article.className = "orderMenuCard";
+  article.dataset.category = entry.categoryName;
 
   const main = document.createElement("div");
   main.className = "orderMenuMain";
@@ -1294,6 +1461,22 @@ function buildMenuCard(entry) {
   top.appendChild(name);
   top.appendChild(price);
 
+  const badgeDescriptors = itemBadgeDescriptors(entry);
+  if (badgeDescriptors.length > 0) {
+    const badgeWrap = document.createElement("div");
+    badgeWrap.className = "orderMenuBadges";
+    badgeDescriptors.forEach((descriptor) => {
+      const badge = document.createElement("span");
+      badge.className = `orderMenuBadge ${descriptor.className}`;
+      badge.textContent = descriptor.label;
+      badgeWrap.appendChild(badge);
+    });
+    main.appendChild(top);
+    main.appendChild(badgeWrap);
+  } else {
+    main.appendChild(top);
+  }
+
   const meta = document.createElement("div");
   meta.className = "orderMenuMeta";
 
@@ -1307,7 +1490,6 @@ function buildMenuCard(entry) {
     meta.textContent = entry.categoryName;
   }
 
-  main.appendChild(top);
   main.appendChild(meta);
 
   const actions = document.createElement("div");
@@ -1334,18 +1516,24 @@ function renderMenuItems() {
 
   const entries = menuEntriesForView();
   menuItemsList.innerHTML = "";
+  menuCardElements = [];
 
   if (entries.length === 0) {
     const empty = document.createElement("div");
     empty.className = "orderMenuEmpty";
     empty.textContent = "No menu items match this filter.";
     menuItemsList.appendChild(empty);
+    updateActiveCategoryPill(true);
     return;
   }
 
   entries.forEach((entry) => {
-    menuItemsList.appendChild(buildMenuCard(entry));
+    const card = buildMenuCard(entry);
+    menuCardElements.push(card);
+    menuItemsList.appendChild(card);
   });
+
+  updateActiveCategoryPill(true);
 }
 
 function clearModifierError() {
@@ -1723,6 +1911,80 @@ function createActionButton(action, text, isDanger = false) {
   return button;
 }
 
+function clearUndoTimer() {
+  if (removeUndoTimer) {
+    clearTimeout(removeUndoTimer);
+    removeUndoTimer = null;
+  }
+}
+
+function ensureUndoToast() {
+  if (!orderHub) return null;
+  let toast = orderHub.querySelector(".orderUndoToast");
+  if (toast) return toast;
+
+  toast = document.createElement("div");
+  toast.className = "orderUndoToast";
+  toast.hidden = true;
+  toast.innerHTML = [
+    "<p class=\"orderUndoToastText\"></p>",
+    "<button type=\"button\" class=\"orderUndoToastBtn\">Undo</button>"
+  ].join("");
+
+  const undoBtn = toast.querySelector(".orderUndoToastBtn");
+  undoBtn?.addEventListener("click", () => {
+    if (!pendingRemovedCartLine) return;
+
+    const restored = {
+      ...pendingRemovedCartLine,
+      id: nextCartId,
+      modifierSelections: (pendingRemovedCartLine.modifierSelections || []).map((selection) => ({ ...selection }))
+    };
+    nextCartId += 1;
+
+    const existing = cartItems.find((entry) => entry.signature === restored.signature);
+    if (existing) {
+      existing.quantity = Math.min(MAX_ITEM_QUANTITY, existing.quantity + restored.quantity);
+      recalculateCartItem(existing);
+    } else {
+      cartItems.push(restored);
+    }
+
+    pendingRemovedCartLine = null;
+    clearUndoTimer();
+    toast.hidden = true;
+    renderCart();
+  });
+
+  orderHub.appendChild(toast);
+  return toast;
+}
+
+function dismissUndoToast() {
+  clearUndoTimer();
+  pendingRemovedCartLine = null;
+  const toast = orderHub?.querySelector(".orderUndoToast");
+  if (toast) toast.hidden = true;
+}
+
+function showUndoToast(removedItem) {
+  const toast = ensureUndoToast();
+  if (!toast) return;
+
+  const text = toast.querySelector(".orderUndoToastText");
+  if (text) {
+    text.textContent = `${removedItem.itemName} removed from basket.`;
+  }
+
+  toast.hidden = false;
+  clearUndoTimer();
+  removeUndoTimer = setTimeout(() => {
+    pendingRemovedCartLine = null;
+    toast.hidden = true;
+    removeUndoTimer = null;
+  }, 7000);
+}
+
 function renderCart() {
   if (!cartList || !cartEmpty || !orderTotalEl) {
     updateSubmitButtonState();
@@ -1801,6 +2063,7 @@ function renderCart() {
 
   syncItemsSummary();
   updateOrderReviewRow();
+  updateOrderFlowStepLabels();
   updateSubmitButtonState();
 }
 
@@ -1815,11 +2078,23 @@ function updateCartQuantity(cartId, delta) {
 }
 
 function removeCartLine(cartId) {
-  cartItems = cartItems.filter((entry) => entry.id !== cartId);
+  const index = cartItems.findIndex((entry) => entry.id === cartId);
+  if (index < 0) return;
+
+  const [removed] = cartItems.splice(index, 1);
+  if (removed) {
+    pendingRemovedCartLine = {
+      ...removed,
+      modifierSelections: (removed.modifierSelections || []).map((selection) => ({ ...selection }))
+    };
+    showUndoToast(removed);
+  }
+
   renderCart();
 }
 
 function resetOrderBuilder() {
+  dismissUndoToast();
   cartItems = [];
   nextCartId = 1;
   selectedCategory = defaultCategoryName();
@@ -2052,11 +2327,13 @@ function initializeMenuInteractions() {
     selectedCategory = String(button.dataset.category || "");
     renderCategoryChips();
     renderMenuItems();
+    queueActiveCategoryPillSync();
   });
 
   menuSearchInput.addEventListener("input", () => {
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
+    queueActiveCategoryPillSync();
   });
 
   menuItemsList.addEventListener("click", (event) => {
@@ -2151,6 +2428,9 @@ function initializeMenuInteractions() {
     }
   });
 
+  window.addEventListener("scroll", queueActiveCategoryPillSync, { passive: true });
+  window.addEventListener("resize", queueActiveCategoryPillSync);
+
   return true;
 }
 
@@ -2212,6 +2492,31 @@ function initialize() {
   stickyCheckoutBtn?.addEventListener("click", () => {
     if (!form || stickyCheckoutBtn.disabled) return;
     setOrderStep(2);
+  });
+  resultEl?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const actionButton = target.closest("button[data-result-action]");
+    if (!(actionButton instanceof HTMLButtonElement)) return;
+
+    const action = String(actionButton.dataset.resultAction || "");
+    if (action === "track") {
+      const tracker = resultEl.querySelector(".orderStatusTracker");
+      if (tracker) {
+        tracker.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } else {
+        resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      return;
+    }
+
+    if (action === "new") {
+      stopStatusPolling();
+      clearFeedback();
+      setOrderStep(1);
+      menuSearchInput?.focus();
+    }
   });
   normalizePostcodeField();
   updateDeliveryAreaHint();
