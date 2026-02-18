@@ -33,7 +33,9 @@ const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
 const occasionSelect = document.getElementById("bookingOccasion");
 const notesInput = document.getElementById("bookingNotes");
-let bookingSuccessFxTimer = null;
+let bookingSuccessFxStageTimer = null;
+let bookingSuccessFxCloseTimer = null;
+let bookingSuccessFxResolver = null;
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -210,55 +212,145 @@ function ensureBookingSuccessFx() {
   host.hidden = true;
   host.setAttribute("aria-hidden", "true");
   host.innerHTML = [
-    "<div class=\"bookingSuccessCard\">",
-    "  <div class=\"bookingSuccessCupScene\" aria-hidden=\"true\">",
-    "    <span class=\"bookingSuccessSteam bookingSuccessSteam1\"></span>",
-    "    <span class=\"bookingSuccessSteam bookingSuccessSteam2\"></span>",
-    "    <span class=\"bookingSuccessSteam bookingSuccessSteam3\"></span>",
-    "    <div class=\"bookingSuccessCup\">",
-    "      <div class=\"bookingSuccessCoffee\"></div>",
+    "<div class=\"bookingSuccessStage\" aria-hidden=\"true\">",
+    "  <span class=\"bookingSuccessAura bookingSuccessAuraA\"></span>",
+    "  <span class=\"bookingSuccessAura bookingSuccessAuraB\"></span>",
+    "  <div class=\"bookingSuccessPulseRing\"></div>",
+    "  <div class=\"bookingSuccessCalendar\">",
+    "    <div class=\"bookingSuccessCalendarTop\">",
+    "      <span></span><span></span><span></span>",
     "    </div>",
-    "    <div class=\"bookingSuccessHandle\"></div>",
-    "    <div class=\"bookingSuccessSaucer\"></div>",
+    "    <div class=\"bookingSuccessCalendarBody\">",
+    "      <div class=\"bookingSuccessCalendarDate\" id=\"bookingSuccessCalendarDate\">--</div>",
+    "      <div class=\"bookingSuccessCalendarMonth\" id=\"bookingSuccessCalendarMonth\">---</div>",
+    "      <div class=\"bookingSuccessTableGlyph\" aria-hidden=\"true\"></div>",
+    "    </div>",
     "  </div>",
-    "  <div class=\"bookingSuccessCheck\" aria-hidden=\"true\">✓</div>",
-    "  <p class=\"bookingSuccessTitle\">Table reserved</p>",
-    "  <p class=\"bookingSuccessSub\">See you at Millers Café</p>",
+    "  <p class=\"bookingSuccessStageTitle\">Checking availability...</p>",
+    "</div>",
+    "<div class=\"bookingSuccessConfirm\">",
+    "  <div class=\"bookingSuccessConfirmCard\">",
+    "    <div class=\"bookingSuccessConfirmCheck\" aria-hidden=\"true\">✓</div>",
+    "    <p class=\"bookingSuccessConfirmTitle\">Booking Confirmed</p>",
+    "    <p class=\"bookingSuccessConfirmRef\" id=\"bookingSuccessConfirmRef\">Reference pending</p>",
+    "    <div class=\"bookingSuccessConfirmGrid\">",
+    "      <div class=\"bookingSuccessConfirmRow\"><span>Date</span><strong id=\"bookingSuccessConfirmDate\">--</strong></div>",
+    "      <div class=\"bookingSuccessConfirmRow\"><span>Time</span><strong id=\"bookingSuccessConfirmTime\">--</strong></div>",
+    "      <div class=\"bookingSuccessConfirmRow\"><span>Party</span><strong id=\"bookingSuccessConfirmParty\">--</strong></div>",
+    "      <div class=\"bookingSuccessConfirmRow\"><span>Table(s)</span><strong id=\"bookingSuccessConfirmTables\">--</strong></div>",
+    "    </div>",
+    "    <button type=\"button\" class=\"bookingSuccessDoneBtn\" id=\"bookingSuccessDoneBtn\">Done</button>",
+    "  </div>",
     "</div>"
   ].join("");
 
   document.body.appendChild(host);
+
+  const doneBtn = host.querySelector("#bookingSuccessDoneBtn");
+  if (doneBtn) {
+    doneBtn.addEventListener("click", () => closeBookingSuccessFx(host));
+  }
+
+  host.addEventListener("click", (event) => {
+    if (!host.classList.contains("isConfirm")) return;
+    if (event.target === host) closeBookingSuccessFx(host);
+  });
+
   return host;
 }
 
-function playBookingSuccessAnimation() {
-  const host = ensureBookingSuccessFx();
+function setBookingSuccessText(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = String(value || "--");
+}
 
-  if (bookingSuccessFxTimer) {
-    clearTimeout(bookingSuccessFxTimer);
-    bookingSuccessFxTimer = null;
+function populateBookingSuccessFx(details) {
+  const reference = String(details?.reference || "").trim();
+  const date = String(details?.date || "").trim();
+  const time = String(details?.time || "").trim();
+  const partySize = Number(details?.partySize);
+  const tables = String(details?.tables || "").trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split("-").map(Number);
+    const monthText = new Intl.DateTimeFormat("en-GB", {
+      month: "short",
+      timeZone: BUSINESS_TIMEZONE
+    }).format(new Date(Date.UTC(year, month - 1, 1))).toUpperCase();
+
+    setBookingSuccessText("bookingSuccessCalendarDate", String(day).padStart(2, "0"));
+    setBookingSuccessText("bookingSuccessCalendarMonth", monthText);
+    setBookingSuccessText("bookingSuccessConfirmDate", displayDateLabel(date));
+  } else {
+    setBookingSuccessText("bookingSuccessCalendarDate", "--");
+    setBookingSuccessText("bookingSuccessCalendarMonth", "---");
+    setBookingSuccessText("bookingSuccessConfirmDate", date || "--");
   }
 
+  setBookingSuccessText("bookingSuccessConfirmRef", reference ? `Reference: ${reference}` : "Reference: pending");
+  setBookingSuccessText("bookingSuccessConfirmTime", time || "--");
+  setBookingSuccessText("bookingSuccessConfirmParty", Number.isInteger(partySize) ? `${partySize}` : "--");
+  setBookingSuccessText("bookingSuccessConfirmTables", tables || "Assigned on arrival");
+}
+
+function closeBookingSuccessFx(host) {
+  const overlay = host || document.getElementById("bookingSuccessFx");
+  if (!overlay) return;
+
+  if (bookingSuccessFxStageTimer) {
+    clearTimeout(bookingSuccessFxStageTimer);
+    bookingSuccessFxStageTimer = null;
+  }
+  if (bookingSuccessFxCloseTimer) {
+    clearTimeout(bookingSuccessFxCloseTimer);
+    bookingSuccessFxCloseTimer = null;
+  }
+
+  overlay.classList.add("isHiding");
+  const fadeMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 100 : 320;
+  window.setTimeout(() => {
+    overlay.classList.remove("isVisible", "isHiding", "isConfirm");
+    overlay.hidden = true;
+    if (bookingSuccessFxResolver) {
+      const resolve = bookingSuccessFxResolver;
+      bookingSuccessFxResolver = null;
+      resolve();
+    }
+  }, fadeMs);
+}
+
+function playBookingSuccessAnimation(details) {
+  const host = ensureBookingSuccessFx();
+  populateBookingSuccessFx(details);
+
+  if (bookingSuccessFxStageTimer) {
+    clearTimeout(bookingSuccessFxStageTimer);
+    bookingSuccessFxStageTimer = null;
+  }
+  if (bookingSuccessFxCloseTimer) {
+    clearTimeout(bookingSuccessFxCloseTimer);
+    bookingSuccessFxCloseTimer = null;
+  }
+  bookingSuccessFxResolver = null;
+
   host.hidden = false;
-  host.classList.remove("isVisible", "isHiding");
-  // Force a layout tick so replays animate every submit.
+  host.classList.remove("isVisible", "isHiding", "isConfirm");
   void host.offsetWidth;
   host.classList.add("isVisible");
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const holdMs = reducedMotion ? 260 : 2200;
-  const fadeMs = reducedMotion ? 140 : 380;
+  const stageMs = reducedMotion ? 280 : 1700;
+  const confirmHoldMs = reducedMotion ? 1000 : 3200;
 
   return new Promise((resolve) => {
-    bookingSuccessFxTimer = window.setTimeout(() => {
-      host.classList.add("isHiding");
-      bookingSuccessFxTimer = window.setTimeout(() => {
-        host.classList.remove("isVisible", "isHiding");
-        host.hidden = true;
-        bookingSuccessFxTimer = null;
-        resolve();
-      }, fadeMs);
-    }, holdMs);
+    bookingSuccessFxResolver = resolve;
+    bookingSuccessFxStageTimer = window.setTimeout(() => {
+      host.classList.add("isConfirm");
+      bookingSuccessFxCloseTimer = window.setTimeout(() => {
+        closeBookingSuccessFx(host);
+      }, confirmHoldMs);
+    }, stageMs);
   });
 }
 
@@ -400,7 +492,8 @@ async function handleSubmit(event) {
     }
 
     const assignedTables = Array.isArray(body.assignedTables) ? body.assignedTables.join(", ") : "";
-    const reference = body.reference ? `Reference: ${body.reference}` : "";
+    const referenceValue = String(body.reference || "").trim();
+    const reference = referenceValue ? `Reference: ${referenceValue}` : "";
     const emailStatus = String(body.emailStatus || "").toLowerCase();
     const emailNote = String(body.emailMessage || "").trim() || (
       emailStatus === "sent"
@@ -419,7 +512,13 @@ async function handleSubmit(event) {
       emailStatus !== "sent"
     );
 
-    await playBookingSuccessAnimation();
+    await playBookingSuccessAnimation({
+      reference: referenceValue,
+      date: payload.date,
+      time: payload.time,
+      partySize: payload.partySize,
+      tables: assignedTables
+    });
 
     const preservedDate = payload.date;
     form.reset();
