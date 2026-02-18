@@ -4385,6 +4385,252 @@ h1{
   background: rgba(203, 213, 225, .95);
 }
 
+/* Order page visual polish */
+.orderPage .header{
+  align-items: stretch;
+  gap: 10px;
+}
+
+.orderPage .backBtn{
+  border-radius: 14px;
+  min-height: 44px;
+  padding: 11px 14px;
+  background: linear-gradient(150deg, rgba(233, 255, 251, .9), rgba(232, 243, 255, .84));
+  border-color: rgba(15, 118, 110, .22);
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.orderPage .headerStack{
+  flex: 1;
+  margin-left: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.72);
+  background: linear-gradient(152deg, rgba(255,255,255,.78), rgba(244, 251, 255, .7));
+  box-shadow:
+    0 10px 20px rgba(15, 23, 42, .07),
+    inset 0 1px 0 rgba(255,255,255,.94);
+  padding: 10px 14px;
+}
+
+.orderPage .headerTitleNoMargin{
+  font-size: clamp(34px, 6vw, 42px);
+  line-height: .98;
+  letter-spacing: -.015em;
+}
+
+.orderPage .subtitle{
+  margin-top: 4px;
+  font-size: 14px;
+  color: #5d6a7d;
+}
+
+.orderPage .bookingsPanel{
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.orderPage .bookingsNotice{
+  border-radius: 14px;
+  border-color: rgba(14, 116, 144, .25);
+  background: linear-gradient(145deg, rgba(236, 253, 250, .94), rgba(232, 247, 255, .86));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.94),
+    0 8px 16px rgba(15, 23, 42, .05);
+}
+
+.orderPage .orderFlowHeader{
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.76);
+  background: linear-gradient(150deg, rgba(255,255,255,.86), rgba(240, 248, 255, .78));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.orderPage .orderFlowStep{
+  min-height: 34px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.orderPage .orderFlowStep.isActive{
+  box-shadow: 0 6px 14px rgba(15, 118, 110, .14);
+}
+
+.orderPage .bookingField{
+  border-radius: 15px;
+  border-color: rgba(148, 163, 184, .24);
+  background: linear-gradient(150deg, rgba(255,255,255,.82), rgba(245, 251, 255, .7));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.orderPage .orderItemsField{
+  border-radius: 18px;
+  border-color: rgba(15, 23, 42, .14);
+  background:
+    radial-gradient(220px 140px at 10% 0%, rgba(45, 212, 191, .12), transparent 72%),
+    radial-gradient(240px 160px at 92% 10%, rgba(59, 130, 246, .11), transparent 75%),
+    linear-gradient(150deg, rgba(255,255,255,.86), rgba(244, 251, 255, .76));
+}
+
+.orderPage .orderHub{
+  border-radius: 14px;
+  border-color: rgba(15, 23, 42, .14);
+  background:
+    radial-gradient(210px 120px at 6% -8%, rgba(125, 211, 252, .12), transparent 74%),
+    linear-gradient(155deg, rgba(255,255,255,.9), rgba(247, 251, 255, .82));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.orderPage .orderCategoryChip{
+  border-radius: 12px;
+  min-height: 42px;
+  font-size: 12.5px;
+  font-weight: 650;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.orderPage .orderCategoryChip:hover{
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, .28);
+}
+
+.orderPage .orderMenuCard{
+  border-radius: 14px;
+  border-color: rgba(15, 23, 42, .13);
+  padding: 11px 12px;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, .05);
+  transition: transform 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
+}
+
+.orderPage .orderMenuCard:hover{
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, .24);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, .08);
+}
+
+.orderPage .orderMenuName{
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.orderPage .orderMenuPrice{
+  font-size: 15px;
+}
+
+.orderPage .orderMenuMeta{
+  font-size: 13px;
+}
+
+.orderPage .orderMenuAdd{
+  border-radius: 11px;
+  min-height: 40px;
+  padding: 9px 13px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.orderPage .orderMenuCustomize{
+  background: linear-gradient(145deg, rgba(236, 242, 250, .98), rgba(226, 234, 245, .94));
+  border-color: rgba(148, 163, 184, .32);
+}
+
+.orderPage .orderBasketToggle{
+  border-radius: 13px;
+  min-height: 48px;
+  box-shadow: 0 12px 22px rgba(15, 23, 42, .2);
+}
+
+.orderPage .orderBasketPanel{
+  border-radius: 14px;
+  border-color: rgba(15, 23, 42, .16);
+  background: linear-gradient(150deg, rgba(255,255,255,.96), rgba(245, 251, 255, .9));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, .08);
+}
+
+.orderPage .stickyCheckoutBar{
+  border-radius: 16px;
+  border-color: rgba(255,255,255,.9);
+  background:
+    radial-gradient(220px 120px at 8% 8%, rgba(45, 212, 191, .14), transparent 75%),
+    linear-gradient(155deg, rgba(255,255,255,.95), rgba(239, 248, 255, .9));
+  box-shadow:
+    0 18px 30px rgba(15, 23, 42, .2),
+    inset 0 1px 0 rgba(255,255,255,.96);
+}
+
+.orderPage .stickyCheckoutDateTime{
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.orderPage .stickyCheckoutOrder{
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.orderPage .stickyCheckoutBtn{
+  border-radius: 14px;
+  min-height: 50px;
+  min-width: 156px;
+  font-size: 16px;
+  box-shadow:
+    0 12px 20px rgba(15, 23, 42, .24),
+    inset 0 1px 0 rgba(255,255,255,.24);
+}
+
+.orderPage .orderHub.hasStickySummary{
+  padding-top: 96px;
+}
+
+@media (max-width: 640px){
+  .orderPage .header{
+    align-items: center;
+  }
+
+  .orderPage .headerStack{
+    padding: 9px 12px;
+  }
+
+  .orderPage .headerTitleNoMargin{
+    font-size: clamp(30px, 8.3vw, 38px);
+  }
+
+  .orderPage .bookingsPanel{
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .orderPage .orderCategoryChips{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orderPage .stickyCheckoutBar{
+    width: calc(100% - 14px);
+    border-radius: 13px;
+  }
+
+  .orderPage .stickyCheckoutOrder{
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .orderPage .stickyCheckoutBtn{
+    min-height: 38px;
+    min-width: 120px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .orderPage .orderHub.hasStickySummary{
+    padding-top: 76px;
+  }
+}
+
 .orderModifierPanel{
   position: relative;
   left: auto;
