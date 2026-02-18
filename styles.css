@@ -2352,12 +2352,192 @@ h1{
   grid-column: 1 / -1;
 }
 
+.bookingNativeHidden{
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .bookingLabel{
   font-size: 11px;
   font-weight: 650;
   color: #334155;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+.bookingFieldCalendar,
+.bookingFieldSlots{
+  gap: 9px;
+}
+
+.bookingCalendar{
+  border: 1px solid rgba(148, 163, 184, .26);
+  border-radius: 12px;
+  background: rgba(255,255,255,.86);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+  padding: 10px;
+}
+
+.bookingCalendarHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bookingCalendarMonth{
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: #0f172a;
+}
+
+.bookingCalendarNav{
+  border: 1px solid rgba(148, 163, 184, .3);
+  background: rgba(255,255,255,.95);
+  color: #334155;
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bookingCalendarNav:disabled{
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.bookingCalendarWeekdays{
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.bookingCalendarWeekdays span{
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.bookingCalendarGrid{
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.bookingCalendarDay{
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 9px;
+  min-height: 38px;
+  background: rgba(255,255,255,.95);
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 620;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.bookingCalendarDay:disabled{
+  cursor: default;
+}
+
+.bookingCalendarDay.isOutsideMonth{
+  opacity: .28;
+}
+
+.bookingCalendarDay.isBookable{
+  background: #ffffff;
+}
+
+.bookingCalendarDay.isBookable:hover{
+  border-color: rgba(15, 118, 110, .5);
+  background: rgba(239, 252, 250, .86);
+  transform: translateY(-1px);
+}
+
+.bookingCalendarDay.isSelected{
+  color: #ffffff;
+  border-color: #0f766e;
+  background: linear-gradient(140deg, #0f766e 0%, #14b8a6 100%);
+  box-shadow: 0 8px 14px rgba(15, 118, 110, .28);
+}
+
+.bookingCalendarDay.isToday{
+  outline: 2px solid rgba(15, 118, 110, .3);
+  outline-offset: 1px;
+}
+
+.bookingSlotCards{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bookingSlotCard{
+  min-height: 84px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: linear-gradient(180deg, #121923 0%, #06090f 100%);
+  color: #ffffff;
+  padding: 10px 8px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  cursor: pointer;
+  box-shadow:
+    0 10px 18px rgba(2, 8, 23, .33),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
+}
+
+.bookingSlotCard:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.bookingSlotCard.isSelected{
+  border-color: rgba(34, 211, 238, .7);
+  box-shadow:
+    0 12px 20px rgba(2, 8, 23, .38),
+    0 0 0 2px rgba(34, 211, 238, .18),
+    inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+.bookingSlotCard.isUnavailable{
+  cursor: not-allowed;
+  opacity: .42;
+  filter: grayscale(.22);
+}
+
+.bookingSlotTime{
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: .01em;
+}
+
+.bookingSlotNote{
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: .02em;
+  color: rgba(226, 232, 240, .95);
 }
 
 .bookingField input,
@@ -2394,6 +2574,21 @@ h1{
 .bookingField select:disabled{
   opacity: .68;
   cursor: not-allowed;
+}
+
+.bookingField .bookingNativeHidden{
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .bookingActions{
@@ -3044,6 +3239,31 @@ h1{
     padding: 9px;
   }
 
+  .bookingCalendar{
+    padding: 9px;
+  }
+
+  .bookingCalendarMonth{
+    font-size: 16px;
+  }
+
+  .bookingCalendarDay{
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .bookingSlotCards{
+    grid-template-columns: 1fr;
+  }
+
+  .bookingSlotCard{
+    min-height: 76px;
+  }
+
+  .bookingSlotTime{
+    font-size: 18px;
+  }
+
   .bookingSuccessStage{
     min-height: 360px;
   }
@@ -3151,6 +3371,28 @@ h1{
 
   .bookingsInfoCard{
     padding: 12px;
+  }
+
+  .bookingCalendar{
+    padding: 8px;
+  }
+
+  .bookingCalendarWeekdays span{
+    font-size: 10px;
+  }
+
+  .bookingCalendarDay{
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  .bookingSlotCard{
+    min-height: 72px;
+    border-radius: 11px;
+  }
+
+  .bookingSlotTime{
+    font-size: 17px;
   }
 
   .bookingSuccessStage{

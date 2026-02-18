@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218a">
+  <link rel="stylesheet" href="../styles.css?v=20260218b">
 </head>
 <body>
   <main class="bookingsPage">
@@ -66,15 +66,27 @@
           <section class="bookingSection">
             <h3 class="bookingSectionTitle">Reservation details</h3>
             <div class="bookingGrid bookingGridReservation">
-              <label class="bookingField">
+              <div class="bookingField bookingFieldWide bookingFieldCalendar">
                 <span class="bookingLabel">Date</span>
-                <select id="bookingDate" name="date" required></select>
-              </label>
+                <select id="bookingDate" name="date" class="bookingNativeHidden" required></select>
+                <div class="bookingCalendar" aria-label="Booking calendar">
+                  <div class="bookingCalendarHead">
+                    <button id="calendarPrevBtn" class="bookingCalendarNav" type="button" aria-label="Previous month">&larr;</button>
+                    <p id="calendarMonthLabel" class="bookingCalendarMonth">Month Year</p>
+                    <button id="calendarNextBtn" class="bookingCalendarNav" type="button" aria-label="Next month">&rarr;</button>
+                  </div>
+                  <div class="bookingCalendarWeekdays" aria-hidden="true">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                  </div>
+                  <div id="bookingCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select booking date"></div>
+                </div>
+              </div>
 
-              <label class="bookingField">
+              <div class="bookingField bookingFieldWide bookingFieldSlots">
                 <span class="bookingLabel">Time</span>
-                <select id="bookingTime" name="time" required></select>
-              </label>
+                <select id="bookingTime" name="time" class="bookingNativeHidden" required></select>
+                <div id="bookingSlotCards" class="bookingSlotCards" role="radiogroup" aria-label="Select booking time"></div>
+              </div>
 
               <label class="bookingField">
                 <span class="bookingLabel">Party size</span>
@@ -136,6 +148,6 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="./bookings.js?v=20260217e"></script>
+  <script src="./bookings.js?v=20260218f"></script>
 </body>
 </html>

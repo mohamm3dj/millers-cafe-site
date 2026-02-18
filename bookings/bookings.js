@@ -33,9 +33,17 @@ const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
 const occasionSelect = document.getElementById("bookingOccasion");
 const notesInput = document.getElementById("bookingNotes");
+const calendarMonthLabel = document.getElementById("calendarMonthLabel");
+const calendarPrevBtn = document.getElementById("calendarPrevBtn");
+const calendarNextBtn = document.getElementById("calendarNextBtn");
+const bookingCalendarGrid = document.getElementById("bookingCalendarGrid");
+const bookingSlotCards = document.getElementById("bookingSlotCards");
 let bookingSuccessFxStageTimer = null;
 let bookingSuccessFxCloseTimer = null;
 let bookingSuccessFxResolver = null;
+let availableBookingDates = [];
+let availableBookingDateSet = new Set();
+let calendarViewMonthUTC = null;
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -98,6 +106,20 @@ function displayDateLabel(isoDate) {
   }).format(utcDate);
 }
 
+function parseISODateUTC(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toISODateUTC(date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
+function monthIndexUTC(date) {
+  return (date.getUTCFullYear() * 12) + date.getUTCMonth();
+}
+
 function buildBookableDateList(startISODate, maxDays) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startISODate)) return [];
   const [year, month, day] = startISODate.split("-").map(Number);
@@ -134,6 +156,121 @@ function renderDateOptions() {
   } else if (options.length > 0) {
     dateInput.value = options[0];
   }
+
+  availableBookingDates = options.slice();
+  availableBookingDateSet = new Set(options);
+
+  const selectedDate = parseISODateUTC(dateInput.value) || parseISODateUTC(options[0] || "");
+  if (selectedDate && !calendarViewMonthUTC) {
+    calendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
+  }
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  if (!bookingCalendarGrid || !calendarMonthLabel) return;
+  if (!calendarViewMonthUTC || availableBookingDates.length === 0) {
+    bookingCalendarGrid.innerHTML = "";
+    calendarMonthLabel.textContent = "No dates available";
+    if (calendarPrevBtn) calendarPrevBtn.disabled = true;
+    if (calendarNextBtn) calendarNextBtn.disabled = true;
+    return;
+  }
+
+  const selectedDate = parseISODateUTC(dateInput?.value || "");
+  const todayDate = parseISODateUTC(ukTodayISODate());
+  const firstAvailableDate = parseISODateUTC(availableBookingDates[0]);
+  const lastAvailableDate = parseISODateUTC(availableBookingDates[availableBookingDates.length - 1]);
+  if (!firstAvailableDate || !lastAvailableDate) return;
+
+  const monthStart = new Date(Date.UTC(
+    calendarViewMonthUTC.getUTCFullYear(),
+    calendarViewMonthUTC.getUTCMonth(),
+    1
+  ));
+
+  calendarMonthLabel.textContent = new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: BUSINESS_TIMEZONE
+  }).format(monthStart);
+
+  const monthStartDayIndex = (monthStart.getUTCDay() + 6) % 7;
+  const gridStart = new Date(monthStart);
+  gridStart.setUTCDate(monthStart.getUTCDate() - monthStartDayIndex);
+
+  bookingCalendarGrid.innerHTML = "";
+
+  for (let i = 0; i < 42; i += 1) {
+    const cellDate = new Date(gridStart);
+    cellDate.setUTCDate(gridStart.getUTCDate() + i);
+    const iso = toISODateUTC(cellDate);
+    const inCurrentMonth = cellDate.getUTCMonth() === monthStart.getUTCMonth();
+    const isBookable = availableBookingDateSet.has(iso);
+    const isSelected = selectedDate && toISODateUTC(selectedDate) === iso;
+    const isToday = todayDate && toISODateUTC(todayDate) === iso;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bookingCalendarDay";
+    if (!inCurrentMonth) btn.classList.add("isOutsideMonth");
+    if (isBookable) btn.classList.add("isBookable");
+    if (isSelected) btn.classList.add("isSelected");
+    if (isToday) btn.classList.add("isToday");
+
+    btn.textContent = String(cellDate.getUTCDate());
+    btn.disabled = !inCurrentMonth || !isBookable;
+    btn.setAttribute("role", "gridcell");
+    btn.setAttribute("aria-label", displayDateLabel(iso));
+
+    if (!btn.disabled) {
+      btn.addEventListener("click", () => {
+        if (!dateInput) return;
+        dateInput.value = iso;
+        renderCalendar();
+        void loadAvailability();
+      });
+    }
+
+    bookingCalendarGrid.appendChild(btn);
+  }
+
+  if (calendarPrevBtn) {
+    const prevMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() - 1, 1));
+    calendarPrevBtn.disabled = monthIndexUTC(prevMonth) < monthIndexUTC(firstAvailableDate);
+  }
+
+  if (calendarNextBtn) {
+    const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+    calendarNextBtn.disabled = monthIndexUTC(nextMonth) > monthIndexUTC(lastAvailableDate);
+  }
+}
+
+function moveCalendarMonth(delta) {
+  if (!calendarViewMonthUTC || !availableBookingDates.length) return;
+  const targetMonth = new Date(Date.UTC(
+    calendarViewMonthUTC.getUTCFullYear(),
+    calendarViewMonthUTC.getUTCMonth() + delta,
+    1
+  ));
+
+  const firstAvailableDate = parseISODateUTC(availableBookingDates[0]);
+  const lastAvailableDate = parseISODateUTC(availableBookingDates[availableBookingDates.length - 1]);
+  if (!firstAvailableDate || !lastAvailableDate) return;
+
+  if (monthIndexUTC(targetMonth) < monthIndexUTC(firstAvailableDate)) return;
+  if (monthIndexUTC(targetMonth) > monthIndexUTC(lastAvailableDate)) return;
+
+  calendarViewMonthUTC = targetMonth;
+  renderCalendar();
+}
+
+function syncCalendarToSelectedDate() {
+  const selectedDate = parseISODateUTC(dateInput?.value || "");
+  if (!selectedDate) return;
+  calendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
+  renderCalendar();
 }
 
 function renderPartySizeOptions() {
@@ -354,6 +491,55 @@ function playBookingSuccessAnimation(details) {
   });
 }
 
+function formatSlotCardTime(clock) {
+  const minutes = clockToMinutes(clock);
+  if (!Number.isFinite(minutes)) return clock;
+  const hours24 = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const suffix = hours24 >= 12 ? "pm" : "am";
+  const hours12 = ((hours24 + 11) % 12) + 1;
+  return `${hours12}:${pad2(mins)} ${suffix}`;
+}
+
+function renderSlotCards(rows) {
+  if (!bookingSlotCards || !timeSelect) return;
+
+  bookingSlotCards.innerHTML = "";
+  const selectedTime = timeSelect.value;
+
+  rows.forEach((row) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "bookingSlotCard";
+    card.dataset.time = row.time;
+    if (!row.available) card.classList.add("isUnavailable");
+    if (row.time === selectedTime && row.available) card.classList.add("isSelected");
+    card.disabled = !row.available;
+    card.setAttribute("role", "radio");
+    card.setAttribute("aria-checked", row.time === selectedTime && row.available ? "true" : "false");
+
+    const title = document.createElement("span");
+    title.className = "bookingSlotTime";
+    title.textContent = formatSlotCardTime(row.time);
+
+    const subtitle = document.createElement("span");
+    subtitle.className = "bookingSlotNote";
+    subtitle.textContent = row.available ? "Indoor Dining" : "Fully Booked";
+
+    card.appendChild(title);
+    card.appendChild(subtitle);
+
+    if (row.available) {
+      card.addEventListener("click", () => {
+        timeSelect.value = row.time;
+        renderSlotCards(rows);
+      });
+    }
+
+    bookingSlotCards.appendChild(card);
+  });
+}
+
 function renderTimeOptions(slotRows) {
   if (!timeSelect) return;
   const priorValue = timeSelect.value;
@@ -380,6 +566,8 @@ function renderTimeOptions(slotRows) {
   } else {
     timeSelect.selectedIndex = 0;
   }
+
+  renderSlotCards(rows);
 }
 
 async function loadAvailability() {
@@ -525,6 +713,7 @@ async function handleSubmit(event) {
     if (dateInput) dateInput.value = preservedDate;
     if (partySizeInput) partySizeInput.value = "2";
     if (occasionSelect) occasionSelect.value = "None";
+    syncCalendarToSelectedDate();
     await loadAvailability();
   } catch (error) {
     showError("Booking service is currently unavailable. Please try again shortly.");
@@ -539,10 +728,16 @@ function initialize() {
   renderDateOptions();
   renderPartySizeOptions();
   renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
-  loadAvailability();
+  syncCalendarToSelectedDate();
+  void loadAvailability();
 
   form.addEventListener("submit", handleSubmit);
-  dateInput?.addEventListener("change", loadAvailability);
+  dateInput?.addEventListener("change", () => {
+    syncCalendarToSelectedDate();
+    void loadAvailability();
+  });
+  calendarPrevBtn?.addEventListener("click", () => moveCalendarMonth(-1));
+  calendarNextBtn?.addEventListener("click", () => moveCalendarMonth(1));
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
 }
