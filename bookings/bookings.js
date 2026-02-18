@@ -33,6 +33,7 @@ const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
 const occasionSelect = document.getElementById("bookingOccasion");
 const notesInput = document.getElementById("bookingNotes");
+let bookingSuccessFxTimer = null;
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -199,6 +200,68 @@ function setSubmitting(submitting) {
   submitBtn.textContent = submitting ? "Booking..." : "Book table";
 }
 
+function ensureBookingSuccessFx() {
+  let host = document.getElementById("bookingSuccessFx");
+  if (host) return host;
+
+  host = document.createElement("div");
+  host.id = "bookingSuccessFx";
+  host.className = "bookingSuccessFx";
+  host.hidden = true;
+  host.setAttribute("aria-hidden", "true");
+  host.innerHTML = [
+    "<div class=\"bookingSuccessCard\">",
+    "  <div class=\"bookingSuccessCupScene\" aria-hidden=\"true\">",
+    "    <span class=\"bookingSuccessSteam bookingSuccessSteam1\"></span>",
+    "    <span class=\"bookingSuccessSteam bookingSuccessSteam2\"></span>",
+    "    <span class=\"bookingSuccessSteam bookingSuccessSteam3\"></span>",
+    "    <div class=\"bookingSuccessCup\">",
+    "      <div class=\"bookingSuccessCoffee\"></div>",
+    "    </div>",
+    "    <div class=\"bookingSuccessHandle\"></div>",
+    "    <div class=\"bookingSuccessSaucer\"></div>",
+    "  </div>",
+    "  <div class=\"bookingSuccessCheck\" aria-hidden=\"true\">✓</div>",
+    "  <p class=\"bookingSuccessTitle\">Table reserved</p>",
+    "  <p class=\"bookingSuccessSub\">See you at Millers Café</p>",
+    "</div>"
+  ].join("");
+
+  document.body.appendChild(host);
+  return host;
+}
+
+function playBookingSuccessAnimation() {
+  const host = ensureBookingSuccessFx();
+
+  if (bookingSuccessFxTimer) {
+    clearTimeout(bookingSuccessFxTimer);
+    bookingSuccessFxTimer = null;
+  }
+
+  host.hidden = false;
+  host.classList.remove("isVisible", "isHiding");
+  // Force a layout tick so replays animate every submit.
+  void host.offsetWidth;
+  host.classList.add("isVisible");
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const holdMs = reducedMotion ? 260 : 2200;
+  const fadeMs = reducedMotion ? 140 : 380;
+
+  return new Promise((resolve) => {
+    bookingSuccessFxTimer = window.setTimeout(() => {
+      host.classList.add("isHiding");
+      bookingSuccessFxTimer = window.setTimeout(() => {
+        host.classList.remove("isVisible", "isHiding");
+        host.hidden = true;
+        bookingSuccessFxTimer = null;
+        resolve();
+      }, fadeMs);
+    }, holdMs);
+  });
+}
+
 function renderTimeOptions(slotRows) {
   if (!timeSelect) return;
   const priorValue = timeSelect.value;
@@ -355,6 +418,8 @@ async function handleSubmit(event) {
         : "Booking confirmed and synced to Millers Cafe POS feed. Email is delayed.",
       emailStatus !== "sent"
     );
+
+    await playBookingSuccessAnimation();
 
     const preservedDate = payload.date;
     form.reset();

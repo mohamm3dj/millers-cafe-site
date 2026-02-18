@@ -2363,6 +2363,228 @@ h1{
   color: #334155;
 }
 
+.bookingSuccessFx{
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(880px 500px at 50% -10%, rgba(94, 171, 206, .25), transparent 64%),
+    radial-gradient(720px 480px at 50% 112%, rgba(15, 118, 110, .22), transparent 68%),
+    rgba(242, 247, 252, .78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+
+.bookingSuccessFx.isVisible{
+  opacity: 1;
+}
+
+.bookingSuccessFx.isHiding{
+  opacity: 0;
+}
+
+.bookingSuccessCard{
+  width: min(360px, 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.8);
+  background:
+    radial-gradient(240px 180px at 16% 8%, rgba(56, 189, 248, .14), transparent 76%),
+    linear-gradient(160deg, rgba(255,255,255,.88) 0%, rgba(246, 251, 255, .78) 56%, rgba(241, 249, 255, .74) 100%);
+  box-shadow:
+    0 26px 46px rgba(15, 23, 42, .22),
+    inset 0 1px 0 rgba(255,255,255,.95);
+  padding: 22px 20px 18px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  transform: translateY(12px) scale(.96);
+  animation: bookingSuccessCardIn 560ms cubic-bezier(.2,.82,.24,1) forwards;
+}
+
+.bookingSuccessCupScene{
+  position: relative;
+  width: 160px;
+  height: 134px;
+}
+
+.bookingSuccessSteam{
+  position: absolute;
+  top: 14px;
+  width: 3px;
+  height: 46px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, .56);
+  filter: blur(.35px);
+  opacity: 0;
+  animation: bookingSteamRise 1100ms ease-out infinite;
+}
+
+.bookingSuccessSteam1{ left: 57px; animation-delay: .14s; }
+.bookingSuccessSteam2{ left: 78px; animation-delay: .38s; }
+.bookingSuccessSteam3{ left: 98px; animation-delay: .62s; }
+
+.bookingSuccessCup{
+  position: absolute;
+  left: 50%;
+  top: 46px;
+  transform: translateX(-50%);
+  width: 106px;
+  height: 68px;
+  border: 2px solid rgba(71, 85, 105, .28);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(231, 239, 248, .85));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 9px 16px rgba(15, 23, 42, .11);
+  overflow: hidden;
+}
+
+.bookingSuccessCup::before{
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: -10px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(71, 85, 105, .24);
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+}
+
+.bookingSuccessHandle{
+  position: absolute;
+  left: calc(50% + 52px);
+  top: 62px;
+  width: 18px;
+  height: 26px;
+  border: 2px solid rgba(71, 85, 105, .26);
+  border-left: 0;
+  border-radius: 0 13px 13px 0;
+}
+
+.bookingSuccessSaucer{
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: 132px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(71, 85, 105, .22);
+  background: linear-gradient(180deg, #f8fafc 0%, #d9e2ec 100%);
+  box-shadow: 0 8px 14px rgba(15, 23, 42, .12);
+}
+
+.bookingSuccessCoffee{
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 0;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(180deg, #916041 0%, #6d442d 56%, #4a2b1d 100%);
+  animation: bookingCoffeeFill 780ms cubic-bezier(.2,.74,.2,1) 180ms forwards;
+}
+
+.bookingSuccessCoffee::before{
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -4px;
+  width: calc(100% + 2px);
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(234, 197, 156, .95), rgba(179, 132, 88, .72));
+  opacity: .9;
+}
+
+.bookingSuccessCheck{
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font-size: 25px;
+  font-weight: 700;
+  background: linear-gradient(145deg, #14b8a6 0%, #0f766e 100%);
+  box-shadow:
+    0 12px 20px rgba(13, 148, 136, .34),
+    inset 0 1px 0 rgba(255,255,255,.36);
+  transform: scale(.55);
+  opacity: 0;
+  animation: bookingSuccessCheckIn 420ms cubic-bezier(.2,.84,.26,1) 760ms forwards;
+}
+
+.bookingSuccessTitle{
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 31px;
+  letter-spacing: -.01em;
+  color: #0f172a;
+}
+
+.bookingSuccessSub{
+  margin: 0;
+  font-size: 14px;
+  font-weight: 540;
+  color: #526276;
+}
+
+@keyframes bookingSuccessCardIn{
+  from{
+    opacity: 0;
+    transform: translateY(18px) scale(.94);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bookingSteamRise{
+  0%, 22%{
+    opacity: 0;
+    transform: translateY(8px) scale(.82);
+  }
+  40%{
+    opacity: .52;
+  }
+  72%{
+    opacity: .16;
+    transform: translateY(-8px) scale(1.02);
+  }
+  100%{
+    opacity: 0;
+    transform: translateY(-12px) scale(1.06);
+  }
+}
+
+@keyframes bookingCoffeeFill{
+  from{ height: 0; }
+  to{ height: 78%; }
+}
+
+@keyframes bookingSuccessCheckIn{
+  0%{
+    opacity: 0;
+    transform: scale(.55);
+  }
+  70%{
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100%{
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .orderStatusTracker{
   margin-top: 10px;
   border-radius: 12px;
