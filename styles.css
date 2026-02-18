@@ -2318,6 +2318,39 @@ h1{
   gap: 13px;
 }
 
+.orderFlowHeader{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 1px 4px;
+}
+
+.orderFlowStep{
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, .34);
+  background: rgba(255,255,255,.62);
+  color: #64748b;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 640;
+  letter-spacing: .01em;
+}
+
+.orderFlowStep.isActive{
+  color: #0f172a;
+  border-color: rgba(15, 118, 110, .34);
+  background: linear-gradient(145deg, rgba(236, 253, 250, .88) 0%, rgba(236, 247, 255, .76) 100%);
+}
+
+.orderFlowDivider{
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .bookingSection{
   display: grid;
   gap: 10px;
@@ -2346,6 +2379,11 @@ h1{
   background: rgba(255,255,255,.62);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.85);
   padding: 10px;
+}
+
+.bookingField.hasFieldError{
+  border-color: rgba(220, 38, 38, .34);
+  background: linear-gradient(145deg, rgba(255,255,255,.8), rgba(254, 242, 242, .7));
 }
 
 .bookingFieldWide{
@@ -2534,6 +2572,17 @@ h1{
   gap: 6px;
 }
 
+.orderSlotCards{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+}
+
+.orderSlotCard{
+  min-height: 42px;
+  padding: 6px 4px;
+}
+
 .bookingSlotCard{
   min-height: 44px;
   border-radius: 12px;
@@ -2599,6 +2648,79 @@ h1{
 .bookingField textarea{
   resize: vertical;
   min-height: 104px;
+}
+
+.bookingField input::placeholder,
+.bookingField textarea::placeholder{
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.orderInlineError{
+  margin: 1px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #b42318;
+}
+
+.orderReviewRow{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, .28);
+  background: rgba(255,255,255,.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+  padding: 10px 11px;
+}
+
+.orderReviewText{
+  margin: 0;
+  font-size: 13px;
+  font-weight: 640;
+  color: #334155;
+}
+
+.orderReviewEditBtn{
+  border: 1px solid rgba(148, 163, 184, .36);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(255,255,255,.88);
+  color: #0f172a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.orderBackToItemsBtn{
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: 12px;
+  min-height: 42px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,.72);
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.deliveryAreaHint{
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #475569;
+}
+
+.deliveryAreaHint.isWarning{
+  color: #9a3412;
+}
+
+.deliveryAreaHint.isOk{
+  color: #166534;
 }
 
 .bookingField input:focus,
@@ -3277,6 +3399,30 @@ h1{
 
   .bookingField{
     padding: 9px;
+  }
+
+  .orderFlowHeader{
+    gap: 6px;
+  }
+
+  .orderFlowStep{
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+
+  .orderReviewRow{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .orderReviewEditBtn{
+    width: 100%;
+    text-align: center;
+  }
+
+  .orderBackToItemsBtn{
+    width: 100%;
   }
 
   .bookingCalendar{
@@ -4010,6 +4156,91 @@ h1{
   padding: 10px;
 }
 
+.orderPage{
+  padding-bottom: 118px;
+}
+
+.stickyCheckoutBar{
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(860px, calc(100% - 24px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.72);
+  background: linear-gradient(155deg, rgba(255,255,255,.9), rgba(243, 249, 255, .82));
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, .18),
+    inset 0 1px 0 rgba(255,255,255,.95);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  z-index: 38;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(14px);
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.stickyCheckoutBar.isVisible{
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.stickyCheckoutSummary{
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.stickyCheckoutDateTime,
+.stickyCheckoutOrder{
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stickyCheckoutDateTime{
+  font-size: 12px;
+  font-weight: 630;
+  color: #334155;
+}
+
+.stickyCheckoutOrder{
+  font-size: 13px;
+  font-weight: 720;
+  color: #0f172a;
+}
+
+.stickyCheckoutBtn{
+  border: 0;
+  border-radius: 12px;
+  min-height: 42px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f766e, #0f172a);
+  box-shadow:
+    0 10px 18px rgba(15, 23, 42, .2),
+    inset 0 1px 0 rgba(255,255,255,.2);
+  cursor: pointer;
+}
+
+.stickyCheckoutBtn:disabled{
+  opacity: .58;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .orderBasketHead{
   display: flex;
   align-items: center;
@@ -4049,6 +4280,10 @@ h1{
 }
 
 @media (max-width: 640px){
+  .orderPage{
+    padding-bottom: 94px;
+  }
+
   .orderHub{
     padding: 9px;
   }
@@ -4064,6 +4299,56 @@ h1{
 
   .orderBasketToggle{
     bottom: 6px;
+  }
+
+  .stickyCheckoutBar{
+    width: min(680px, calc(100% - 14px));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 7px 8px;
+    border-radius: 12px;
+    box-shadow:
+      0 10px 20px rgba(15, 23, 42, .16),
+      inset 0 1px 0 rgba(255,255,255,.95);
+  }
+
+  .stickyCheckoutSummary{
+    gap: 1px;
+  }
+
+  .stickyCheckoutOrder{
+    font-size: 12px;
+  }
+
+  .stickyCheckoutDateTime{
+    display: none;
+  }
+
+  .stickyCheckoutBtn{
+    min-height: 34px;
+    padding: 8px 11px;
+    font-size: 12px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px){
+  .orderPage{
+    padding-bottom: 86px;
+  }
+
+  .stickyCheckoutBar{
+    width: calc(100% - 10px);
+    gap: 6px;
+    padding: 6px 7px;
+  }
+
+  .stickyCheckoutBtn{
+    min-height: 32px;
+    padding: 7px 9px;
+    font-size: 11px;
   }
 }
 

@@ -7,10 +7,10 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218f">
+  <link rel="stylesheet" href="../styles.css?v=20260218h">
 </head>
 <body>
-  <main>
+  <main class="orderPage">
     <div class="header">
       <a href="../" class="tile backBtn">← Back</a>
       <div class="headerStack">
@@ -27,23 +27,29 @@
       <form id="orderForm" class="bookingForm" novalidate>
         <input type="hidden" id="orderType" name="orderType" value="delivery">
 
+        <div class="orderFlowHeader" aria-label="Checkout steps">
+          <span id="orderStepBadge1" class="orderFlowStep isActive">1. Select dishes</span>
+          <span class="orderFlowDivider">→</span>
+          <span id="orderStepBadge2" class="orderFlowStep">2. Confirm order</span>
+        </div>
+
         <div class="bookingGrid">
-          <label class="bookingField">
+          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Name</span>
             <input id="orderName" name="customerName" type="text" maxlength="80" placeholder="John Smith" required autocomplete="name">
           </label>
 
-          <label class="bookingField">
+          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Phone</span>
             <input id="orderPhone" name="phoneNumber" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
           </label>
 
-          <label class="bookingField bookingFieldWide">
+          <label class="bookingField bookingFieldWide orderCheckoutField">
             <span class="bookingLabel">Email</span>
             <input id="orderEmail" name="email" type="email" maxlength="120" placeholder="name@example.com" required autocomplete="email">
           </label>
 
-          <div class="bookingField bookingFieldWide bookingFieldCalendar">
+          <div class="bookingField bookingFieldWide bookingFieldCalendar orderCheckoutField">
             <span class="bookingLabel">Delivery date</span>
             <select id="orderDate" name="requestedDate" class="bookingNativeHidden" required></select>
             <div class="bookingDateSummaryRow">
@@ -73,37 +79,39 @@
             </div>
           </div>
 
-          <label class="bookingField">
+          <label class="bookingField bookingFieldWide bookingFieldSlots orderCheckoutField">
             <span class="bookingLabel">Delivery time</span>
-            <select id="orderTime" name="requestedTime" required></select>
+            <select id="orderTime" name="requestedTime" class="bookingNativeHidden" required></select>
+            <div id="orderSlotCards" class="orderSlotCards" role="radiogroup" aria-label="Select delivery time"></div>
           </label>
 
-          <label class="bookingField bookingFieldWide">
+          <label class="bookingField bookingFieldWide orderCheckoutField">
             <span class="bookingLabel">Address line 1</span>
-            <input id="orderAddress1" name="addressLine1" type="text" maxlength="120" required autocomplete="address-line1">
+            <input id="orderAddress1" name="addressLine1" type="text" maxlength="120" required autocomplete="address-line1" placeholder="123 High Street">
           </label>
 
-          <label class="bookingField">
+          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Address line 2 (optional)</span>
-            <input id="orderAddress2" name="addressLine2" type="text" maxlength="120" autocomplete="address-line2">
+            <input id="orderAddress2" name="addressLine2" type="text" maxlength="120" autocomplete="address-line2" placeholder="Flat 2">
           </label>
 
-          <label class="bookingField">
+          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Town / City</span>
-            <input id="orderTown" name="townCity" type="text" maxlength="80" required autocomplete="address-level2">
+            <input id="orderTown" name="townCity" type="text" maxlength="80" required autocomplete="address-level2" placeholder="Grimsby">
           </label>
 
-          <label class="bookingField">
+          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Postcode</span>
-            <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code">
+            <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code" placeholder="DN37 0JZ">
+            <p id="deliveryAreaHint" class="deliveryAreaHint" aria-live="polite"></p>
           </label>
 
-          <div class="bookingField bookingFieldWide">
-            <span class="bookingLabel">Your order</span>
+          <div class="bookingField bookingFieldWide orderItemsField">
+            <span class="bookingLabel">Order items</span>
             <div class="orderHub">
               <label class="orderSearchWrap">
-                <span>Search menu</span>
-                <input id="menuSearch" type="search" maxlength="80" placeholder="Type dish name..." autocomplete="off">
+                <span>Search dishes</span>
+                <input id="menuSearch" type="search" maxlength="80" placeholder="Search by dish name..." autocomplete="off">
               </label>
 
               <div id="menuCategoryChips" class="orderCategoryChips" role="tablist" aria-label="Menu categories"></div>
@@ -116,11 +124,11 @@
 
               <div id="orderBasketPanel" class="orderBasketPanel" hidden>
                 <div class="orderBasketHead">
-                  <strong>Your order</strong>
+                  <strong>Basket</strong>
                   <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
                 </div>
 
-                <div id="orderCartEmpty" class="orderCartEmpty">No items added yet.</div>
+                <div id="orderCartEmpty" class="orderCartEmpty">No dishes added yet.</div>
                 <ul id="orderCartList" class="orderCartList" hidden></ul>
 
                 <div class="orderCartTotal">
@@ -128,7 +136,7 @@
                   <strong id="orderTotal">£0.00</strong>
                 </div>
 
-                <p id="orderSummaryPreview" class="bookingMeta">Add items to build your order.</p>
+                <p id="orderSummaryPreview" class="bookingMeta">Add dishes to begin.</p>
                 <input id="orderItems" name="itemsSummary" type="hidden">
               </div>
 
@@ -146,13 +154,19 @@
             </div>
           </div>
 
-          <label class="bookingField bookingFieldWide">
+          <label class="bookingField bookingFieldWide orderCheckoutField">
             <span class="bookingLabel">Delivery notes (optional)</span>
             <textarea id="orderNotes" name="notes" rows="2" maxlength="400" placeholder="Gate code, landmark, allergy notes, etc."></textarea>
           </label>
         </div>
 
-        <div class="bookingActions">
+        <div id="orderReviewRow" class="orderReviewRow orderCheckoutField">
+          <p id="orderReviewText" class="orderReviewText">Review before placing your order</p>
+          <button id="orderEditItemsBtn" class="orderReviewEditBtn" type="button">Edit basket</button>
+        </div>
+
+        <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
+          <button id="orderBackToItems" class="orderBackToItemsBtn" type="button">← Back to dishes</button>
           <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Place delivery order</button>
           <div class="tileSub">
             Need the menu first?
@@ -160,6 +174,14 @@
           </div>
         </div>
       </form>
+
+      <div id="stickyCheckoutBar" class="stickyCheckoutBar">
+        <div class="stickyCheckoutSummary">
+          <p id="stickyCheckoutDateTime" class="stickyCheckoutDateTime">Today · ASAP</p>
+          <p id="stickyCheckoutOrder" class="stickyCheckoutOrder">0 items · £0.00</p>
+        </div>
+        <button id="stickyCheckoutBtn" class="stickyCheckoutBtn" type="button">Continue</button>
+      </div>
 
       <div id="orderResult" class="bookingResult" hidden></div>
       <div id="orderError" class="bookingError" role="alert" hidden></div>
@@ -170,6 +192,6 @@
     </div>
   </main>
   <script src="../orders/menu-catalog.js?v=20260217a"></script>
-  <script src="../orders/order-form.js?v=20260218i"></script>
+  <script src="../orders/order-form.js?v=20260218k"></script>
 </body>
 </html>

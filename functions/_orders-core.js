@@ -39,6 +39,12 @@ function randomId() {
   return `mco-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
+function makeTrackingToken() {
+  const seed = randomId().replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  if (seed.length >= 20) return seed.slice(0, 20);
+  return `${seed}${Date.now().toString(16)}`.slice(0, 20);
+}
+
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -97,6 +103,13 @@ function normalizeSpecialOccasion(rawOccasion) {
 
 function normalizePostcode(postcode) {
   return String(postcode || "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+function normalizeEtaMinutes(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const rounded = Math.round(parsed);
+  return rounded >= 0 ? rounded : null;
 }
 
 function normalizedStatus(status) {
@@ -218,6 +231,11 @@ function normalizeOrderRecord(raw) {
   if (!isISODate(raw.date)) return null;
   if (normalizedTime !== ASAP_VALUE && !/^\d{2}:\d{2}$/.test(normalizedTime)) return null;
 
+  const stableFallbackToken = `trk-${String(raw.id || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase()
+    .slice(-16)}`;
+
   return {
     id: String(raw.id || randomId()),
     orderType,
@@ -235,6 +253,11 @@ function normalizeOrderRecord(raw) {
     townCity: String(raw.townCity || "").trim(),
     postcode: normalizePostcode(raw.postcode || ""),
     status: normalizedStatus(raw.status || "submitted"),
+    etaMinutes: normalizeEtaMinutes(raw.etaMinutes),
+    decisionDate: String(raw.decisionDate || "").trim(),
+    decisionTime: String(raw.decisionTime || "").trim().toUpperCase(),
+    trackingToken: String(raw.trackingToken || stableFallbackToken).trim().toLowerCase() || stableFallbackToken,
+    statusUpdatedAt: String(raw.statusUpdatedAt || raw.createdAt || nowISO()),
     source: String(raw.source || "Millers Cafe Website"),
     createdAt: String(raw.createdAt || nowISO())
   };
@@ -269,6 +292,11 @@ export async function saveOrders(env, orders) {
     townCity: order.townCity,
     postcode: normalizePostcode(order.postcode),
     status: normalizedStatus(order.status),
+    etaMinutes: normalizeEtaMinutes(order.etaMinutes),
+    decisionDate: String(order.decisionDate || "").trim(),
+    decisionTime: String(order.decisionTime || "").trim().toUpperCase(),
+    trackingToken: String(order.trackingToken || "").trim().toLowerCase(),
+    statusUpdatedAt: String(order.statusUpdatedAt || order.createdAt || nowISO()),
     source: order.source,
     createdAt: order.createdAt
   }));
@@ -281,9 +309,16 @@ export async function saveOrders(env, orders) {
   globalThis.__millersCafeOrdersStore = records;
 }
 
-function makeReference(orderId) {
+export function makeReference(orderId) {
   const cleaned = orderId.replace(/-/g, "").toUpperCase();
   return `MCO-${cleaned.slice(0, 8)}`;
+}
+
+export function findOrderIndexByReference(orders, reference) {
+  const target = String(reference || "").trim().toUpperCase();
+  if (!target) return -1;
+
+  return orders.findIndex((order) => makeReference(String(order.id || "")).toUpperCase() === target);
 }
 
 function validatePayloadShape(payload) {
@@ -404,6 +439,11 @@ export function createOrderRecord(orders, payload) {
     townCity: data.townCity,
     postcode: data.postcode,
     status: "submitted",
+    etaMinutes: null,
+    decisionDate: "",
+    decisionTime: "",
+    trackingToken: makeTrackingToken(),
+    statusUpdatedAt: nowISO(),
     source: "Millers Cafe Website",
     createdAt: nowISO()
   };
@@ -462,6 +502,11 @@ export function feedRows(orders, includePast = false) {
       address_summary: joinedAddress(order),
       notes: order.notes,
       status: order.status,
+      eta_minutes: normalizeEtaMinutes(order.etaMinutes),
+      decision_date: order.decisionDate || "",
+      decision_time: order.decisionTime || "",
+      tracking_token: order.trackingToken || "",
+      status_updated_at: order.statusUpdatedAt || order.createdAt,
       source: order.source,
       created_at: order.createdAt
     }));
@@ -493,6 +538,11 @@ export function toCSV(rows) {
     "address_summary",
     "notes",
     "status",
+    "eta_minutes",
+    "decision_date",
+    "decision_time",
+    "tracking_token",
+    "status_updated_at",
     "source",
     "created_at"
   ];

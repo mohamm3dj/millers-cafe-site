@@ -66,6 +66,7 @@ export async function onRequestPost(context) {
     ok: true,
     reference: creation.reference,
     orderId: creation.record.id,
+    trackingToken: creation.record.trackingToken,
     emailStatus: "sent",
     emailDelivered: emailResult.delivered,
     emailTotal: emailResult.total,

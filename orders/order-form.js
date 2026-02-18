@@ -14,6 +14,19 @@ const DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
 const MAX_ORDER_LOOKAHEAD_DAYS = 90;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
 const MAX_ITEM_QUANTITY = 20;
+const UK_POSTCODE_REGEX = /^([A-Z]{1,2}\d[A-Z\d]?)\s(\d[A-Z]{2})$/;
+const DELIVERY_OUTWARD_PREFIXES = new Set([
+  "DN31",
+  "DN32",
+  "DN33",
+  "DN34",
+  "DN35",
+  "DN36",
+  "DN37",
+  "DN38",
+  "DN40",
+  "DN41"
+]);
 
 const HIDDEN_ORDER_CATEGORY_KEYS = new Set([
   "beer",
@@ -49,6 +62,7 @@ const phoneInput = document.getElementById("orderPhone");
 const emailInput = document.getElementById("orderEmail");
 const dateSelect = document.getElementById("orderDate");
 const timeSelect = document.getElementById("orderTime");
+const orderSlotCards = document.getElementById("orderSlotCards");
 const itemsInput = document.getElementById("orderItems");
 const notesInput = document.getElementById("orderNotes");
 const orderDateToggle = document.getElementById("orderDateToggle");
@@ -63,6 +77,7 @@ const address1Input = document.getElementById("orderAddress1");
 const address2Input = document.getElementById("orderAddress2");
 const townInput = document.getElementById("orderTown");
 const postcodeInput = document.getElementById("orderPostcode");
+const deliveryAreaHint = document.getElementById("deliveryAreaHint");
 
 const menuSearchInput = document.getElementById("menuSearch");
 const menuCategoryChips = document.getElementById("menuCategoryChips");
@@ -86,6 +101,18 @@ const cartList = document.getElementById("orderCartList");
 const cartEmpty = document.getElementById("orderCartEmpty");
 const orderTotalEl = document.getElementById("orderTotal");
 const orderSummaryPreview = document.getElementById("orderSummaryPreview");
+const stickyCheckoutBar = document.getElementById("stickyCheckoutBar");
+const stickyCheckoutDateTime = document.getElementById("stickyCheckoutDateTime");
+const stickyCheckoutOrder = document.getElementById("stickyCheckoutOrder");
+const stickyCheckoutBtn = document.getElementById("stickyCheckoutBtn");
+const orderStepBadge1 = document.getElementById("orderStepBadge1");
+const orderStepBadge2 = document.getElementById("orderStepBadge2");
+const orderCheckoutFields = [...document.querySelectorAll(".orderCheckoutField")];
+const orderItemsField = document.querySelector(".orderItemsField");
+const orderReviewRow = document.getElementById("orderReviewRow");
+const orderReviewText = document.getElementById("orderReviewText");
+const orderEditItemsBtn = document.getElementById("orderEditItemsBtn");
+const orderBackToItemsBtn = document.getElementById("orderBackToItems");
 
 const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -106,6 +133,8 @@ let availableOrderDates = [];
 let availableOrderDateSet = new Set();
 let orderCalendarViewMonthUTC = null;
 let isOrderCalendarOpen = false;
+let lastRenderedTimeRows = [];
+let currentOrderStep = 1;
 
 const normalizedMenu = normalizeMenuCatalog(window.MILLERS_ORDER_MENU);
 
@@ -248,16 +277,22 @@ function updateOrderDateSummary() {
   const value = String(dateSelect.value || "").trim();
   if (!value) {
     orderDateSummary.textContent = "Select a date";
+    updateOrderReviewRow();
+    updateStickyCheckoutBar();
     return;
   }
 
   const today = ukTodayISODate();
   if (value === today) {
     orderDateSummary.textContent = `Today · ${displayDateLabel(value)}`;
+    updateOrderReviewRow();
+    updateStickyCheckoutBar();
     return;
   }
 
   orderDateSummary.textContent = displayDateLabel(value);
+  updateOrderReviewRow();
+  updateStickyCheckoutBar();
 }
 
 function setOrderCalendarOpen(open) {
@@ -292,6 +327,234 @@ function normalizePhoneField() {
   phoneInput.value = digits.length <= 5
     ? digits
     : `${digits.slice(0, 5)} ${digits.slice(5)}`;
+}
+
+function normalizeUkPostcode(value) {
+  const cleaned = String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!cleaned) return "";
+  if (cleaned.length <= 3) return cleaned;
+  return `${cleaned.slice(0, -3)} ${cleaned.slice(-3)}`;
+}
+
+function postcodeOutwardCode(value) {
+  const normalized = normalizeUkPostcode(value);
+  const match = normalized.match(/^([A-Z]{1,2}\d[A-Z\d]?)/);
+  return match ? match[1] : "";
+}
+
+function isLikelyDeliveryPostcode(value) {
+  const outward = postcodeOutwardCode(value);
+  if (!outward) return false;
+  return [...DELIVERY_OUTWARD_PREFIXES].some((prefix) => outward.startsWith(prefix));
+}
+
+function normalizePostcodeField() {
+  if (!postcodeInput) return;
+  postcodeInput.value = normalizeUkPostcode(postcodeInput.value);
+}
+
+function updateDeliveryAreaHint() {
+  if (!deliveryAreaHint || !postcodeInput) return;
+  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  if (!isDelivery) {
+    deliveryAreaHint.textContent = "";
+    deliveryAreaHint.classList.remove("isWarning", "isOk");
+    return;
+  }
+
+  const value = normalizeUkPostcode(postcodeInput.value);
+  if (!value) {
+    deliveryAreaHint.textContent = "";
+    deliveryAreaHint.classList.remove("isWarning", "isOk");
+    return;
+  }
+
+  if (!UK_POSTCODE_REGEX.test(value)) {
+    deliveryAreaHint.textContent = "Use a valid UK postcode format, e.g. DN37 0JZ.";
+    deliveryAreaHint.classList.add("isWarning");
+    deliveryAreaHint.classList.remove("isOk");
+    return;
+  }
+
+  if (!isLikelyDeliveryPostcode(value)) {
+    deliveryAreaHint.textContent = "This postcode may be outside our normal delivery area. We will confirm after checkout.";
+    deliveryAreaHint.classList.add("isWarning");
+    deliveryAreaHint.classList.remove("isOk");
+    return;
+  }
+
+  deliveryAreaHint.textContent = "This postcode looks within our usual delivery area.";
+  deliveryAreaHint.classList.remove("isWarning");
+  deliveryAreaHint.classList.add("isOk");
+}
+
+function ensureInlineErrorElement(input) {
+  if (!input) return null;
+  const field = input.closest(".bookingField");
+  if (!field) return null;
+
+  let errorEl = field.querySelector(`.orderInlineError[data-for="${input.id}"]`);
+  if (errorEl) return errorEl;
+
+  errorEl = document.createElement("p");
+  errorEl.className = "orderInlineError";
+  errorEl.dataset.for = input.id;
+  errorEl.hidden = true;
+  field.appendChild(errorEl);
+  return errorEl;
+}
+
+function setInlineError(input, message) {
+  if (!input) return false;
+  const field = input.closest(".bookingField");
+  const errorEl = ensureInlineErrorElement(input);
+  const hasError = Boolean(message);
+
+  input.setAttribute("aria-invalid", hasError ? "true" : "false");
+  if (field) field.classList.toggle("hasFieldError", hasError);
+  if (errorEl) {
+    errorEl.hidden = !hasError;
+    errorEl.textContent = hasError ? message : "";
+  }
+  return !hasError;
+}
+
+function validateNameField() {
+  const value = normalizeText(nameInput?.value || "");
+  return setInlineError(nameInput, value.length >= 2 ? "" : "Enter at least 2 characters.");
+}
+
+function validatePhoneField() {
+  const value = String(phoneInput?.value || "");
+  return setInlineError(phoneInput, /^\d{5}\s\d{6}$/.test(value) ? "" : "Use format XXXXX XXXXXX.");
+}
+
+function validateEmailField() {
+  const value = String(emailInput?.value || "").trim();
+  return setInlineError(emailInput, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Enter a valid email address.");
+}
+
+function validateDateField() {
+  const value = String(dateSelect?.value || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return setInlineError(dateSelect, "Choose a valid date.");
+  }
+  if (!isBookableDay(value)) {
+    return setInlineError(dateSelect, "Available Tuesday to Sunday only.");
+  }
+  return setInlineError(dateSelect, "");
+}
+
+function validateTimeField() {
+  const value = String(timeSelect?.value || "");
+  if (!value) return setInlineError(timeSelect, "Choose a time.");
+  if (value === ASAP_VALUE) return setInlineError(timeSelect, "");
+  if (!/^\d{2}:\d{2}$/.test(value)) return setInlineError(timeSelect, "Choose a valid time.");
+  return setInlineError(timeSelect, "");
+}
+
+function validateAddress1Field() {
+  if (!address1Input) return true;
+  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  if (!isDelivery) return setInlineError(address1Input, "");
+  return setInlineError(address1Input, normalizeText(address1Input.value).length > 0 ? "" : "Address line 1 is required.");
+}
+
+function validateTownField() {
+  if (!townInput) return true;
+  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  if (!isDelivery) return setInlineError(townInput, "");
+  return setInlineError(townInput, normalizeText(townInput.value).length > 0 ? "" : "Town / City is required.");
+}
+
+function validatePostcodeField() {
+  if (!postcodeInput) return true;
+  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  if (!isDelivery) return setInlineError(postcodeInput, "");
+  const value = normalizeUkPostcode(postcodeInput.value);
+  if (!value) return setInlineError(postcodeInput, "Postcode is required.");
+  if (!UK_POSTCODE_REGEX.test(value)) return setInlineError(postcodeInput, "Use UK format, e.g. DN37 0JZ.");
+  return setInlineError(postcodeInput, "");
+}
+
+function runCheckoutFieldValidation() {
+  const checks = [
+    validateNameField(),
+    validatePhoneField(),
+    validateEmailField(),
+    validateDateField(),
+    validateTimeField(),
+    validateAddress1Field(),
+    validateTownField(),
+    validatePostcodeField()
+  ];
+  return checks.every(Boolean);
+}
+
+function clearInlineValidation() {
+  [
+    nameInput,
+    phoneInput,
+    emailInput,
+    dateSelect,
+    timeSelect,
+    address1Input,
+    townInput,
+    postcodeInput
+  ].forEach((input) => {
+    if (!input) return;
+    setInlineError(input, "");
+  });
+}
+
+function updateOrderReviewRow() {
+  if (!orderReviewText) return;
+  const orderType = String(orderTypeField?.value || "collection").toLowerCase();
+  const totalPrice = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
+  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const dishLabel = totalQuantity === 1 ? "dish" : "dishes";
+  const dateLabel = dateSelect?.value
+    ? (dateSelect.value === ukTodayISODate() ? "Today" : displayDateLabel(dateSelect.value))
+    : "No date";
+  const timeLabel = timeSelect?.value ? formatOrderSlotTime(timeSelect.value) : "No time";
+  const typeLabel = orderType === "delivery" ? "Delivery" : "Collection";
+  orderReviewText.textContent = `${typeLabel} · ${totalQuantity} ${dishLabel} · ${formatGBP(totalPrice)} · ${dateLabel} at ${timeLabel}`;
+}
+
+function setOrderStep(step, options = {}) {
+  const nextStep = step === 2 ? 2 : 1;
+  const hasItems = cartItems.length > 0;
+  if (nextStep === 2 && !hasItems) {
+    setNotice("Add at least one dish to continue.", true);
+    return;
+  }
+
+  currentOrderStep = nextStep;
+  orderCheckoutFields.forEach((el) => {
+    el.hidden = currentOrderStep !== 2;
+  });
+
+  if (orderItemsField) {
+    orderItemsField.hidden = currentOrderStep !== 1;
+  }
+
+  orderStepBadge1?.classList.toggle("isActive", currentOrderStep === 1);
+  orderStepBadge2?.classList.toggle("isActive", currentOrderStep === 2);
+
+  if (currentOrderStep === 2) {
+    setBasketOpen(false);
+    hideModifierPanel();
+    updateOrderReviewRow();
+    setNotice("Review your details, then place the order.", false);
+    orderReviewRow?.scrollIntoView({ behavior: options.instant ? "auto" : "smooth", block: "nearest" });
+  } else if (!options.silent) {
+    const orderType = String(orderTypeField?.value || "collection").toLowerCase();
+    const label = orderType === "delivery" ? "Delivery" : "Collection";
+    setNotice(`${label} hours: Tue-Sun, 12:00-17:00. ${label} slots are in 15-minute intervals.`, false);
+    orderItemsField?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  updateStickyCheckoutBar();
 }
 
 function renderDateOptions() {
@@ -456,6 +719,78 @@ function scheduledSlotTimes(orderType, isoDate) {
   });
 }
 
+function formatOrderSlotTime(value) {
+  if (value === ASAP_VALUE) return ASAP_VALUE;
+  const minutes = clockToMinutes(value);
+  if (!Number.isFinite(minutes)) return value;
+  const hours24 = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const suffix = hours24 >= 12 ? "pm" : "am";
+  const hours12 = ((hours24 + 11) % 12) + 1;
+  return `${hours12}:${pad2(mins)} ${suffix}`;
+}
+
+function renderOrderSlotCards(rows) {
+  if (!orderSlotCards || !timeSelect) return;
+  orderSlotCards.innerHTML = "";
+
+  const selectedTime = String(timeSelect.value || "");
+
+  rows.forEach((row) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "bookingSlotCard orderSlotCard";
+    card.dataset.time = row.time;
+    if (!row.available) card.classList.add("isUnavailable");
+    if (row.available && row.time === selectedTime) card.classList.add("isSelected");
+    card.disabled = !row.available;
+    card.setAttribute("role", "radio");
+    card.setAttribute("aria-checked", row.available && row.time === selectedTime ? "true" : "false");
+
+    const title = document.createElement("span");
+    title.className = "bookingSlotTime";
+    title.textContent = row.label;
+    card.appendChild(title);
+
+    if (row.available) {
+      card.addEventListener("click", () => {
+        timeSelect.value = row.time;
+        renderOrderSlotCards(rows);
+        updateStickyCheckoutBar();
+      });
+    }
+
+    orderSlotCards.appendChild(card);
+  });
+}
+
+function updateStickyCheckoutBar() {
+  if (!stickyCheckoutBar) return;
+
+  const totalPrice = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
+  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const hasItems = totalQuantity > 0;
+
+  const selectedDate = String(dateSelect?.value || "");
+  const selectedTime = String(timeSelect?.value || "");
+  const dateLabel = selectedDate ? (selectedDate === ukTodayISODate() ? "Today" : displayDateLabel(selectedDate)) : "Pick a date";
+  const timeLabel = selectedTime ? formatOrderSlotTime(selectedTime) : "Pick a time";
+
+  if (stickyCheckoutDateTime) {
+    stickyCheckoutDateTime.textContent = `${dateLabel} · ${timeLabel}`;
+  }
+  if (stickyCheckoutOrder) {
+    stickyCheckoutOrder.textContent = `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totalPrice)}`;
+  }
+  if (stickyCheckoutBtn) {
+    stickyCheckoutBtn.textContent = "Continue";
+    stickyCheckoutBtn.disabled = isSubmitting || !hasSelectableTime || totalQuantity === 0;
+  }
+
+  const showBar = currentOrderStep === 1 && (hasItems || isSubmitting);
+  stickyCheckoutBar.classList.toggle("isVisible", showBar);
+}
+
 function renderTimeOptions() {
   if (!timeSelect) return;
   const priorValue = timeSelect.value;
@@ -466,38 +801,56 @@ function renderTimeOptions() {
   const asapEnabled = isToday && now.minutesNow <= SERVICE_END_MINUTES;
   const slots = scheduledSlotTimes(orderType, selectedDate);
 
-  timeSelect.innerHTML = "";
+  const rows = [];
   if (asapEnabled) {
-    const asapOption = document.createElement("option");
-    asapOption.value = ASAP_VALUE;
-    asapOption.textContent = ASAP_VALUE;
-    timeSelect.appendChild(asapOption);
+    rows.push({
+      time: ASAP_VALUE,
+      label: ASAP_VALUE,
+      available: true
+    });
+  }
+  slots.forEach((slot) => {
+    rows.push({
+      time: slot,
+      label: formatOrderSlotTime(slot),
+      available: true
+    });
+  });
+
+  if (rows.length === 0) {
+    rows.push({
+      time: "",
+      label: "No slots",
+      available: false
+    });
   }
 
-  for (const slot of slots) {
+  timeSelect.innerHTML = "";
+  rows.forEach((row) => {
     const option = document.createElement("option");
-    option.value = slot;
-    option.textContent = slot;
+    option.value = row.time;
+    option.textContent = row.time || "No slots available";
+    option.disabled = !row.available;
     timeSelect.appendChild(option);
-  }
+  });
 
-  hasSelectableTime = asapEnabled || slots.length > 0;
-  if (!hasSelectableTime) {
-    const noneOption = document.createElement("option");
-    noneOption.value = "";
-    noneOption.textContent = "No slots available";
-    timeSelect.appendChild(noneOption);
-    timeSelect.value = "";
-  } else if ([...timeSelect.options].some((option) => option.value === priorValue)) {
+  hasSelectableTime = rows.some((row) => row.available);
+  if (hasSelectableTime && [...timeSelect.options].some((option) => option.value === priorValue && !option.disabled)) {
     timeSelect.value = priorValue;
-  } else if (asapEnabled) {
+  } else if (hasSelectableTime && asapEnabled) {
     timeSelect.value = ASAP_VALUE;
-  } else if (slots.length > 0) {
+  } else if (hasSelectableTime && slots.length > 0) {
     timeSelect.value = slots[0];
+  } else {
+    timeSelect.value = "";
   }
 
+  lastRenderedTimeRows = rows;
+  renderOrderSlotCards(rows);
+  updateOrderReviewRow();
   updateSubmitButtonState();
   updateTimeNotice(orderType, selectedDate, slots, asapEnabled);
+  updateStickyCheckoutBar();
 }
 
 function clearFeedback() {
@@ -672,7 +1025,7 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
       if (status === "rejected" || status === "declined" || status === "cancelled") {
         renderOrderStatusTracker({
           type: "rejected",
-          message: "Order rejected. Please call Millers Café on 01472 488400 if you need help."
+          message: "Order rejected. Please call Millers Café on 01472 828600 if you need help."
         });
         setNotice("Order was rejected by Millers Café.", true);
         stopStatusPolling();
@@ -713,6 +1066,7 @@ function updateSubmitButtonState() {
   const idleLabel = orderType === "delivery" ? "Place delivery order" : "Place collection order";
   submitBtn.disabled = isSubmitting || !hasSelectableTime || cartItems.length === 0;
   submitBtn.textContent = isSubmitting ? "Submitting..." : idleLabel;
+  updateStickyCheckoutBar();
 }
 
 function updateTimeNotice(orderType, isoDate, slots, asapEnabled) {
@@ -1308,7 +1662,7 @@ function syncItemsSummary() {
 
   if (cartItems.length === 0) {
     itemsInput.value = "";
-    if (orderSummaryPreview) orderSummaryPreview.textContent = "Add items to build your order.";
+    if (orderSummaryPreview) orderSummaryPreview.textContent = "Add dishes to begin.";
     return;
   }
 
@@ -1318,7 +1672,7 @@ function syncItemsSummary() {
 
   itemsInput.value = lines.join("\n");
   if (orderSummaryPreview) {
-    orderSummaryPreview.textContent = `${cartItems.length} line item(s). Total ${formatGBP(total)}.`;
+    orderSummaryPreview.textContent = `${cartItems.length} ${cartItems.length === 1 ? "dish" : "dishes"} · Total ${formatGBP(total)}.`;
   }
 }
 
@@ -1426,6 +1780,7 @@ function renderCart() {
   }
 
   syncItemsSummary();
+  updateOrderReviewRow();
   updateSubmitButtonState();
 }
 
@@ -1528,6 +1883,9 @@ function validatePayload(payload) {
     if (!payload.addressLine1) return "Address line 1 is required for delivery.";
     if (!payload.townCity) return "Town / City is required for delivery.";
     if (!payload.postcode) return "Postcode is required for delivery.";
+    if (!UK_POSTCODE_REGEX.test(payload.postcode)) {
+      return "Please enter a valid UK postcode (example: DN37 0JZ).";
+    }
   }
 
   return null;
@@ -1537,6 +1895,16 @@ async function handleSubmit(event) {
   event.preventDefault();
   clearFeedback();
   syncItemsSummary();
+
+  if (currentOrderStep !== 2) {
+    setOrderStep(2);
+    return;
+  }
+
+  if (!runCheckoutFieldValidation()) {
+    showError("Please correct the highlighted fields.");
+    return;
+  }
 
   const orderType = String(orderTypeField?.value || "collection").toLowerCase();
   const payload = {
@@ -1552,13 +1920,17 @@ async function handleSubmit(event) {
     addressLine1: (address1Input?.value || "").trim(),
     addressLine2: (address2Input?.value || "").trim(),
     townCity: (townInput?.value || "").trim(),
-    postcode: (postcodeInput?.value || "").trim()
+    postcode: normalizeUkPostcode((postcodeInput?.value || "").trim())
   };
 
   const validationError = validatePayload(payload);
   if (validationError) {
     showError(validationError);
     return;
+  }
+
+  if (payload.orderType === "delivery" && payload.postcode && !isLikelyDeliveryPostcode(payload.postcode)) {
+    setNotice("This postcode may be outside our usual delivery area. We will confirm availability after submission.", true);
   }
 
   setSubmitting(true);
@@ -1605,6 +1977,7 @@ async function handleSubmit(event) {
 
     form.reset();
     if (orderTypeField) orderTypeField.value = orderType;
+    if (postcodeInput) postcodeInput.value = payload.postcode;
 
     if (dateSelect) dateSelect.value = preservedDate;
     if (timeSelect) {
@@ -1614,8 +1987,11 @@ async function handleSubmit(event) {
       }
     }
     syncOrderCalendarToSelectedDate();
+    updateDeliveryAreaHint();
 
     resetOrderBuilder();
+    clearInlineValidation();
+    setOrderStep(1, { instant: true, silent: true });
   } catch (error) {
     showError("Order service is currently unavailable. Please try again shortly.");
   } finally {
@@ -1762,14 +2138,57 @@ function initialize() {
     clearFeedback();
     syncOrderCalendarToSelectedDate();
     renderTimeOptions();
+    validateDateField();
   });
   orderDateToggle?.addEventListener("click", () => {
     setOrderCalendarOpen(!isOrderCalendarOpen);
   });
   orderCalendarPrevBtn?.addEventListener("click", () => moveOrderCalendarMonth(-1));
   orderCalendarNextBtn?.addEventListener("click", () => moveOrderCalendarMonth(1));
-  phoneInput?.addEventListener("input", normalizePhoneField);
-  phoneInput?.addEventListener("blur", normalizePhoneField);
+  nameInput?.addEventListener("input", validateNameField);
+  nameInput?.addEventListener("blur", validateNameField);
+  phoneInput?.addEventListener("input", () => {
+    normalizePhoneField();
+    validatePhoneField();
+  });
+  phoneInput?.addEventListener("blur", () => {
+    normalizePhoneField();
+    validatePhoneField();
+  });
+  emailInput?.addEventListener("input", validateEmailField);
+  emailInput?.addEventListener("blur", validateEmailField);
+  address1Input?.addEventListener("input", validateAddress1Field);
+  address1Input?.addEventListener("blur", validateAddress1Field);
+  townInput?.addEventListener("input", validateTownField);
+  townInput?.addEventListener("blur", validateTownField);
+  timeSelect?.addEventListener("change", () => {
+    renderOrderSlotCards(lastRenderedTimeRows);
+    validateTimeField();
+    updateOrderReviewRow();
+    updateStickyCheckoutBar();
+  });
+  postcodeInput?.addEventListener("input", () => {
+    normalizePostcodeField();
+    updateDeliveryAreaHint();
+    validatePostcodeField();
+  });
+  postcodeInput?.addEventListener("blur", () => {
+    normalizePostcodeField();
+    updateDeliveryAreaHint();
+    validatePostcodeField();
+  });
+  orderEditItemsBtn?.addEventListener("click", () => setOrderStep(1));
+  orderBackToItemsBtn?.addEventListener("click", () => setOrderStep(1));
+  stickyCheckoutBtn?.addEventListener("click", () => {
+    if (!form || stickyCheckoutBtn.disabled) return;
+    setOrderStep(2);
+  });
+  normalizePostcodeField();
+  updateDeliveryAreaHint();
+  validateDateField();
+  validateTimeField();
+  updateOrderReviewRow();
+  setOrderStep(1, { instant: true, silent: true });
   updateSubmitButtonState();
 }
 
