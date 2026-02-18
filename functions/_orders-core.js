@@ -332,7 +332,7 @@ function validatePayloadShape(payload) {
   }
 
   const customerName = String(payload.customerName || "").trim();
-  if (customerName.length < 2) {
+  if (orderType !== "delivery" && customerName.length < 2) {
     return { ok: false, status: 400, error: "Customer name is required." };
   }
 

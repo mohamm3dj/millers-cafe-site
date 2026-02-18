@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218h">
+  <link rel="stylesheet" href="../styles.css?v=20260218i">
 </head>
 <body>
   <main class="orderPage">
@@ -35,11 +35,6 @@
 
         <div class="bookingGrid">
           <label class="bookingField orderCheckoutField">
-            <span class="bookingLabel">Name</span>
-            <input id="orderName" name="customerName" type="text" maxlength="80" placeholder="John Smith" required autocomplete="name">
-          </label>
-
-          <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Phone</span>
             <input id="orderPhone" name="phoneNumber" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
           </label>
@@ -47,6 +42,27 @@
           <label class="bookingField bookingFieldWide orderCheckoutField">
             <span class="bookingLabel">Email</span>
             <input id="orderEmail" name="email" type="email" maxlength="120" placeholder="name@example.com" required autocomplete="email">
+          </label>
+
+          <label class="bookingField bookingFieldWide orderCheckoutField">
+            <span class="bookingLabel">Address line 1</span>
+            <input id="orderAddress1" name="addressLine1" type="text" maxlength="120" required autocomplete="address-line1" placeholder="123 High Street">
+          </label>
+
+          <label class="bookingField orderCheckoutField">
+            <span class="bookingLabel">Address line 2 (optional)</span>
+            <input id="orderAddress2" name="addressLine2" type="text" maxlength="120" autocomplete="address-line2" placeholder="Flat 2">
+          </label>
+
+          <label class="bookingField orderCheckoutField">
+            <span class="bookingLabel">Town / City</span>
+            <input id="orderTown" name="townCity" type="text" maxlength="80" required autocomplete="address-level2" placeholder="Grimsby">
+          </label>
+
+          <label class="bookingField orderCheckoutField">
+            <span class="bookingLabel">Postcode</span>
+            <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code" placeholder="DN37 0JZ">
+            <p id="deliveryAreaHint" class="deliveryAreaHint" aria-live="polite"></p>
           </label>
 
           <div class="bookingField bookingFieldWide bookingFieldCalendar orderCheckoutField">
@@ -83,27 +99,6 @@
             <span class="bookingLabel">Delivery time</span>
             <select id="orderTime" name="requestedTime" class="bookingNativeHidden" required></select>
             <div id="orderSlotCards" class="orderSlotCards" role="radiogroup" aria-label="Select delivery time"></div>
-          </label>
-
-          <label class="bookingField bookingFieldWide orderCheckoutField">
-            <span class="bookingLabel">Address line 1</span>
-            <input id="orderAddress1" name="addressLine1" type="text" maxlength="120" required autocomplete="address-line1" placeholder="123 High Street">
-          </label>
-
-          <label class="bookingField orderCheckoutField">
-            <span class="bookingLabel">Address line 2 (optional)</span>
-            <input id="orderAddress2" name="addressLine2" type="text" maxlength="120" autocomplete="address-line2" placeholder="Flat 2">
-          </label>
-
-          <label class="bookingField orderCheckoutField">
-            <span class="bookingLabel">Town / City</span>
-            <input id="orderTown" name="townCity" type="text" maxlength="80" required autocomplete="address-level2" placeholder="Grimsby">
-          </label>
-
-          <label class="bookingField orderCheckoutField">
-            <span class="bookingLabel">Postcode</span>
-            <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code" placeholder="DN37 0JZ">
-            <p id="deliveryAreaHint" class="deliveryAreaHint" aria-live="polite"></p>
           </label>
 
           <div class="bookingField bookingFieldWide orderItemsField">
@@ -192,6 +187,6 @@
     </div>
   </main>
   <script src="../orders/menu-catalog.js?v=20260217a"></script>
-  <script src="../orders/order-form.js?v=20260218k"></script>
+  <script src="../orders/order-form.js?v=20260218l"></script>
 </body>
 </html>

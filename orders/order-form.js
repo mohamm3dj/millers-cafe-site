@@ -329,6 +329,10 @@ function normalizePhoneField() {
     : `${digits.slice(0, 5)} ${digits.slice(5)}`;
 }
 
+function isDeliveryOrder() {
+  return String(orderTypeField?.value || "").toLowerCase() === "delivery";
+}
+
 function normalizeUkPostcode(value) {
   const cleaned = String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (!cleaned) return "";
@@ -420,6 +424,8 @@ function setInlineError(input, message) {
 }
 
 function validateNameField() {
+  if (!nameInput) return true;
+  if (isDeliveryOrder()) return setInlineError(nameInput, "");
   const value = normalizeText(nameInput?.value || "");
   return setInlineError(nameInput, value.length >= 2 ? "" : "Enter at least 2 characters.");
 }
@@ -455,21 +461,21 @@ function validateTimeField() {
 
 function validateAddress1Field() {
   if (!address1Input) return true;
-  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  const isDelivery = isDeliveryOrder();
   if (!isDelivery) return setInlineError(address1Input, "");
   return setInlineError(address1Input, normalizeText(address1Input.value).length > 0 ? "" : "Address line 1 is required.");
 }
 
 function validateTownField() {
   if (!townInput) return true;
-  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  const isDelivery = isDeliveryOrder();
   if (!isDelivery) return setInlineError(townInput, "");
   return setInlineError(townInput, normalizeText(townInput.value).length > 0 ? "" : "Town / City is required.");
 }
 
 function validatePostcodeField() {
   if (!postcodeInput) return true;
-  const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
+  const isDelivery = isDeliveryOrder();
   if (!isDelivery) return setInlineError(postcodeInput, "");
   const value = normalizeUkPostcode(postcodeInput.value);
   if (!value) return setInlineError(postcodeInput, "Postcode is required.");
@@ -1608,6 +1614,7 @@ function recalculateCartItem(item) {
 }
 
 function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
+  const wasEmpty = cartItems.length === 0;
   const cleanQty = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)));
   const signature = cartLineSignature(item.name, modifierSelections);
 
@@ -1631,7 +1638,7 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
   }
 
   renderCart();
-  if (openBasket) {
+  if (openBasket || wasEmpty) {
     setBasketOpen(true);
   }
 }
@@ -1814,7 +1821,7 @@ function resetOrderBuilder() {
 }
 
 function validatePayload(payload) {
-  if (!payload.customerName || payload.customerName.length < 2) {
+  if (payload.orderType !== "delivery" && (!payload.customerName || payload.customerName.length < 2)) {
     return "Please enter a valid name.";
   }
 

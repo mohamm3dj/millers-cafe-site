@@ -38,7 +38,7 @@ function orderDetailsLines(order, reference) {
   const lines = [
     ["Reference", reference],
     ["Order type", typeLabel(order.orderType)],
-    ["Name", order.customerName],
+    ["Name", order.customerName || "Not provided"],
     ["Date", formatDateForEmail(order.date)],
     ["Time", order.time],
     ["Phone", order.phoneNumber],
