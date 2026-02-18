@@ -4128,8 +4128,9 @@ h1{
 
 .orderBasketToggle{
   position: sticky;
-  bottom: 10px;
-  z-index: 5;
+  top: 10px;
+  bottom: auto;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4148,6 +4149,9 @@ h1{
 }
 
 .orderBasketPanel{
+  position: sticky;
+  top: 66px;
+  z-index: 5;
   display: grid;
   gap: 8px;
   border-radius: 12px;
@@ -4298,7 +4302,12 @@ h1{
   }
 
   .orderBasketToggle{
-    bottom: 6px;
+    top: 6px;
+    bottom: auto;
+  }
+
+  .orderBasketPanel{
+    top: 56px;
   }
 
   .stickyCheckoutBar{

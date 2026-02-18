@@ -2015,6 +2015,15 @@ function initializeMenuInteractions() {
     return false;
   }
 
+  if (orderHub && menuItemsList) {
+    if (basketPanel && basketPanel.parentElement === orderHub) {
+      orderHub.insertBefore(basketPanel, menuItemsList);
+    }
+    if (basketToggleBtn && basketToggleBtn.parentElement === orderHub) {
+      orderHub.insertBefore(basketToggleBtn, basketPanel || menuItemsList);
+    }
+  }
+
   renderCategoryChips();
   renderMenuItems();
   renderCart();
