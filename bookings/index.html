@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260217m">
+  <link rel="stylesheet" href="../styles.css?v=20260218a">
 </head>
 <body>
   <main class="bookingsPage">
@@ -31,69 +31,105 @@
       </div>
     </section>
 
-    <section class="tile simplePanel bookingsPanel">
-      <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
-        <strong>Service hours:</strong> Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.
-      </div>
-
-      <form id="bookingForm" class="bookingForm" novalidate>
-        <div class="bookingGrid">
-          <label class="bookingField">
-            <span class="bookingLabel">Name</span>
-            <input id="bookingName" name="name" type="text" maxlength="80" required autocomplete="name">
-          </label>
-
-          <label class="bookingField">
-            <span class="bookingLabel">Phone</span>
-            <input id="bookingPhone" name="phone" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
-          </label>
-
-          <label class="bookingField bookingFieldWide">
-            <span class="bookingLabel">Email</span>
-            <input id="bookingEmail" name="email" type="email" maxlength="120" required autocomplete="email">
-          </label>
-
-          <label class="bookingField">
-            <span class="bookingLabel">Date</span>
-            <select id="bookingDate" name="date" required></select>
-          </label>
-
-          <label class="bookingField">
-            <span class="bookingLabel">Time</span>
-            <select id="bookingTime" name="time" required></select>
-          </label>
-
-          <label class="bookingField">
-            <span class="bookingLabel">Party size</span>
-            <select id="bookingPartySize" name="partySize" required></select>
-          </label>
-
-          <label class="bookingField">
-            <span class="bookingLabel">Occasion</span>
-            <select id="bookingOccasion" name="specialOccasion">
-              <option value="None" selected>None</option>
-              <option value="Birthday">Birthday</option>
-              <option value="Anniversary">Anniversary</option>
-              <option value="Engagement">Engagement</option>
-              <option value="Date Night">Date Night</option>
-              <option value="Business">Business</option>
-              <option value="Celebration">Celebration</option>
-            </select>
-          </label>
-
-          <label class="bookingField bookingFieldWide">
-            <span class="bookingLabel">Notes (optional)</span>
-            <textarea id="bookingNotes" name="notes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
-          </label>
+    <section class="bookingsWorkspace">
+      <section class="tile simplePanel bookingsPanel">
+        <div class="bookingPanelHeader">
+          <h2 class="bookingPanelTitle">Reserve your table</h2>
+          <p class="bookingPanelLead">Pick a date and time and we will confirm instantly.</p>
         </div>
 
-        <div class="bookingActions">
-          <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Book table</button>
+        <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
+          <strong>Service hours:</strong> Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.
         </div>
-      </form>
 
-      <div id="bookingResult" class="bookingResult" hidden></div>
-      <div id="bookingError" class="bookingError" role="alert" hidden></div>
+        <form id="bookingForm" class="bookingForm" novalidate>
+          <section class="bookingSection">
+            <h3 class="bookingSectionTitle">Contact details</h3>
+            <div class="bookingGrid bookingGridContact">
+              <label class="bookingField">
+                <span class="bookingLabel">Name</span>
+                <input id="bookingName" name="name" type="text" maxlength="80" required autocomplete="name">
+              </label>
+
+              <label class="bookingField">
+                <span class="bookingLabel">Phone</span>
+                <input id="bookingPhone" name="phone" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
+              </label>
+
+              <label class="bookingField bookingFieldWide">
+                <span class="bookingLabel">Email</span>
+                <input id="bookingEmail" name="email" type="email" maxlength="120" required autocomplete="email">
+              </label>
+            </div>
+          </section>
+
+          <section class="bookingSection">
+            <h3 class="bookingSectionTitle">Reservation details</h3>
+            <div class="bookingGrid bookingGridReservation">
+              <label class="bookingField">
+                <span class="bookingLabel">Date</span>
+                <select id="bookingDate" name="date" required></select>
+              </label>
+
+              <label class="bookingField">
+                <span class="bookingLabel">Time</span>
+                <select id="bookingTime" name="time" required></select>
+              </label>
+
+              <label class="bookingField">
+                <span class="bookingLabel">Party size</span>
+                <select id="bookingPartySize" name="partySize" required></select>
+              </label>
+
+              <label class="bookingField">
+                <span class="bookingLabel">Occasion</span>
+                <select id="bookingOccasion" name="specialOccasion">
+                  <option value="None" selected>None</option>
+                  <option value="Birthday">Birthday</option>
+                  <option value="Anniversary">Anniversary</option>
+                  <option value="Engagement">Engagement</option>
+                  <option value="Date Night">Date Night</option>
+                  <option value="Business">Business</option>
+                  <option value="Celebration">Celebration</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="bookingSection">
+            <h3 class="bookingSectionTitle">Notes</h3>
+            <div class="bookingGrid">
+              <label class="bookingField bookingFieldWide">
+                <span class="bookingLabel">Requests (optional)</span>
+                <textarea id="bookingNotes" name="notes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
+              </label>
+            </div>
+          </section>
+
+          <div class="bookingActions">
+            <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Book table</button>
+          </div>
+        </form>
+
+        <div id="bookingResult" class="bookingResult" hidden></div>
+        <div id="bookingError" class="bookingError" role="alert" hidden></div>
+      </section>
+
+      <aside class="tile bookingsInfoCard" aria-label="Booking information">
+        <h2 class="bookingsInfoTitle">Good to know</h2>
+        <ul class="bookingsInfoList">
+          <li>We are open Tuesday to Sunday, 12:00 to 17:00.</li>
+          <li>Bookings are seated in 15-minute slots.</li>
+          <li>Please add allergies or accessibility needs in notes.</li>
+          <li>If you are running late, call us and we will help.</li>
+        </ul>
+
+        <div class="bookingsInfoContact">
+          <span class="bookingsInfoContactLabel">Need help with your booking?</span>
+          <a class="bookingsInfoLink" href="tel:+441472828600">01472 828600</a>
+          <a class="bookingsInfoLink" href="mailto:help@millers.cafe">help@millers.cafe</a>
+        </div>
+      </aside>
     </section>
 
     <div class="footer">
