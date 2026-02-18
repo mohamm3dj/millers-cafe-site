@@ -338,13 +338,23 @@ async function handleSubmit(event) {
 
     const assignedTables = Array.isArray(body.assignedTables) ? body.assignedTables.join(", ") : "";
     const reference = body.reference ? `Reference: ${body.reference}` : "";
-    const emailNote = "Confirmation emails sent to you and Millers Café.";
+    const emailStatus = String(body.emailStatus || "").toLowerCase();
+    const emailNote = String(body.emailMessage || "").trim() || (
+      emailStatus === "sent"
+        ? "Confirmation emails sent to you and Millers Café."
+        : "Booking is confirmed. Email confirmation is delayed right now."
+    );
     const successMessage = assignedTables
       ? `Booking confirmed for ${payload.date} at ${payload.time}. Assigned table(s): ${assignedTables}.`
       : `Booking confirmed for ${payload.date} at ${payload.time}.`;
 
     showResult(`${successMessage} ${emailNote}`, reference);
-    setNotice("Booking confirmed and synced to Millers Cafe POS feed.", false);
+    setNotice(
+      emailStatus === "sent"
+        ? "Booking confirmed and synced to Millers Cafe POS feed."
+        : "Booking confirmed and synced to Millers Cafe POS feed. Email is delayed.",
+      emailStatus !== "sent"
+    );
 
     const preservedDate = payload.date;
     form.reset();

@@ -60,38 +60,23 @@ export async function onRequestPost(context) {
     };
   }
 
-  if (!emailResult.enabled || !emailResult.sentAll) {
-    const rolledBack = bookings.filter((booking) => booking.id !== creation.record.id);
-    try {
-      await saveBookings(context.env, rolledBack);
-    } catch (rollbackError) {
-      return jsonResponse({
-        error: "Booking could not be confirmed because confirmation emails failed and rollback did not complete. Please contact help@millers.cafe.",
-        emailErrors: emailResult.errors || []
-      }, 500);
-    }
-
-    if (!emailResult.enabled) {
-      return jsonResponse({
-        error: "Booking confirmation email service is not configured yet. Please try again shortly.",
-        emailErrors: emailResult.errors || []
-      }, 503);
-    }
-
-    return jsonResponse({
-      error: "Booking could not be confirmed because confirmation emails were not delivered. Please try again.",
-      emailErrors: emailResult.errors || []
-    }, 502);
-  }
+  const emailDelivered = Number(emailResult?.delivered || 0);
+  const emailTotal = Number(emailResult?.total || 0);
+  const emailsSentAll = Boolean(emailResult?.enabled && emailResult?.sentAll);
+  const emailStatus = emailsSentAll ? "sent" : "pending";
+  const emailMessage = emailsSentAll
+    ? "Confirmation emails sent to you and Millers Café."
+    : "Booking is confirmed. Email confirmation is delayed right now.";
 
   return jsonResponse({
     ok: true,
     reference: creation.reference,
     bookingId: creation.record.id,
     assignedTables: creation.record.assignedTables,
-    emailStatus: "sent",
-    emailDelivered: emailResult.delivered,
-    emailTotal: emailResult.total,
-    emailErrors: emailResult.errors
+    emailStatus,
+    emailDelivered,
+    emailTotal,
+    emailErrors: emailResult?.errors || [],
+    emailMessage
   }, 201);
 }
