@@ -10,8 +10,8 @@
   --line: rgba(15, 23, 42, .10);
   --radius: 18px;
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
-  --font-body: "Inter", "SF Pro Text", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+  --font-body: "Plus Jakarta Sans", "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Sora", "Avenir Next Condensed", "Avenir Next", "Trebuchet MS", sans-serif;
 }
 
 *{ box-sizing: border-box; }
@@ -4628,6 +4628,79 @@ h1{
 
   .orderPage .orderHub.hasStickySummary{
     padding-top: 76px;
+  }
+}
+
+/* Compact delivery contact/address block */
+.bookingFormDelivery .bookingGrid{
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bookingFormDelivery .bookingField{
+  padding: 8px 9px;
+  gap: 5px;
+  border-radius: 12px;
+}
+
+.bookingFormDelivery .bookingLabel{
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+
+.bookingFormDelivery .bookingField input{
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.bookingFormDelivery .deliveryFieldEmail{
+  grid-column: span 4;
+}
+
+.bookingFormDelivery .deliveryFieldPhone{
+  grid-column: span 2;
+}
+
+.bookingFormDelivery .deliveryFieldAddress1,
+.bookingFormDelivery .bookingFieldCalendar,
+.bookingFormDelivery .bookingFieldSlots,
+.bookingFormDelivery .orderItemsField,
+.bookingFormDelivery .orderCheckoutField.bookingFieldWide{
+  grid-column: 1 / -1;
+}
+
+.bookingFormDelivery .deliveryFieldAddress2,
+.bookingFormDelivery .deliveryFieldTown,
+.bookingFormDelivery .deliveryFieldPostcode{
+  grid-column: span 2;
+}
+
+.bookingFormDelivery .deliveryAreaHint{
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px){
+  .bookingFormDelivery .bookingGrid{
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  .bookingFormDelivery .deliveryFieldEmail,
+  .bookingFormDelivery .deliveryFieldAddress1,
+  .bookingFormDelivery .bookingFieldCalendar,
+  .bookingFormDelivery .bookingFieldSlots,
+  .bookingFormDelivery .orderItemsField,
+  .bookingFormDelivery .orderCheckoutField.bookingFieldWide{
+    grid-column: 1 / -1;
+  }
+
+  .bookingFormDelivery .deliveryFieldPhone,
+  .bookingFormDelivery .deliveryFieldAddress2,
+  .bookingFormDelivery .deliveryFieldTown,
+  .bookingFormDelivery .deliveryFieldPostcode{
+    grid-column: span 1;
   }
 }
 
