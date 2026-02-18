@@ -2115,7 +2115,7 @@ h1{
    ========================= */
 
 .bookingsPage{
-  width: min(920px, 100%);
+  width: min(760px, 100%);
   grid-template-rows: auto auto 1fr auto;
 }
 
@@ -2127,15 +2127,15 @@ h1{
 
 .bookingsWorkspace{
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   align-items: start;
 }
 
 .bookingsHero{
   min-height: auto;
   gap: 8px;
-  padding: 22px 18px 16px;
+  padding: 22px 18px 18px;
   text-align: center;
 }
 
@@ -2531,17 +2531,17 @@ h1{
 .bookingSlotCards{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .bookingSlotCard{
-  min-height: 56px;
+  min-height: 48px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,.72);
   background:
     linear-gradient(145deg, rgba(255,255,255,.72) 0%, rgba(244, 249, 255, .64) 100%);
   color: #0f172a;
-  padding: 8px 7px;
+  padding: 6px 6px;
   text-align: center;
   display: grid;
   justify-items: center;
@@ -2574,7 +2574,7 @@ h1{
 }
 
 .bookingSlotTime{
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 680;
   line-height: 1.1;
   letter-spacing: .01em;
@@ -3306,11 +3306,11 @@ h1{
   }
 
   .bookingSlotCard{
-    min-height: 54px;
+    min-height: 46px;
   }
 
   .bookingSlotTime{
-    font-size: 16px;
+    font-size: 13px;
   }
 
   .bookingSuccessStage{
@@ -3445,12 +3445,12 @@ h1{
   }
 
   .bookingSlotCard{
-    min-height: 52px;
+    min-height: 44px;
     border-radius: 11px;
   }
 
   .bookingSlotTime{
-    font-size: 15px;
+    font-size: 12px;
   }
 
   .bookingSuccessStage{
