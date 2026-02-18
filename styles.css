@@ -10,8 +10,8 @@
   --line: rgba(15, 23, 42, .10);
   --radius: 18px;
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
-  --font-body: "Plus Jakarta Sans", "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Sora", "Avenir Next Condensed", "Avenir Next", "Trebuchet MS", sans-serif;
+  --font-body: "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Urbanist", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 *{ box-sizing: border-box; }
