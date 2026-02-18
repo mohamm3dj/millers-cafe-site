@@ -38,12 +38,16 @@ const calendarPrevBtn = document.getElementById("calendarPrevBtn");
 const calendarNextBtn = document.getElementById("calendarNextBtn");
 const bookingCalendarGrid = document.getElementById("bookingCalendarGrid");
 const bookingSlotCards = document.getElementById("bookingSlotCards");
+const bookingDateToggle = document.getElementById("bookingDateToggle");
+const bookingDateSummary = document.getElementById("bookingDateSummary");
+const bookingCalendarWrap = document.getElementById("bookingCalendarWrap");
 let bookingSuccessFxStageTimer = null;
 let bookingSuccessFxCloseTimer = null;
 let bookingSuccessFxResolver = null;
 let availableBookingDates = [];
 let availableBookingDateSet = new Set();
 let calendarViewMonthUTC = null;
+let isCalendarOpen = false;
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -120,6 +124,31 @@ function monthIndexUTC(date) {
   return (date.getUTCFullYear() * 12) + date.getUTCMonth();
 }
 
+function updateDateSummary() {
+  if (!bookingDateSummary || !dateInput) return;
+  const value = String(dateInput.value || "").trim();
+  if (!value) {
+    bookingDateSummary.textContent = "Select a date";
+    return;
+  }
+
+  const today = ukTodayISODate();
+  if (value === today) {
+    bookingDateSummary.textContent = `Today · ${displayDateLabel(value)}`;
+    return;
+  }
+
+  bookingDateSummary.textContent = displayDateLabel(value);
+}
+
+function setCalendarOpen(open) {
+  if (!bookingCalendarWrap || !bookingDateToggle) return;
+  isCalendarOpen = Boolean(open);
+  bookingCalendarWrap.hidden = !isCalendarOpen;
+  bookingDateToggle.setAttribute("aria-expanded", isCalendarOpen ? "true" : "false");
+  bookingDateToggle.textContent = isCalendarOpen ? "Hide calendar" : "Change date";
+}
+
 function buildBookableDateList(startISODate, maxDays) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startISODate)) return [];
   const [year, month, day] = startISODate.split("-").map(Number);
@@ -153,6 +182,8 @@ function renderDateOptions() {
 
   if (priorValue && options.includes(priorValue)) {
     dateInput.value = priorValue;
+  } else if (options.includes(today)) {
+    dateInput.value = today;
   } else if (options.length > 0) {
     dateInput.value = options[0];
   }
@@ -165,6 +196,7 @@ function renderDateOptions() {
     calendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
   }
 
+  updateDateSummary();
   renderCalendar();
 }
 
@@ -228,7 +260,9 @@ function renderCalendar() {
       btn.addEventListener("click", () => {
         if (!dateInput) return;
         dateInput.value = iso;
+        updateDateSummary();
         renderCalendar();
+        setCalendarOpen(false);
         void loadAvailability();
       });
     }
@@ -270,6 +304,7 @@ function syncCalendarToSelectedDate() {
   const selectedDate = parseISODateUTC(dateInput?.value || "");
   if (!selectedDate) return;
   calendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
+  updateDateSummary();
   renderCalendar();
 }
 
@@ -736,10 +771,15 @@ function initialize() {
     syncCalendarToSelectedDate();
     void loadAvailability();
   });
+  bookingDateToggle?.addEventListener("click", () => {
+    setCalendarOpen(!isCalendarOpen);
+  });
   calendarPrevBtn?.addEventListener("click", () => moveCalendarMonth(-1));
   calendarNextBtn?.addEventListener("click", () => moveCalendarMonth(1));
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
+
+  setCalendarOpen(false);
 }
 
 initialize();

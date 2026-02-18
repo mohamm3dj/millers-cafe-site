@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218b">
+  <link rel="stylesheet" href="../styles.css?v=20260218c">
 </head>
 <body>
   <main class="bookingsPage">
@@ -69,16 +69,30 @@
               <div class="bookingField bookingFieldWide bookingFieldCalendar">
                 <span class="bookingLabel">Date</span>
                 <select id="bookingDate" name="date" class="bookingNativeHidden" required></select>
-                <div class="bookingCalendar" aria-label="Booking calendar">
-                  <div class="bookingCalendarHead">
-                    <button id="calendarPrevBtn" class="bookingCalendarNav" type="button" aria-label="Previous month">&larr;</button>
-                    <p id="calendarMonthLabel" class="bookingCalendarMonth">Month Year</p>
-                    <button id="calendarNextBtn" class="bookingCalendarNav" type="button" aria-label="Next month">&rarr;</button>
+                <div class="bookingDateSummaryRow">
+                  <p id="bookingDateSummary" class="bookingDateSummary">Today</p>
+                  <button
+                    id="bookingDateToggle"
+                    class="bookingDateToggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="bookingCalendarWrap"
+                  >
+                    Change date
+                  </button>
+                </div>
+                <div id="bookingCalendarWrap" class="bookingCalendarWrap" hidden>
+                  <div class="bookingCalendar" aria-label="Booking calendar">
+                    <div class="bookingCalendarHead">
+                      <button id="calendarPrevBtn" class="bookingCalendarNav" type="button" aria-label="Previous month">&larr;</button>
+                      <p id="calendarMonthLabel" class="bookingCalendarMonth">Month Year</p>
+                      <button id="calendarNextBtn" class="bookingCalendarNav" type="button" aria-label="Next month">&rarr;</button>
+                    </div>
+                    <div class="bookingCalendarWeekdays" aria-hidden="true">
+                      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                    <div id="bookingCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select booking date"></div>
                   </div>
-                  <div class="bookingCalendarWeekdays" aria-hidden="true">
-                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                  </div>
-                  <div id="bookingCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select booking date"></div>
                 </div>
               </div>
 
@@ -148,6 +162,6 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="./bookings.js?v=20260218f"></script>
+  <script src="./bookings.js?v=20260218g"></script>
 </body>
 </html>
