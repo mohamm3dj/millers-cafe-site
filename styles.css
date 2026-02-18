@@ -4324,15 +4324,15 @@ h1{
 }
 
 .stickyCheckoutBar{
-  position: fixed;
-  left: 50%;
-  top: calc(env(safe-area-inset-top) + 8px);
-  transform: translateX(-50%) translateY(14px);
+  position: sticky;
+  left: auto;
+  top: calc(env(safe-area-inset-top) + 10px);
+  transform: none;
   display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  width: min(624px, calc(100% - 36px));
+  width: 100%;
   padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,.72);
@@ -4342,7 +4342,7 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.95);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  z-index: 24;
+  z-index: 8;
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease, transform 220ms ease;
@@ -4352,7 +4352,7 @@ h1{
   display: grid;
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+  transform: none;
 }
 
 .stickyCheckoutSummary{
@@ -4425,10 +4425,6 @@ h1{
   cursor: pointer;
 }
 
-.orderHub.hasStickySummary{
-  padding-top: 86px;
-}
-
 .orderModifierPanel{
   position: fixed;
   left: max(12px, env(safe-area-inset-left));
@@ -4465,8 +4461,8 @@ h1{
   }
 
   .stickyCheckoutBar{
-    top: calc(env(safe-area-inset-top) + 6px);
-    width: calc(100% - 16px);
+    top: calc(env(safe-area-inset-top) + 8px);
+    width: 100%;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px;
     padding: 7px 8px;
@@ -4474,10 +4470,6 @@ h1{
     box-shadow:
       0 10px 20px rgba(15, 23, 42, .16),
       inset 0 1px 0 rgba(255,255,255,.95);
-  }
-
-  .orderHub.hasStickySummary{
-    padding-top: 72px;
   }
 
   .stickyCheckoutSummary{
@@ -4747,10 +4739,6 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.24);
 }
 
-.orderPage .orderHub.hasStickySummary{
-  padding-top: 96px;
-}
-
 .orderPage button:focus-visible,
 .orderPage a:focus-visible,
 .orderPage input:focus-visible,
@@ -4801,10 +4789,6 @@ h1{
     min-width: 120px;
     font-size: 13px;
     border-radius: 10px;
-  }
-
-  .orderPage .orderHub.hasStickySummary{
-    padding-top: 76px;
   }
 }
 

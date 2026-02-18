@@ -50,15 +50,6 @@ const FORCE_CUSTOMIZE_CATEGORY_KEYS = new Set([
   "kiddies corner"
 ]);
 
-const POPULAR_ITEM_NAME_KEYS = new Set([
-  "butter chicken",
-  "chicken tikka masala",
-  "tandoori mixed starter",
-  "garlic naan",
-  "keema naan",
-  "chicken biryani"
-].map((name) => normalizeKey(name)));
-
 const form = document.getElementById("orderForm");
 const noticeEl = document.getElementById("orderNotice");
 const resultEl = document.getElementById("orderResult");
@@ -855,9 +846,6 @@ function updateStickyCheckoutBar() {
 
   const showBar = currentOrderStep === 1 && (hasItems || isSubmitting);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
-  if (orderHub) {
-    orderHub.classList.toggle("hasStickySummary", showBar);
-  }
   queueActiveCategoryPillSync();
 }
 
@@ -1325,10 +1313,9 @@ function entryRequiresCustomize(entry) {
 
 function itemBadgeDescriptors(entry) {
   const tags = new Set((entry.item.tags || []).map((tag) => normalizeKey(tag)));
-  const itemKey = normalizeKey(entry.item.name);
   const descriptors = [];
 
-  if (tags.has("popular") || POPULAR_ITEM_NAME_KEYS.has(itemKey)) {
+  if (tags.has("popular")) {
     descriptors.push({ label: "Popular", className: "isPopular" });
   }
   if (tags.has("spicy") || tags.has("hot") || tags.has("very hot")) {
@@ -2303,8 +2290,13 @@ function initializeMenuInteractions() {
     return false;
   }
 
-  if (stickyCheckoutBar && stickyCheckoutBar.parentElement !== document.body) {
-    document.body.appendChild(stickyCheckoutBar);
+  if (orderHub && stickyCheckoutBar) {
+    const searchWrap = orderHub.querySelector(".orderSearchWrap");
+    if (searchWrap) {
+      orderHub.insertBefore(stickyCheckoutBar, searchWrap);
+    } else {
+      orderHub.prepend(stickyCheckoutBar);
+    }
   }
 
   if (!selectedCategory) selectedCategory = defaultCategoryName();
