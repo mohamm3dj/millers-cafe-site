@@ -556,13 +556,11 @@ function renderSlotCards(rows) {
     const title = document.createElement("span");
     title.className = "bookingSlotTime";
     title.textContent = formatSlotCardTime(row.time);
-
-    const subtitle = document.createElement("span");
-    subtitle.className = "bookingSlotNote";
-    subtitle.textContent = row.available ? "Available" : "Unavailable";
-
+    card.setAttribute(
+      "aria-label",
+      row.available ? `${title.textContent}` : `${title.textContent} unavailable`
+    );
     card.appendChild(title);
-    card.appendChild(subtitle);
 
     if (row.available) {
       card.addEventListener("click", () => {
