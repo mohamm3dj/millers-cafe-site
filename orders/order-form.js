@@ -1,6 +1,7 @@
 "use strict";
 
 const API_BASE = "/api/orders";
+const STATUS_API_BASE = "/api/order-status";
 const BUSINESS_TIMEZONE = "Europe/London";
 const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 17 * 60;
@@ -50,6 +51,13 @@ const dateSelect = document.getElementById("orderDate");
 const timeSelect = document.getElementById("orderTime");
 const itemsInput = document.getElementById("orderItems");
 const notesInput = document.getElementById("orderNotes");
+const orderDateToggle = document.getElementById("orderDateToggle");
+const orderDateSummary = document.getElementById("orderDateSummary");
+const orderCalendarWrap = document.getElementById("orderCalendarWrap");
+const orderCalendarMonthLabel = document.getElementById("orderCalendarMonthLabel");
+const orderCalendarPrevBtn = document.getElementById("orderCalendarPrevBtn");
+const orderCalendarNextBtn = document.getElementById("orderCalendarNextBtn");
+const orderCalendarGrid = document.getElementById("orderCalendarGrid");
 
 const address1Input = document.getElementById("orderAddress1");
 const address2Input = document.getElementById("orderAddress2");
@@ -92,6 +100,12 @@ let activeDraft = null;
 let activeDraftAnchor = null;
 let selectedCategory = "All";
 let searchQuery = "";
+let statusPollTimer = null;
+let statusPollKey = "";
+let availableOrderDates = [];
+let availableOrderDateSet = new Set();
+let orderCalendarViewMonthUTC = null;
+let isOrderCalendarOpen = false;
 
 const normalizedMenu = normalizeMenuCatalog(window.MILLERS_ORDER_MENU);
 
@@ -215,6 +229,45 @@ function displayDateLabel(isoDate) {
   }).format(utcDate);
 }
 
+function parseISODateUTC(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toISODateUTC(date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
+function monthIndexUTC(date) {
+  return (date.getUTCFullYear() * 12) + date.getUTCMonth();
+}
+
+function updateOrderDateSummary() {
+  if (!orderDateSummary || !dateSelect) return;
+  const value = String(dateSelect.value || "").trim();
+  if (!value) {
+    orderDateSummary.textContent = "Select a date";
+    return;
+  }
+
+  const today = ukTodayISODate();
+  if (value === today) {
+    orderDateSummary.textContent = `Today · ${displayDateLabel(value)}`;
+    return;
+  }
+
+  orderDateSummary.textContent = displayDateLabel(value);
+}
+
+function setOrderCalendarOpen(open) {
+  if (!orderCalendarWrap || !orderDateToggle) return;
+  isOrderCalendarOpen = Boolean(open);
+  orderCalendarWrap.hidden = !isOrderCalendarOpen;
+  orderDateToggle.setAttribute("aria-expanded", isOrderCalendarOpen ? "true" : "false");
+  orderDateToggle.textContent = isOrderCalendarOpen ? "Hide calendar" : "Change date";
+}
+
 function buildBookableDateList(startISODate, maxDays) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startISODate)) return [];
 
@@ -244,7 +297,8 @@ function normalizePhoneField() {
 function renderDateOptions() {
   if (!dateSelect) return;
   const priorValue = dateSelect.value;
-  const options = buildBookableDateList(ukTodayISODate(), MAX_ORDER_LOOKAHEAD_DAYS);
+  const today = ukTodayISODate();
+  const options = buildBookableDateList(today, MAX_ORDER_LOOKAHEAD_DAYS);
 
   dateSelect.innerHTML = "";
   for (const isoDate of options) {
@@ -256,9 +310,130 @@ function renderDateOptions() {
 
   if (priorValue && options.includes(priorValue)) {
     dateSelect.value = priorValue;
+  } else if (options.includes(today)) {
+    dateSelect.value = today;
   } else if (options.length > 0) {
     dateSelect.value = options[0];
   }
+
+  availableOrderDates = options.slice();
+  availableOrderDateSet = new Set(options);
+
+  const selectedDate = parseISODateUTC(dateSelect.value) || parseISODateUTC(options[0] || "");
+  if (selectedDate && !orderCalendarViewMonthUTC) {
+    orderCalendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
+  }
+
+  updateOrderDateSummary();
+  renderOrderCalendar();
+}
+
+function renderOrderCalendar() {
+  if (!orderCalendarGrid || !orderCalendarMonthLabel) return;
+  if (!orderCalendarViewMonthUTC || availableOrderDates.length === 0) {
+    orderCalendarGrid.innerHTML = "";
+    orderCalendarMonthLabel.textContent = "No dates available";
+    if (orderCalendarPrevBtn) orderCalendarPrevBtn.disabled = true;
+    if (orderCalendarNextBtn) orderCalendarNextBtn.disabled = true;
+    return;
+  }
+
+  const selectedDate = parseISODateUTC(dateSelect?.value || "");
+  const todayDate = parseISODateUTC(ukTodayISODate());
+  const firstAvailableDate = parseISODateUTC(availableOrderDates[0]);
+  const lastAvailableDate = parseISODateUTC(availableOrderDates[availableOrderDates.length - 1]);
+  if (!firstAvailableDate || !lastAvailableDate) return;
+
+  const monthStart = new Date(Date.UTC(
+    orderCalendarViewMonthUTC.getUTCFullYear(),
+    orderCalendarViewMonthUTC.getUTCMonth(),
+    1
+  ));
+
+  orderCalendarMonthLabel.textContent = new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: BUSINESS_TIMEZONE
+  }).format(monthStart);
+
+  const monthStartDayIndex = (monthStart.getUTCDay() + 6) % 7;
+  const gridStart = new Date(monthStart);
+  gridStart.setUTCDate(monthStart.getUTCDate() - monthStartDayIndex);
+
+  orderCalendarGrid.innerHTML = "";
+
+  for (let i = 0; i < 42; i += 1) {
+    const cellDate = new Date(gridStart);
+    cellDate.setUTCDate(gridStart.getUTCDate() + i);
+    const iso = toISODateUTC(cellDate);
+    const inCurrentMonth = cellDate.getUTCMonth() === monthStart.getUTCMonth();
+    const isBookable = availableOrderDateSet.has(iso);
+    const isSelected = selectedDate && toISODateUTC(selectedDate) === iso;
+    const isToday = todayDate && toISODateUTC(todayDate) === iso;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bookingCalendarDay";
+    if (!inCurrentMonth) btn.classList.add("isOutsideMonth");
+    if (isBookable) btn.classList.add("isBookable");
+    if (isSelected) btn.classList.add("isSelected");
+    if (isToday) btn.classList.add("isToday");
+    btn.textContent = String(cellDate.getUTCDate());
+    btn.disabled = !inCurrentMonth || !isBookable;
+    btn.setAttribute("role", "gridcell");
+    btn.setAttribute("aria-label", displayDateLabel(iso));
+
+    if (!btn.disabled) {
+      btn.addEventListener("click", () => {
+        if (!dateSelect) return;
+        dateSelect.value = iso;
+        updateOrderDateSummary();
+        renderOrderCalendar();
+        setOrderCalendarOpen(false);
+        clearFeedback();
+        renderTimeOptions();
+      });
+    }
+
+    orderCalendarGrid.appendChild(btn);
+  }
+
+  if (orderCalendarPrevBtn) {
+    const prevMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() - 1, 1));
+    orderCalendarPrevBtn.disabled = monthIndexUTC(prevMonth) < monthIndexUTC(firstAvailableDate);
+  }
+
+  if (orderCalendarNextBtn) {
+    const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+    orderCalendarNextBtn.disabled = monthIndexUTC(nextMonth) > monthIndexUTC(lastAvailableDate);
+  }
+}
+
+function moveOrderCalendarMonth(delta) {
+  if (!orderCalendarViewMonthUTC || !availableOrderDates.length) return;
+  const targetMonth = new Date(Date.UTC(
+    orderCalendarViewMonthUTC.getUTCFullYear(),
+    orderCalendarViewMonthUTC.getUTCMonth() + delta,
+    1
+  ));
+
+  const firstAvailableDate = parseISODateUTC(availableOrderDates[0]);
+  const lastAvailableDate = parseISODateUTC(availableOrderDates[availableOrderDates.length - 1]);
+  if (!firstAvailableDate || !lastAvailableDate) return;
+
+  if (monthIndexUTC(targetMonth) < monthIndexUTC(firstAvailableDate)) return;
+  if (monthIndexUTC(targetMonth) > monthIndexUTC(lastAvailableDate)) return;
+
+  orderCalendarViewMonthUTC = targetMonth;
+  renderOrderCalendar();
+}
+
+function syncOrderCalendarToSelectedDate() {
+  const selectedDate = parseISODateUTC(dateSelect?.value || "");
+  if (!selectedDate) return;
+  orderCalendarViewMonthUTC = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
+  updateOrderDateSummary();
+  renderOrderCalendar();
 }
 
 function minScheduledMinutes(orderType, isoDate) {
@@ -326,6 +501,7 @@ function renderTimeOptions() {
 }
 
 function clearFeedback() {
+  stopStatusPolling();
   if (resultEl) {
     resultEl.hidden = true;
     resultEl.textContent = "";
@@ -357,6 +533,166 @@ function showResult(message, referenceText) {
     reference.textContent = referenceText;
     resultEl.appendChild(reference);
   }
+}
+
+function stopStatusPolling() {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer);
+    statusPollTimer = null;
+  }
+  statusPollKey = "";
+}
+
+function formatEtaLabel(etaMinutes, orderType, fallbackDate, fallbackTime) {
+  const eta = Number(etaMinutes);
+  if (Number.isFinite(eta) && eta >= 0) {
+    if (eta === 0) {
+      return orderType === "delivery" ? "Driver is heading out now." : "Your order should be ready now.";
+    }
+    return `Estimated ${orderType === "delivery" ? "delivery" : "collection"} time: about ${eta} minute${eta === 1 ? "" : "s"}.`;
+  }
+
+  if (fallbackDate && fallbackTime) {
+    return `Estimated time: ${fallbackDate} at ${fallbackTime}.`;
+  }
+  if (fallbackTime) {
+    return `Estimated time: ${fallbackTime}.`;
+  }
+  return `Estimated ${orderType === "delivery" ? "delivery" : "collection"} time will be confirmed shortly.`;
+}
+
+function renderOrderStatusTracker(state) {
+  if (!resultEl) return;
+
+  let panel = resultEl.querySelector(".orderStatusTracker");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "orderStatusTracker";
+    panel.innerHTML = [
+      "<div class=\"orderStatusHead\">",
+      "<strong class=\"orderStatusTitle\">Order status</strong>",
+      "<span class=\"orderStatusBadge\">Pending</span>",
+      "</div>",
+      "<div class=\"orderStatusBody\">",
+      "<div class=\"orderStatusSpinner\" aria-hidden=\"true\"><span></span><span></span><span></span></div>",
+      "<p class=\"orderStatusMessage\"></p>",
+      "</div>"
+    ].join("");
+    resultEl.appendChild(panel);
+  }
+
+  const badge = panel.querySelector(".orderStatusBadge");
+  const message = panel.querySelector(".orderStatusMessage");
+  const spinner = panel.querySelector(".orderStatusSpinner");
+
+  panel.classList.remove("isPending", "isAccepted", "isRejected");
+
+  if (state.type === "accepted") {
+    panel.classList.add("isAccepted");
+    if (badge) badge.textContent = "Accepted";
+    if (message) message.textContent = state.message;
+    if (spinner) spinner.hidden = true;
+    return;
+  }
+
+  if (state.type === "rejected") {
+    panel.classList.add("isRejected");
+    if (badge) badge.textContent = "Rejected";
+    if (message) message.textContent = state.message;
+    if (spinner) spinner.hidden = true;
+    return;
+  }
+
+  panel.classList.add("isPending");
+  if (badge) badge.textContent = "Pending";
+  if (message) message.textContent = state.message;
+  if (spinner) spinner.hidden = false;
+}
+
+async function fetchOrderStatus(reference, trackingToken) {
+  const params = new URLSearchParams({
+    reference,
+    tracking: trackingToken
+  });
+
+  const response = await fetch(`${STATUS_API_BASE}?${params.toString()}`, {
+    method: "GET",
+    headers: { Accept: "application/json" }
+  });
+
+  let body = {};
+  try {
+    body = await response.json();
+  } catch (error) {
+    body = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(body.error || "Could not check order status.");
+  }
+
+  return body;
+}
+
+function startOrderStatusTracking(reference, trackingToken, orderType) {
+  if (!reference || !trackingToken) return;
+
+  stopStatusPolling();
+  statusPollKey = `${reference}:${trackingToken}`;
+
+  renderOrderStatusTracker({
+    type: "pending",
+    message: "We are checking with the team now. Keep this page open for live updates."
+  });
+
+  const poll = async () => {
+    const activeKey = `${reference}:${trackingToken}`;
+    if (statusPollKey !== activeKey) return;
+
+    try {
+      const statusData = await fetchOrderStatus(reference, trackingToken);
+      const status = String(statusData.status || "submitted").toLowerCase();
+
+      if (status === "accepted") {
+        const etaMessage = formatEtaLabel(
+          statusData.etaMinutes,
+          orderType,
+          statusData.decisionDate,
+          statusData.decisionTime
+        );
+        renderOrderStatusTracker({
+          type: "accepted",
+          message: `Order accepted. ${etaMessage}`
+        });
+        setNotice("Order accepted by Millers Café.", false);
+        stopStatusPolling();
+        return;
+      }
+
+      if (status === "rejected" || status === "declined" || status === "cancelled") {
+        renderOrderStatusTracker({
+          type: "rejected",
+          message: "Order rejected. Please call Millers Café on 01472 488400 if you need help."
+        });
+        setNotice("Order was rejected by Millers Café.", true);
+        stopStatusPolling();
+        return;
+      }
+
+      renderOrderStatusTracker({
+        type: "pending",
+        message: "Awaiting approval from the team. We'll update this automatically."
+      });
+    } catch (error) {
+      renderOrderStatusTracker({
+        type: "pending",
+        message: "Still waiting for approval. Live updates are reconnecting."
+      });
+    }
+  };
+
+  poll();
+  statusPollTimer = setInterval(poll, 5000);
 }
 
 function setNotice(message, warning = false) {
@@ -1254,11 +1590,15 @@ async function handleSubmit(event) {
       ? "as soon as possible"
       : `for ${payload.date} at ${payload.time}`;
 
-    const successMessage = `${orderLabel} order confirmed ${whenText}. Confirmation emails sent to you and Millers Café.`;
+    const successMessage = `${orderLabel} order placed ${whenText}. We are waiting for staff approval.`;
     const reference = body.reference ? `Reference: ${body.reference}` : "";
 
     showResult(successMessage, reference);
-    setNotice(`${orderLabel} order submitted successfully.`, false);
+    setNotice(`${orderLabel} order submitted. Waiting for approval from Millers Café.`, false);
+
+    if (body.reference && body.trackingToken) {
+      startOrderStatusTracking(body.reference, body.trackingToken, orderType);
+    }
 
     const preservedDate = payload.date;
     const preservedTime = payload.time;
@@ -1273,6 +1613,7 @@ async function handleSubmit(event) {
         timeSelect.value = preservedTime;
       }
     }
+    syncOrderCalendarToSelectedDate();
 
     resetOrderBuilder();
   } catch (error) {
@@ -1410,15 +1751,23 @@ function initializeMenuInteractions() {
 function initialize() {
   if (!form) return;
 
+  setOrderCalendarOpen(false);
   renderDateOptions();
+  syncOrderCalendarToSelectedDate();
   renderTimeOptions();
   initializeMenuInteractions();
 
   form.addEventListener("submit", handleSubmit);
   dateSelect?.addEventListener("change", () => {
     clearFeedback();
+    syncOrderCalendarToSelectedDate();
     renderTimeOptions();
   });
+  orderDateToggle?.addEventListener("click", () => {
+    setOrderCalendarOpen(!isOrderCalendarOpen);
+  });
+  orderCalendarPrevBtn?.addEventListener("click", () => moveOrderCalendarMonth(-1));
+  orderCalendarNextBtn?.addEventListener("click", () => moveOrderCalendarMonth(1));
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
   updateSubmitButtonState();

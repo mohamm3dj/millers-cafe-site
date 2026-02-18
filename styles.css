@@ -2535,7 +2535,7 @@ h1{
 }
 
 .bookingSlotCard{
-  min-height: 48px;
+  min-height: 44px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,.72);
   background:
@@ -2574,7 +2574,7 @@ h1{
 }
 
 .bookingSlotTime{
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 680;
   line-height: 1.1;
   letter-spacing: .01em;
@@ -3306,11 +3306,11 @@ h1{
   }
 
   .bookingSlotCard{
-    min-height: 46px;
+    min-height: 42px;
   }
 
   .bookingSlotTime{
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .bookingSuccessStage{
@@ -3445,12 +3445,12 @@ h1{
   }
 
   .bookingSlotCard{
-    min-height: 44px;
+    min-height: 40px;
     border-radius: 11px;
   }
 
   .bookingSlotTime{
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .bookingSuccessStage{

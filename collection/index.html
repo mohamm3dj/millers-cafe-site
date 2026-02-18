@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260217p">
+  <link rel="stylesheet" href="../styles.css?v=20260218f">
 </head>
 <body>
   <main>
@@ -30,7 +30,7 @@
         <div class="bookingGrid">
           <label class="bookingField">
             <span class="bookingLabel">Name</span>
-            <input id="orderName" name="customerName" type="text" maxlength="80" required autocomplete="name">
+            <input id="orderName" name="customerName" type="text" maxlength="80" placeholder="John Smith" required autocomplete="name">
           </label>
 
           <label class="bookingField">
@@ -40,13 +40,38 @@
 
           <label class="bookingField bookingFieldWide">
             <span class="bookingLabel">Email</span>
-            <input id="orderEmail" name="email" type="email" maxlength="120" required autocomplete="email">
+            <input id="orderEmail" name="email" type="email" maxlength="120" placeholder="name@example.com" required autocomplete="email">
           </label>
 
-          <label class="bookingField">
+          <div class="bookingField bookingFieldWide bookingFieldCalendar">
             <span class="bookingLabel">Collection date</span>
-            <select id="orderDate" name="requestedDate" required></select>
-          </label>
+            <select id="orderDate" name="requestedDate" class="bookingNativeHidden" required></select>
+            <div class="bookingDateSummaryRow">
+              <p id="orderDateSummary" class="bookingDateSummary">Today</p>
+              <button
+                id="orderDateToggle"
+                class="bookingDateToggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="orderCalendarWrap"
+              >
+                Change date
+              </button>
+            </div>
+            <div id="orderCalendarWrap" class="bookingCalendarWrap" hidden>
+              <div class="bookingCalendar" aria-label="Order date calendar">
+                <div class="bookingCalendarHead">
+                  <button id="orderCalendarPrevBtn" class="bookingCalendarNav" type="button" aria-label="Previous month">&larr;</button>
+                  <p id="orderCalendarMonthLabel" class="bookingCalendarMonth">Month Year</p>
+                  <button id="orderCalendarNextBtn" class="bookingCalendarNav" type="button" aria-label="Next month">&rarr;</button>
+                </div>
+                <div class="bookingCalendarWeekdays" aria-hidden="true">
+                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+                <div id="orderCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select order date"></div>
+              </div>
+            </div>
+          </div>
 
           <label class="bookingField">
             <span class="bookingLabel">Collection time</span>
@@ -125,6 +150,6 @@
     </div>
   </main>
   <script src="../orders/menu-catalog.js?v=20260217a"></script>
-  <script src="../orders/order-form.js?v=20260217g"></script>
+  <script src="../orders/order-form.js?v=20260218i"></script>
 </body>
 </html>
