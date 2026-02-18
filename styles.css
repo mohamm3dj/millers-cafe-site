@@ -2420,6 +2420,10 @@ h1{
   display: grid;
 }
 
+.bookingCalendarWrap[hidden]{
+  display: none !important;
+}
+
 .bookingCalendar{
   border: 1px solid rgba(148, 163, 184, .26);
   border-radius: 12px;

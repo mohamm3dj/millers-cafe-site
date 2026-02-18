@@ -559,7 +559,7 @@ function renderSlotCards(rows) {
 
     const subtitle = document.createElement("span");
     subtitle.className = "bookingSlotNote";
-    subtitle.textContent = row.available ? "Indoor Dining" : "Fully Booked";
+    subtitle.textContent = row.available ? "Available" : "Unavailable";
 
     card.appendChild(title);
     card.appendChild(subtitle);
@@ -760,6 +760,7 @@ async function handleSubmit(event) {
 function initialize() {
   if (!form) return;
 
+  setCalendarOpen(false);
   renderDateOptions();
   renderPartySizeOptions();
   renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
@@ -779,7 +780,6 @@ function initialize() {
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
 
-  setCalendarOpen(false);
 }
 
 initialize();
