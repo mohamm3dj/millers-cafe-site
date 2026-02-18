@@ -4026,27 +4026,28 @@ h1{
 }
 
 .orderCategoryChips{
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 7px;
-  overflow-x: auto;
   padding-bottom: 2px;
 }
 
 .orderCategoryChip{
   border: 1px solid rgba(15, 23, 42, .14);
-  border-radius: 999px;
-  padding: 7px 12px;
+  border-radius: 11px;
+  min-height: 40px;
+  padding: 8px 10px;
   background: rgba(255,255,255,.88);
   color: #334155;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
-  white-space: nowrap;
+  text-align: center;
   cursor: pointer;
 }
 
 .orderCategoryChip.isActive{
-  background: #0f172a;
+  background: linear-gradient(145deg, #0f766e, #0f172a);
   color: #ffffff;
   border-color: #0f172a;
 }
@@ -4127,10 +4128,7 @@ h1{
 }
 
 .orderBasketToggle{
-  position: sticky;
-  top: 10px;
-  bottom: auto;
-  z-index: 6;
+  position: static;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4149,9 +4147,7 @@ h1{
 }
 
 .orderBasketPanel{
-  position: sticky;
-  top: 66px;
-  z-index: 5;
+  position: static;
   display: grid;
   gap: 8px;
   border-radius: 12px;
@@ -4161,20 +4157,19 @@ h1{
 }
 
 .orderPage{
-  padding-bottom: 118px;
+  padding-bottom: 0;
 }
 
 .stickyCheckoutBar{
-  position: fixed;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(860px, calc(100% - 24px));
-  display: grid;
+  position: sticky;
+  top: 10px;
+  display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 10px;
+  margin-bottom: 4px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,.72);
   background: linear-gradient(155deg, rgba(255,255,255,.9), rgba(243, 249, 255, .82));
@@ -4183,17 +4178,11 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.95);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  z-index: 38;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-50%) translateY(14px);
-  transition: opacity 180ms ease, transform 220ms ease;
+  z-index: 7;
 }
 
 .stickyCheckoutBar.isVisible{
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+  display: grid;
 }
 
 .stickyCheckoutSummary{
@@ -4285,7 +4274,7 @@ h1{
 
 @media (max-width: 640px){
   .orderPage{
-    padding-bottom: 94px;
+    padding-bottom: 0;
   }
 
   .orderHub{
@@ -4301,18 +4290,8 @@ h1{
     width: 100%;
   }
 
-  .orderBasketToggle{
-    top: 6px;
-    bottom: auto;
-  }
-
-  .orderBasketPanel{
-    top: 56px;
-  }
-
   .stickyCheckoutBar{
-    width: min(680px, calc(100% - 14px));
-    bottom: max(8px, env(safe-area-inset-bottom));
+    top: 8px;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px;
     padding: 7px 8px;
@@ -4345,11 +4324,10 @@ h1{
 
 @media (max-width: 420px){
   .orderPage{
-    padding-bottom: 86px;
+    padding-bottom: 0;
   }
 
   .stickyCheckoutBar{
-    width: calc(100% - 10px);
     gap: 6px;
     padding: 6px 7px;
   }
