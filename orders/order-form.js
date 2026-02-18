@@ -2303,13 +2303,8 @@ function initializeMenuInteractions() {
     return false;
   }
 
-  if (orderHub && stickyCheckoutBar) {
-    const searchWrap = orderHub.querySelector(".orderSearchWrap");
-    if (searchWrap) {
-      orderHub.insertBefore(stickyCheckoutBar, searchWrap);
-    } else {
-      orderHub.prepend(stickyCheckoutBar);
-    }
+  if (stickyCheckoutBar && stickyCheckoutBar.parentElement !== document.body) {
+    document.body.appendChild(stickyCheckoutBar);
   }
 
   if (!selectedCategory) selectedCategory = defaultCategoryName();
