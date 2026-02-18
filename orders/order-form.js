@@ -795,6 +795,9 @@ function updateStickyCheckoutBar() {
 
   const showBar = currentOrderStep === 1 && (hasItems || isSubmitting);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
+  if (orderHub) {
+    orderHub.classList.toggle("hasStickySummary", showBar);
+  }
 }
 
 function renderTimeOptions() {
