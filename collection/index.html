@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
-  <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218s">
+  <title>Collection Order | Millers Café</title>
+  <meta name="description" content="Order collection from Millers Café online and pay securely with Stripe.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://millers.cafe/collection/">
+  <link rel="stylesheet" href="../styles.css?v=20260419d">
 </head>
 <body>
   <main class="orderPage">
@@ -21,7 +24,7 @@
 
     <section class="tile simplePanel bookingsPanel">
       <div class="bookingsNotice" id="orderNotice" role="status" aria-live="polite">
-        <strong>Collection hours:</strong> Tue-Sun, 12:00-17:00. Collection slots are in 15-minute intervals.
+        <strong>Collection hours:</strong> Loading live collection hours...
       </div>
 
       <form id="orderForm" class="bookingForm" novalidate>
@@ -36,7 +39,7 @@
         <div class="orderTrustStrip" aria-label="Order assurance">
           <span class="orderTrustItem">Secure order</span>
           <span class="orderTrustItem">Email confirmation</span>
-          <span class="orderTrustItem">Tue-Sun support</span>
+          <span class="orderTrustItem">Live hours</span>
         </div>
 
         <div class="bookingGrid">
@@ -153,12 +156,14 @@
 
         <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
           <button id="orderBackToItems" class="orderBackToItemsBtn" type="button">← Back to dishes</button>
-          <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Place collection order</button>
+          <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Continue to secure payment</button>
           <div class="tileSub">
             Need the menu first?
             <a href="../menu/" class="footerLink">View menu</a>
           </div>
         </div>
+
+        <div id="orderTurnstile" class="turnstileSlot orderCheckoutField" hidden></div>
       </form>
 
       <div id="stickyCheckoutBar" class="stickyCheckoutBar">
@@ -177,7 +182,7 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="../orders/menu-catalog.js?v=20260217a"></script>
-  <script src="../orders/order-form.js?v=20260218s"></script>
+  <script src="../client-tools.js?v=20260419d"></script>
+  <script type="module" src="../orders/order-form.js?v=20260419d"></script>
 </body>
 </html>

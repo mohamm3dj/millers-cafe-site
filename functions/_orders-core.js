@@ -5,6 +5,7 @@ const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 17 * 60;
 const SLOT_STEP_MINUTES = 15;
 const ASAP_VALUE = "ASAP";
+const MAX_ORDER_LOOKAHEAD_DAYS = 90;
 const COLLECTION_MIN_LEAD_MINUTES = 30;
 const DELIVERY_MIN_LEAD_MINUTES = 60;
 const COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
@@ -20,6 +21,18 @@ const VALID_OCCASIONS = new Set([
   "Business",
   "Celebration"
 ]);
+
+const DEFAULT_ORDER_RULES = {
+  serviceStartMinutes: SERVICE_START_MINUTES,
+  serviceEndMinutes: SERVICE_END_MINUTES,
+  slotStepMinutes: SLOT_STEP_MINUTES,
+  maxLookaheadDays: MAX_ORDER_LOOKAHEAD_DAYS,
+  collectionMinLeadMinutes: COLLECTION_MIN_LEAD_MINUTES,
+  deliveryMinLeadMinutes: DELIVERY_MIN_LEAD_MINUTES,
+  collectionEarliestScheduledMinutes: COLLECTION_EARLIEST_SCHEDULED_MINUTES,
+  deliveryEarliestScheduledMinutes: DELIVERY_EARLIEST_SCHEDULED_MINUTES,
+  openDayIndexes: [...OPEN_DAY_INDEXES]
+};
 
 function getInMemoryStore() {
   if (!Array.isArray(globalThis.__millersCafeOrdersStore)) {
@@ -72,19 +85,82 @@ function isISODate(isoDate) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""));
 }
 
+function parseISODateUTC(isoDate) {
+  if (!isISODate(isoDate)) return null;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toISODateUTC(date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
 function normalizeOrderType(rawType) {
   const value = String(rawType || "").trim().toLowerCase();
   return VALID_ORDER_TYPES.has(value) ? value : "";
 }
 
-function leadMinutesForOrderType(orderType) {
-  return orderType === "delivery" ? DELIVERY_MIN_LEAD_MINUTES : COLLECTION_MIN_LEAD_MINUTES;
+function normalizedRules(rawRules = null) {
+  const source = rawRules && typeof rawRules === "object" ? rawRules : {};
+  const openDayIndexes = Array.isArray(source.openDayIndexes)
+    ? source.openDayIndexes
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+    : DEFAULT_ORDER_RULES.openDayIndexes;
+
+  return {
+    serviceStartMinutes: Math.max(0, Math.round(Number(source.serviceStartMinutes ?? DEFAULT_ORDER_RULES.serviceStartMinutes))),
+    serviceEndMinutes: Math.max(0, Math.round(Number(source.serviceEndMinutes ?? DEFAULT_ORDER_RULES.serviceEndMinutes))),
+    slotStepMinutes: Math.max(1, Math.round(Number(source.slotStepMinutes ?? DEFAULT_ORDER_RULES.slotStepMinutes))),
+    maxLookaheadDays: Math.max(1, Math.round(Number(source.maxLookaheadDays ?? DEFAULT_ORDER_RULES.maxLookaheadDays))),
+    collectionMinLeadMinutes: Math.max(0, Math.round(Number(
+      source.collectionMinLeadMinutes ?? DEFAULT_ORDER_RULES.collectionMinLeadMinutes
+    ))),
+    deliveryMinLeadMinutes: Math.max(0, Math.round(Number(
+      source.deliveryMinLeadMinutes ?? DEFAULT_ORDER_RULES.deliveryMinLeadMinutes
+    ))),
+    collectionEarliestScheduledMinutes: Math.max(0, Math.round(Number(
+      source.collectionEarliestScheduledMinutes ?? DEFAULT_ORDER_RULES.collectionEarliestScheduledMinutes
+    ))),
+    deliveryEarliestScheduledMinutes: Math.max(0, Math.round(Number(
+      source.deliveryEarliestScheduledMinutes ?? DEFAULT_ORDER_RULES.deliveryEarliestScheduledMinutes
+    ))),
+    openDayIndexes: openDayIndexes.length > 0 ? openDayIndexes : DEFAULT_ORDER_RULES.openDayIndexes
+  };
 }
 
-function earliestScheduledMinutesForOrderType(orderType) {
+function dayListSummary(dayIndexes) {
+  const cleaned = Array.from(new Set(
+    (Array.isArray(dayIndexes) ? dayIndexes : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+  )).sort((left, right) => left - right);
+
+  if (cleaned.length === 7) return "every day";
+  if (cleaned.length === 6 && !cleaned.includes(1)) return "Tuesday to Sunday";
+
+  const labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return cleaned.map((dayIndex) => labels[dayIndex]).join(", ");
+}
+
+function orderOpenDaysMessage(rules) {
+  return `Orders are available on ${dayListSummary(rules.openDayIndexes)} only.`;
+}
+
+function orderIntervalLabel(rules) {
+  return `${rules.slotStepMinutes}-minute intervals`;
+}
+
+function leadMinutesForOrderType(orderType, rawRules = null) {
+  const rules = normalizedRules(rawRules);
+  return orderType === "delivery" ? rules.deliveryMinLeadMinutes : rules.collectionMinLeadMinutes;
+}
+
+function earliestScheduledMinutesForOrderType(orderType, rawRules = null) {
+  const rules = normalizedRules(rawRules);
   return orderType === "delivery"
-    ? DELIVERY_EARLIEST_SCHEDULED_MINUTES
-    : COLLECTION_EARLIEST_SCHEDULED_MINUTES;
+    ? rules.deliveryEarliestScheduledMinutes
+    : rules.collectionEarliestScheduledMinutes;
 }
 
 function normalizePhoneDigits(phone) {
@@ -110,6 +186,69 @@ function normalizeEtaMinutes(value) {
   if (!Number.isFinite(parsed)) return null;
   const rounded = Math.round(parsed);
   return rounded >= 0 ? rounded : null;
+}
+
+function normalizePaymentProvider(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "stripe" ? "stripe" : "";
+}
+
+function normalizePaymentStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizePaymentAmountTotal(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const rounded = Math.round(parsed);
+  return rounded >= 0 ? rounded : null;
+}
+
+function normalizePaymentCurrency(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return /^[a-z]{3}$/.test(normalized) ? normalized : "";
+}
+
+function normalizeRefundStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeRefundAmountTotal(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const rounded = Math.round(parsed);
+  return rounded >= 0 ? rounded : null;
+}
+
+function normalizeCartItemSelection(rawSelection) {
+  const groupName = String(rawSelection?.groupName || "").trim();
+  const optionName = String(rawSelection?.optionName || "").trim();
+  if (!groupName || !optionName) return null;
+
+  return {
+    groupName,
+    optionName,
+    isTextInput: Boolean(rawSelection?.isTextInput)
+  };
+}
+
+function normalizeCartItem(rawItem) {
+  const itemName = String(rawItem?.itemName || rawItem?.name || "").trim();
+  const quantity = Number(rawItem?.quantity);
+  if (!itemName || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) return null;
+
+  return {
+    itemName,
+    quantity,
+    modifierSelections: Array.isArray(rawItem?.modifierSelections)
+      ? rawItem.modifierSelections.map(normalizeCartItemSelection).filter(Boolean)
+      : []
+  };
+}
+
+function normalizeCartItems(rawItems) {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map(normalizeCartItem).filter(Boolean);
 }
 
 function normalizedStatus(status) {
@@ -151,31 +290,54 @@ function londonNowDateAndMinutes() {
   };
 }
 
-export function isOrderDayOpen(isoDate) {
-  const day = dayIndexForISODate(isoDate);
-  return day !== null && OPEN_DAY_INDEXES.has(day);
+function maxOrderDateISO(rawRules = null) {
+  const rules = normalizedRules(rawRules);
+  const today = parseISODateUTC(londonNowDateAndMinutes().dateISO);
+  if (!today) return "";
+  today.setUTCDate(today.getUTCDate() + Math.max(0, rules.maxLookaheadDays - 1));
+  return toISODateUTC(today);
 }
 
-export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection") {
+export function isOrderDayOpen(isoDate, rawRules = null) {
+  const rules = normalizedRules(rawRules);
+  const day = dayIndexForISODate(isoDate);
+  return day !== null && new Set(rules.openDayIndexes).has(day);
+}
+
+export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection", rawRules = null) {
+  const rules = normalizedRules(rawRules);
   if (!isISODate(isoDate)) {
     return { ok: false, status: 400, error: "Date must be in yyyy-MM-dd format." };
   }
 
-  if (!isOrderDayOpen(isoDate)) {
-    return { ok: false, status: 400, error: "Orders are available Tuesday to Sunday only." };
+  const now = londonNowDateAndMinutes();
+  if (isoDate < now.dateISO) {
+    return { ok: false, status: 400, error: "Orders are no longer available for past dates." };
+  }
+
+  const maxDate = maxOrderDateISO(rules);
+  if (maxDate && isoDate > maxDate) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Orders can only be placed up to ${rules.maxLookaheadDays} days ahead.`
+    };
+  }
+
+  if (!isOrderDayOpen(isoDate, rules)) {
+    return { ok: false, status: 400, error: orderOpenDaysMessage(rules) };
   }
 
   const orderType = normalizeOrderType(orderTypeRaw) || "collection";
   const timeValue = String(clock || "").trim().toUpperCase();
-  const earliestScheduled = earliestScheduledMinutesForOrderType(orderType);
-  const now = londonNowDateAndMinutes();
+  const earliestScheduled = earliestScheduledMinutesForOrderType(orderType, rules);
   const isToday = isoDate === now.dateISO;
 
   if (timeValue === ASAP_VALUE) {
     if (!isToday) {
       return { ok: false, status: 400, error: "ASAP is only available for today's date." };
     }
-    if (now.minutesNow > SERVICE_END_MINUTES) {
+    if (now.minutesNow > rules.serviceEndMinutes) {
       return { ok: false, status: 400, error: "No slots are left today. Please choose another date." };
     }
     return { ok: true, minutes: null, normalizedTime: ASAP_VALUE, isAsap: true };
@@ -186,31 +348,31 @@ export function validateOrderWindow(isoDate, clock, orderTypeRaw = "collection")
     return { ok: false, status: 400, error: "Time must be in HH:mm format or ASAP." };
   }
 
-  if (minutes < earliestScheduled || minutes > SERVICE_END_MINUTES) {
+  if (minutes < earliestScheduled || minutes > rules.serviceEndMinutes) {
     const orderLabel = orderType === "delivery" ? "Delivery" : "Collection";
     return {
       ok: false,
       status: 400,
-      error: `${orderLabel} scheduled times must be between ${minutesToClock(earliestScheduled)} and 17:00.`
+      error: `${orderLabel} scheduled times must be between ${minutesToClock(earliestScheduled)} and ${minutesToClock(rules.serviceEndMinutes)}.`
     };
   }
 
-  if (minutes % SLOT_STEP_MINUTES !== 0) {
-    return { ok: false, status: 400, error: "Orders must be in 15-minute intervals." };
+  if (minutes % rules.slotStepMinutes !== 0) {
+    return { ok: false, status: 400, error: `Orders must be in ${orderIntervalLabel(rules)}.` };
   }
 
   if (isToday) {
     const minimum = Math.max(
       earliestScheduled,
-      roundUpToStep(now.minutesNow + leadMinutesForOrderType(orderType), SLOT_STEP_MINUTES)
+      roundUpToStep(now.minutesNow + leadMinutesForOrderType(orderType, rules), rules.slotStepMinutes)
     );
 
-    if (minimum > SERVICE_END_MINUTES) {
+    if (minimum > rules.serviceEndMinutes) {
       return { ok: false, status: 400, error: "No scheduled slots are left today. Please choose another date." };
     }
 
     if (minutes < minimum) {
-      const lead = leadMinutesForOrderType(orderType);
+      const lead = leadMinutesForOrderType(orderType, rules);
       return {
         ok: false,
         status: 400,
@@ -258,6 +420,17 @@ function normalizeOrderRecord(raw) {
     decisionTime: String(raw.decisionTime || "").trim().toUpperCase(),
     trackingToken: String(raw.trackingToken || stableFallbackToken).trim().toLowerCase() || stableFallbackToken,
     statusUpdatedAt: String(raw.statusUpdatedAt || raw.createdAt || nowISO()),
+    paymentProvider: normalizePaymentProvider(raw.paymentProvider),
+    paymentStatus: normalizePaymentStatus(raw.paymentStatus),
+    paymentSessionId: String(raw.paymentSessionId || "").trim(),
+    paymentIntentId: String(raw.paymentIntentId || "").trim(),
+    paymentAmountTotal: normalizePaymentAmountTotal(raw.paymentAmountTotal),
+    paymentCurrency: normalizePaymentCurrency(raw.paymentCurrency),
+    refundStatus: normalizeRefundStatus(raw.refundStatus),
+    refundId: String(raw.refundId || "").trim(),
+    refundAmountTotal: normalizeRefundAmountTotal(raw.refundAmountTotal),
+    refundCreatedAt: String(raw.refundCreatedAt || "").trim(),
+    cartItems: normalizeCartItems(raw.cartItems),
     source: String(raw.source || "Millers Cafe Website"),
     createdAt: String(raw.createdAt || nowISO())
   };
@@ -297,6 +470,17 @@ export async function saveOrders(env, orders) {
     decisionTime: String(order.decisionTime || "").trim().toUpperCase(),
     trackingToken: String(order.trackingToken || "").trim().toLowerCase(),
     statusUpdatedAt: String(order.statusUpdatedAt || order.createdAt || nowISO()),
+    paymentProvider: normalizePaymentProvider(order.paymentProvider),
+    paymentStatus: normalizePaymentStatus(order.paymentStatus),
+    paymentSessionId: String(order.paymentSessionId || "").trim(),
+    paymentIntentId: String(order.paymentIntentId || "").trim(),
+    paymentAmountTotal: normalizePaymentAmountTotal(order.paymentAmountTotal),
+    paymentCurrency: normalizePaymentCurrency(order.paymentCurrency),
+    refundStatus: normalizeRefundStatus(order.refundStatus),
+    refundId: String(order.refundId || "").trim(),
+    refundAmountTotal: normalizeRefundAmountTotal(order.refundAmountTotal),
+    refundCreatedAt: String(order.refundCreatedAt || "").trim(),
+    cartItems: normalizeCartItems(order.cartItems),
     source: order.source,
     createdAt: order.createdAt
   }));
@@ -321,7 +505,14 @@ export function findOrderIndexByReference(orders, reference) {
   return orders.findIndex((order) => makeReference(String(order.id || "")).toUpperCase() === target);
 }
 
-function validatePayloadShape(payload) {
+export function findOrderIndexByPaymentSessionId(orders, sessionId) {
+  const target = String(sessionId || "").trim();
+  if (!target) return -1;
+
+  return orders.findIndex((order) => String(order.paymentSessionId || "").trim() === target);
+}
+
+export function validateOrderPayload(payload, options = {}) {
   if (!payload || typeof payload !== "object") {
     return { ok: false, status: 400, error: "Invalid order payload." };
   }
@@ -348,7 +539,7 @@ function validatePayloadShape(payload) {
 
   const date = String(payload.date || "");
   const time = String(payload.time || "").trim().toUpperCase();
-  const windowCheck = validateOrderWindow(date, time, orderType);
+  const windowCheck = validateOrderWindow(date, time, orderType, options.rules);
   if (!windowCheck.ok) {
     return windowCheck;
   }
@@ -391,34 +582,37 @@ function validatePayloadShape(payload) {
       addressLine1,
       addressLine2,
       townCity,
-      postcode
+      postcode,
+      cartItems: normalizeCartItems(payload.cartItems)
     }
   };
 }
 
-export function createOrderRecord(orders, payload) {
-  const shapeCheck = validatePayloadShape(payload);
+export function createOrderRecord(orders, payload, options = {}) {
+  const shapeCheck = validateOrderPayload(payload, options);
   if (!shapeCheck.ok) {
     return shapeCheck;
   }
 
   const data = shapeCheck.data;
-  const duplicate = orders.find((order) =>
-    order.orderType === data.orderType &&
-    order.date === data.date &&
-    order.time === data.time &&
-    order.phoneDigits.length > 0 &&
-    order.phoneDigits === data.phoneDigits &&
-    order.itemsSummary.toLowerCase() === data.itemsSummary.toLowerCase() &&
-    statusBlocksDuplicates(order.status)
-  );
+  if (!options.skipDuplicateCheck) {
+    const duplicate = orders.find((order) =>
+      order.orderType === data.orderType &&
+      order.date === data.date &&
+      order.time === data.time &&
+      order.phoneDigits.length > 0 &&
+      order.phoneDigits === data.phoneDigits &&
+      order.itemsSummary.toLowerCase() === data.itemsSummary.toLowerCase() &&
+      statusBlocksDuplicates(order.status)
+    );
 
-  if (duplicate) {
-    return {
-      ok: false,
-      status: 409,
-      error: "A similar order already exists for this customer and time."
-    };
+    if (duplicate) {
+      return {
+        ok: false,
+        status: 409,
+        error: "A similar order already exists for this customer and time."
+      };
+    }
   }
 
   const orderId = randomId();
@@ -444,6 +638,17 @@ export function createOrderRecord(orders, payload) {
     decisionTime: "",
     trackingToken: makeTrackingToken(),
     statusUpdatedAt: nowISO(),
+    paymentProvider: normalizePaymentProvider(options.paymentProvider),
+    paymentStatus: normalizePaymentStatus(options.paymentStatus),
+    paymentSessionId: String(options.paymentSessionId || "").trim(),
+    paymentIntentId: String(options.paymentIntentId || "").trim(),
+    paymentAmountTotal: normalizePaymentAmountTotal(options.paymentAmountTotal),
+    paymentCurrency: normalizePaymentCurrency(options.paymentCurrency),
+    refundStatus: normalizeRefundStatus(options.refundStatus),
+    refundId: String(options.refundId || "").trim(),
+    refundAmountTotal: normalizeRefundAmountTotal(options.refundAmountTotal),
+    refundCreatedAt: String(options.refundCreatedAt || "").trim(),
+    cartItems: data.cartItems,
     source: "Millers Cafe Website",
     createdAt: nowISO()
   };
@@ -553,31 +758,4 @@ export function toCSV(rows) {
   }
 
   return `${lines.join("\n")}\n`;
-}
-
-export function isFeedAuthorized(request, env) {
-  const configuredToken = String(env.ORDERS_FEED_TOKEN || env.BOOKINGS_FEED_TOKEN || "").trim();
-  if (!configuredToken) return true;
-  const provided = new URL(request.url).searchParams.get("token") || "";
-  return provided === configuredToken;
-}
-
-export function jsonResponse(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
-}
-
-export function csvResponse(text, status = 200) {
-  return new Response(text, {
-    status,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
 }

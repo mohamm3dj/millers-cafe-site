@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+  <title>Admin | Millers Café</title>
+  <meta name="description" content="Admin controls for Millers Café site configuration, menu catalog and analytics.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://millers.cafe/admin/">
+  <link rel="stylesheet" href="../styles.css?v=20260419d">
+</head>
+<body>
+  <main class="adminPage">
+    <div class="bookingsTopBar">
+      <a href="../" class="tile backBtn">← Back</a>
+    </div>
+
+    <section class="header glassHero accountHero">
+      <div class="logo">
+        <span class="logoSteam logoSteam1" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam2" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam3" aria-hidden="true"></span>
+        <img class="logoImg" src="../assets/millers-logo.jpg" alt="Millers Cafe logo">
+      </div>
+      <h1>Admin</h1>
+      <p class="subtitle">Operations, menu updates and analytics</p>
+      <p class="heroMeta">Token-protected controls for live site settings.</p>
+    </section>
+
+    <section class="adminGrid">
+      <article class="tile simplePanel adminCard">
+        <div class="accountSectionIntro">
+          <h2 class="bookingPanelTitle">Access</h2>
+          <p class="bookingPanelLead">Use an admin API token to load and save live settings.</p>
+        </div>
+
+        <form id="adminAuthForm" class="accountForm" novalidate>
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Admin token</span>
+            <input id="adminToken" type="password" maxlength="200" autocomplete="off" placeholder="Paste ADMIN_API_TOKENS value or fallback admin token">
+          </label>
+          <div class="accountActionRow">
+            <button id="adminLoadBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Load admin data</button>
+            <button id="adminClearBtn" class="accountSecondaryBtn" type="button">Clear token</button>
+          </div>
+        </form>
+
+        <p id="adminFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+      </article>
+
+      <article class="tile simplePanel adminCard">
+        <div class="accountHistoryHead">
+          <div>
+            <p class="accountEyebrow">Site config</p>
+            <h2>Business settings</h2>
+          </div>
+        </div>
+
+        <form id="adminConfigForm" class="accountForm" novalidate>
+          <div class="bookingGrid bookingGridContact">
+            <label class="bookingField">
+              <span class="bookingLabel">Business name</span>
+              <input id="adminBusinessName" type="text" maxlength="120">
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Short name</span>
+              <input id="adminBusinessShortName" type="text" maxlength="40">
+            </label>
+
+            <label class="bookingField bookingFieldWide">
+              <span class="bookingLabel">Address</span>
+              <input id="adminBusinessAddress" type="text" maxlength="160">
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Phone display</span>
+              <input id="adminBusinessPhoneDisplay" type="text" maxlength="40">
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Phone tel</span>
+              <input id="adminBusinessPhoneTel" type="text" maxlength="20">
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Email</span>
+              <input id="adminBusinessEmail" type="email" maxlength="120">
+            </label>
+          </div>
+
+          <section class="adminSectionBlock">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Homepage</p>
+                <h3>Weekly hours</h3>
+              </div>
+            </div>
+            <p class="accountHelper">Use <code>closed</code> for closed days, or add windows like <code>12:00-17:00</code>. Separate multiple windows with commas.</p>
+            <div class="adminHoursGrid">
+              <label class="bookingField"><span class="bookingLabel">Sunday</span><input id="adminHours0" type="text" placeholder="12:00-17:00"></label>
+              <label class="bookingField"><span class="bookingLabel">Monday</span><input id="adminHours1" type="text" placeholder="closed"></label>
+              <label class="bookingField"><span class="bookingLabel">Tuesday</span><input id="adminHours2" type="text" placeholder="12:00-17:00"></label>
+              <label class="bookingField"><span class="bookingLabel">Wednesday</span><input id="adminHours3" type="text" placeholder="12:00-17:00"></label>
+              <label class="bookingField"><span class="bookingLabel">Thursday</span><input id="adminHours4" type="text" placeholder="12:00-17:00"></label>
+              <label class="bookingField"><span class="bookingLabel">Friday</span><input id="adminHours5" type="text" placeholder="12:00-17:00"></label>
+              <label class="bookingField"><span class="bookingLabel">Saturday</span><input id="adminHours6" type="text" placeholder="12:00-17:00"></label>
+            </div>
+          </section>
+
+          <section class="adminSectionBlock">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Ordering</p>
+                <h3>Online ordering rules</h3>
+              </div>
+            </div>
+            <div class="adminCheckboxGrid" id="adminOrderOpenDays">
+              <label><input type="checkbox" value="0"> Sun</label>
+              <label><input type="checkbox" value="1"> Mon</label>
+              <label><input type="checkbox" value="2"> Tue</label>
+              <label><input type="checkbox" value="3"> Wed</label>
+              <label><input type="checkbox" value="4"> Thu</label>
+              <label><input type="checkbox" value="5"> Fri</label>
+              <label><input type="checkbox" value="6"> Sat</label>
+            </div>
+            <div class="bookingGrid bookingGridContact">
+              <label class="bookingField"><span class="bookingLabel">Service start</span><input id="adminOrdersStart" type="time"></label>
+              <label class="bookingField"><span class="bookingLabel">Service end</span><input id="adminOrdersEnd" type="time"></label>
+              <label class="bookingField"><span class="bookingLabel">Slot step (mins)</span><input id="adminOrdersStep" type="number" min="5" max="60"></label>
+              <label class="bookingField"><span class="bookingLabel">Lookahead days</span><input id="adminOrdersLookahead" type="number" min="1" max="366"></label>
+              <label class="bookingField"><span class="bookingLabel">Collection lead (mins)</span><input id="adminCollectionLead" type="number" min="0" max="480"></label>
+              <label class="bookingField"><span class="bookingLabel">Delivery lead (mins)</span><input id="adminDeliveryLead" type="number" min="0" max="480"></label>
+              <label class="bookingField"><span class="bookingLabel">Earliest collection slot</span><input id="adminCollectionEarliest" type="time"></label>
+              <label class="bookingField"><span class="bookingLabel">Earliest delivery slot</span><input id="adminDeliveryEarliest" type="time"></label>
+            </div>
+          </section>
+
+          <section class="adminSectionBlock">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Bookings</p>
+                <h3>Booking rules</h3>
+              </div>
+            </div>
+            <div class="adminCheckboxGrid" id="adminBookingOpenDays">
+              <label><input type="checkbox" value="0"> Sun</label>
+              <label><input type="checkbox" value="1"> Mon</label>
+              <label><input type="checkbox" value="2"> Tue</label>
+              <label><input type="checkbox" value="3"> Wed</label>
+              <label><input type="checkbox" value="4"> Thu</label>
+              <label><input type="checkbox" value="5"> Fri</label>
+              <label><input type="checkbox" value="6"> Sat</label>
+            </div>
+            <div class="bookingGrid bookingGridContact">
+              <label class="bookingField"><span class="bookingLabel">Service start</span><input id="adminBookingsStart" type="time"></label>
+              <label class="bookingField"><span class="bookingLabel">Service end</span><input id="adminBookingsEnd" type="time"></label>
+              <label class="bookingField"><span class="bookingLabel">Slot step (mins)</span><input id="adminBookingsStep" type="number" min="5" max="60"></label>
+              <label class="bookingField"><span class="bookingLabel">Lookahead days</span><input id="adminBookingsLookahead" type="number" min="1" max="366"></label>
+              <label class="bookingField"><span class="bookingLabel">Default duration (mins)</span><input id="adminBookingDuration" type="number" min="15" max="240"></label>
+            </div>
+          </section>
+
+          <section class="adminSectionBlock">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Delivery</p>
+                <h3>Area and pricing</h3>
+              </div>
+            </div>
+            <div class="bookingGrid bookingGridContact">
+              <label class="bookingField"><span class="bookingLabel">Base fee (£)</span><input id="adminDeliveryFee" type="number" step="0.01" min="0" max="100"></label>
+              <label class="bookingField"><span class="bookingLabel">ETA min (mins)</span><input id="adminEtaMin" type="number" min="0" max="300"></label>
+              <label class="bookingField"><span class="bookingLabel">ETA max (mins)</span><input id="adminEtaMax" type="number" min="0" max="300"></label>
+              <label class="bookingField"><span class="bookingLabel">Outside-area mode</span><select id="adminOutsideAreaMode"><option value="review">Review</option><option value="reject">Reject</option></select></label>
+              <label class="bookingField bookingFieldWide"><span class="bookingLabel">Allowed outward prefixes</span><input id="adminDeliveryPrefixes" type="text" placeholder="DN31, DN32, DN33"></label>
+            </div>
+          </section>
+
+          <div class="accountActionRow">
+            <button id="adminSaveConfigBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Save site config</button>
+          </div>
+          <p id="adminConfigFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+
+      <article class="tile simplePanel adminCard">
+        <div class="accountHistoryHead">
+          <div>
+            <p class="accountEyebrow">Menu</p>
+            <h2>Catalog JSON</h2>
+          </div>
+        </div>
+        <p class="accountHelper">Edit the live menu catalog directly. This uses the same JSON structure as the order and menu APIs.</p>
+        <form id="adminMenuForm" class="accountForm" novalidate>
+          <label class="bookingField bookingFieldWide">
+            <span class="bookingLabel">Menu JSON</span>
+            <textarea id="adminMenuJson" class="adminTextarea" rows="22" spellcheck="false"></textarea>
+          </label>
+          <div class="accountActionRow">
+            <button id="adminLoadMenuBtn" class="accountSecondaryBtn" type="button">Reload menu</button>
+            <button id="adminSaveMenuBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Save menu</button>
+          </div>
+          <p id="adminMenuFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+
+      <article class="tile simplePanel adminCard">
+        <div class="accountHistoryHead">
+          <div>
+            <p class="accountEyebrow">Analytics</p>
+            <h2>Funnel and traffic summary</h2>
+          </div>
+        </div>
+        <form id="adminAnalyticsForm" class="accountForm" novalidate>
+          <div class="accountActionRow">
+            <label class="bookingField adminInlineField">
+              <span class="bookingLabel">Days</span>
+              <select id="adminAnalyticsDays">
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+            </label>
+            <button id="adminRefreshAnalyticsBtn" class="accountSecondaryBtn" type="submit">Refresh analytics</button>
+          </div>
+        </form>
+        <p id="adminAnalyticsFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+        <div id="adminAnalyticsSummary" class="adminAnalyticsSummary">
+          <article class="accountEmptyState">
+            <h3>No analytics loaded yet.</h3>
+            <p>Load admin data, then refresh analytics to see funnel and page activity.</p>
+          </article>
+        </div>
+      </article>
+    </section>
+
+    <div class="footer">
+      <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
+    </div>
+  </main>
+  <script type="module" src="./admin.js?v=20260419d"></script>
+</body>
+</html>

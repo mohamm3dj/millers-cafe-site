@@ -1,0 +1,311 @@
+"use strict";
+
+import { MILLERS_ORDER_MENU } from "../../orders/menu-catalog.js";
+
+const MAX_ITEM_QUANTITY = 20;
+const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+const HIDDEN_ORDER_CATEGORY_KEYS = new Set([
+  "beer",
+  "wine by glass",
+  "spirits",
+  "red wine bottles",
+  "white wine bottles",
+  "white win bottles",
+  "rose wine bottles",
+  "rose wine bottle",
+  "champagne and sparkling",
+  "champagne and sparking"
+]);
+
+let cachedDefaultOrderMenuItemMap = null;
+
+function normalizeText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeKey(value) {
+  const cleaned = normalizeText(value).toLowerCase().replace(/&/g, " and ");
+  let normalized = cleaned;
+  try {
+    normalized = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  } catch (error) {
+    normalized = cleaned;
+  }
+  return normalized.replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function formatGBP(value) {
+  return GBP_FORMATTER.format(Number(value || 0));
+}
+
+function toMinorUnits(value) {
+  return Math.round(roundMoney(value) * 100);
+}
+
+function normalizedOrderType(value) {
+  return String(value || "").trim().toLowerCase() === "delivery" ? "delivery" : "collection";
+}
+
+function normalizeModifierGroup(rawGroup) {
+  const groupName = normalizeText(rawGroup?.name);
+  if (!groupName) return null;
+
+  const selectionType = normalizeText(rawGroup?.selectionType).toLowerCase() === "multiple"
+    ? "multiple"
+    : "single";
+
+  const options = Array.isArray(rawGroup?.options)
+    ? rawGroup.options
+      .map((rawOption) => {
+        const optionName = normalizeText(rawOption?.name);
+        const priceAdjustment = Number(rawOption?.priceAdjustment || 0);
+        if (!optionName || !Number.isFinite(priceAdjustment)) return null;
+        return {
+          key: normalizeKey(optionName),
+          name: optionName,
+          priceAdjustment: roundMoney(priceAdjustment)
+        };
+      })
+      .filter(Boolean)
+    : [];
+
+  const maxSelectionsRaw = Number(rawGroup?.maxSelections);
+  const maxSelections = selectionType === "multiple"
+    ? (Number.isInteger(maxSelectionsRaw) && maxSelectionsRaw > 0 ? maxSelectionsRaw : Math.max(1, options.length))
+    : 1;
+
+  return {
+    key: normalizeKey(groupName),
+    name: groupName,
+    selectionType,
+    isRequired: Boolean(rawGroup?.isRequired),
+    isTextInput: Boolean(rawGroup?.isTextInput),
+    maxSelections,
+    options
+  };
+}
+
+function buildOrderMenuItemMap(menuCatalog = MILLERS_ORDER_MENU) {
+  if (menuCatalog === MILLERS_ORDER_MENU && cachedDefaultOrderMenuItemMap) {
+    return cachedDefaultOrderMenuItemMap;
+  }
+
+  const map = new Map();
+  const categories = Array.isArray(menuCatalog) ? menuCatalog : [];
+
+  categories.forEach((category) => {
+    const categoryKey = normalizeKey(category?.name);
+    if (!categoryKey || HIDDEN_ORDER_CATEGORY_KEYS.has(categoryKey)) return;
+    if (!Array.isArray(category?.items)) return;
+
+    category.items.forEach((rawItem) => {
+      const itemName = normalizeText(rawItem?.name);
+      const itemKey = normalizeKey(itemName);
+      const basePrice = Number(rawItem?.basePrice);
+      if (!itemName || !itemKey || !Number.isFinite(basePrice) || basePrice < 0) return;
+
+      const modifierGroups = Array.isArray(rawItem?.modifierGroups)
+        ? rawItem.modifierGroups.map(normalizeModifierGroup).filter(Boolean)
+        : [];
+
+      map.set(itemKey, {
+        key: itemKey,
+        name: itemName,
+        basePrice: roundMoney(basePrice),
+        modifierGroups
+      });
+    });
+  });
+
+  if (menuCatalog === MILLERS_ORDER_MENU) {
+    cachedDefaultOrderMenuItemMap = map;
+  }
+  return map;
+}
+
+export function getOrderMenuItemByName(itemName, menuCatalog = MILLERS_ORDER_MENU) {
+  const itemKey = normalizeKey(itemName);
+  if (!itemKey) return null;
+  return buildOrderMenuItemMap(menuCatalog).get(itemKey) || null;
+}
+
+function modifierSummary(selection) {
+  const base = `${selection.groupName}: ${selection.optionName}`;
+  const adjustment = Number(selection.priceAdjustment || 0);
+  if (selection.isTextInput || adjustment === 0) return base;
+
+  const sign = adjustment > 0 ? "+" : "-";
+  return `${base} (${sign}${formatGBP(Math.abs(adjustment))})`;
+}
+
+function cartLineSummary(item) {
+  const quantityText = `${item.quantity}x`;
+  const modifierText = (item.modifierSelections || [])
+    .map(modifierSummary)
+    .filter(Boolean)
+    .join(" | ");
+  const base = modifierText ? `${quantityText} ${item.itemName} [${modifierText}]` : `${quantityText} ${item.itemName}`;
+  return `${base} = ${formatGBP(item.linePrice)}`;
+}
+
+function normalizeModifierSelections(rawSelections, menuItem) {
+  if (!Array.isArray(rawSelections) || rawSelections.length === 0) {
+    const missingRequired = menuItem.modifierGroups.find((group) => group.isRequired);
+    if (missingRequired) {
+      return { ok: false, error: `A selection is required for ${menuItem.name} (${missingRequired.name}).` };
+    }
+    return { ok: true, selections: [] };
+  }
+
+  const groupsByKey = new Map(menuItem.modifierGroups.map((group) => [group.key, group]));
+  const countsByGroup = new Map();
+  const normalizedSelections = [];
+
+  for (const rawSelection of rawSelections) {
+    const groupKey = normalizeKey(rawSelection?.groupName);
+    if (!groupKey || !groupsByKey.has(groupKey)) {
+      return { ok: false, error: `An invalid modifier was provided for ${menuItem.name}.` };
+    }
+
+    const group = groupsByKey.get(groupKey);
+    const nextCount = (countsByGroup.get(group.key) || 0) + 1;
+    countsByGroup.set(group.key, nextCount);
+
+    if (nextCount > group.maxSelections) {
+      return { ok: false, error: `Too many selections were provided for ${menuItem.name} (${group.name}).` };
+    }
+
+    if (group.isTextInput) {
+      const optionName = normalizeText(rawSelection?.optionName || rawSelection?.value);
+      if (!optionName) {
+        return { ok: false, error: `A text selection is required for ${menuItem.name} (${group.name}).` };
+      }
+
+      normalizedSelections.push({
+        groupName: group.name,
+        optionName,
+        priceAdjustment: 0,
+        isTextInput: true
+      });
+      continue;
+    }
+
+    const optionKey = normalizeKey(rawSelection?.optionName);
+    const option = group.options.find((entry) => entry.key === optionKey);
+    if (!option) {
+      return { ok: false, error: `An invalid option was provided for ${menuItem.name} (${group.name}).` };
+    }
+
+    normalizedSelections.push({
+      groupName: group.name,
+      optionName: option.name,
+      priceAdjustment: option.priceAdjustment,
+      isTextInput: false
+    });
+  }
+
+  const missingRequired = menuItem.modifierGroups.find((group) => group.isRequired && !countsByGroup.has(group.key));
+  if (missingRequired) {
+    return { ok: false, error: `A selection is required for ${menuItem.name} (${missingRequired.name}).` };
+  }
+
+  return { ok: true, selections: normalizedSelections };
+}
+
+export function resolveDeliveryFeeGBP(env, configuredFeeGBP = null) {
+  const explicit = Number(configuredFeeGBP);
+  if (Number.isFinite(explicit) && explicit >= 0) {
+    return roundMoney(explicit);
+  }
+
+  const configured = Number(env?.ORDER_DELIVERY_FEE_GBP);
+  if (Number.isFinite(configured) && configured >= 0) {
+    return roundMoney(configured);
+  }
+  return 2;
+}
+
+export function priceOrderCart(rawCartItems, options = {}) {
+  const orderType = normalizedOrderType(options.orderType);
+  const menuCatalog = Array.isArray(options.menuCatalog) ? options.menuCatalog : MILLERS_ORDER_MENU;
+  const deliveryFeeGBP = orderType === "delivery"
+    ? roundMoney(Math.max(0, Number(options.deliveryFeeGBP || 0)))
+    : 0;
+
+  if (!Array.isArray(rawCartItems) || rawCartItems.length === 0) {
+    return { ok: false, error: "Please add at least one menu item." };
+  }
+
+  const pricedItems = [];
+
+  for (const rawItem of rawCartItems) {
+    const menuItem = getOrderMenuItemByName(rawItem?.itemName || rawItem?.name, menuCatalog);
+    if (!menuItem) {
+      return { ok: false, error: `Menu item is unavailable: ${normalizeText(rawItem?.itemName || rawItem?.name) || "Unknown item"}.` };
+    }
+
+    const quantity = Number(rawItem?.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_ITEM_QUANTITY) {
+      return { ok: false, error: `Invalid quantity for ${menuItem.name}.` };
+    }
+
+    const selectionCheck = normalizeModifierSelections(rawItem?.modifierSelections, menuItem);
+    if (!selectionCheck.ok) {
+      return selectionCheck;
+    }
+
+    const modifierTotal = selectionCheck.selections
+      .reduce((sum, selection) => sum + Number(selection.priceAdjustment || 0), 0);
+
+    const unitPrice = roundMoney(menuItem.basePrice + modifierTotal);
+    const linePrice = roundMoney(unitPrice * quantity);
+    const stripeDescription = selectionCheck.selections.length > 0
+      ? selectionCheck.selections.map(modifierSummary).join(" | ")
+      : "";
+
+    pricedItems.push({
+      itemName: menuItem.name,
+      quantity,
+      basePrice: menuItem.basePrice,
+      modifierSelections: selectionCheck.selections,
+      unitPrice,
+      linePrice,
+      stripeName: menuItem.name,
+      stripeDescription
+    });
+  }
+
+  const subtotal = roundMoney(pricedItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
+  const total = roundMoney(subtotal + deliveryFeeGBP);
+  const lines = pricedItems.map(cartLineSummary);
+
+  if (deliveryFeeGBP > 0) {
+    lines.push(`Delivery fee = ${formatGBP(deliveryFeeGBP)}`);
+  }
+  lines.push(`Total = ${formatGBP(total)}`);
+
+  return {
+    ok: true,
+    orderType,
+    items: pricedItems,
+    itemsSummary: lines.join("\n"),
+    subtotal,
+    subtotalMinor: toMinorUnits(subtotal),
+    deliveryFee: deliveryFeeGBP,
+    deliveryFeeMinor: toMinorUnits(deliveryFeeGBP),
+    total,
+    totalMinor: toMinorUnits(total),
+    totalQuantity: pricedItems.reduce((sum, item) => sum + item.quantity, 0),
+    currency: "gbp"
+  };
+}

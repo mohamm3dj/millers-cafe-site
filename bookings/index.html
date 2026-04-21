@@ -3,11 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
-  <title>Millers Café</title>
-  <link rel="stylesheet" href="../styles.css?v=20260218e">
+  <title>Book a Table | Millers Café</title>
+  <meta name="description" content="Book a table at Millers Café in Waltham, Grimsby. Choose your date, time and party size online.">
+  <link rel="canonical" href="https://millers.cafe/bookings/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Book a Table | Millers Café">
+  <meta property="og:description" content="Reserve your table online at Millers Café with live availability and instant confirmations.">
+  <meta property="og:url" content="https://millers.cafe/bookings/">
+  <meta property="og:image" content="https://millers.cafe/assets/millers-logo.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Book a Table | Millers Café">
+  <meta name="twitter:description" content="Reserve your table online at Millers Café with live availability and instant confirmations.">
+  <meta name="twitter:image" content="https://millers.cafe/assets/millers-logo.jpg">
+  <link rel="stylesheet" href="../styles.css?v=20260419d">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FoodEstablishmentReservation",
+      "name": "Millers Café Reservations",
+      "url": "https://millers.cafe/bookings/",
+      "reservationFor": {
+        "@type": "Restaurant",
+        "name": "Millers Café",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "55 Brigsley Road, Waltham",
+          "addressLocality": "Grimsby",
+          "postalCode": "DN37 0JZ",
+          "addressCountry": "GB"
+        }
+      }
+    }
+  </script>
 </head>
 <body>
   <main class="bookingsPage">
@@ -34,7 +64,7 @@
         </div>
 
         <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
-          <strong>Service hours:</strong> Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.
+          <strong>Service hours:</strong> Loading live booking hours...
         </div>
 
         <form id="bookingForm" class="bookingForm" novalidate>
@@ -127,6 +157,8 @@
             </div>
           </section>
 
+          <div id="bookingTurnstile" class="turnstileSlot" hidden></div>
+
           <div class="bookingActions">
             <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Book table</button>
           </div>
@@ -139,8 +171,8 @@
       <aside class="tile bookingsInfoCard" aria-label="Booking information">
         <h2 class="bookingsInfoTitle">Good to know</h2>
         <ul class="bookingsInfoList">
-          <li>We are open Tuesday to Sunday, 12:00 to 17:00.</li>
-          <li>Bookings are seated in 15-minute slots.</li>
+          <li id="bookingsInfoHours">We are loading the latest booking hours.</li>
+          <li id="bookingsInfoSlots">Booking slot details update from live site settings.</li>
           <li>Please add allergies or accessibility needs in notes.</li>
           <li>If you are running late, call us and we will help.</li>
         </ul>
@@ -157,6 +189,7 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="./bookings.js?v=20260218i"></script>
+  <script src="../client-tools.js?v=20260419d"></script>
+  <script src="./bookings.js?v=20260419d"></script>
 </body>
 </html>

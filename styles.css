@@ -962,6 +962,7 @@ h1{
 .homeGrid .homeTileBookings .homeTileIcon svg > *{ animation-delay: .30s; }
 .homeGrid .homeTileLocation .homeTileIcon svg > *{ animation-delay: .38s; }
 .homeGrid .homeTileContact .homeTileIcon svg > *{ animation-delay: .46s; }
+.homeGrid .homeTileAccount .homeTileIcon svg > *{ animation-delay: .54s; }
 
 .homeGrid .homeTile:hover .homeTileIcon{
   transform: translateY(-1px);
@@ -1001,12 +1002,18 @@ h1{
   --tile-accent: #15803d;
 }
 
+.homeGrid .homeTileAccount{
+  --tile-tint: rgba(249, 115, 22, .10);
+  --tile-accent: #c2410c;
+}
+
 .homeGrid .homeTileMenu .homeTileIcon svg{ animation-name: iconBook; animation-duration: 5.2s; }
 .homeGrid .homeTileCollection .homeTileIcon svg{ animation-name: iconBag; animation-duration: 5s; animation-delay: .2s; }
 .homeGrid .homeTileDelivery .homeTileIcon svg{ animation-name: iconDrive; animation-duration: 4.8s; animation-delay: .1s; }
 .homeGrid .homeTileBookings .homeTileIcon svg{ animation-name: iconCalendar; animation-duration: 5.3s; animation-delay: .35s; }
 .homeGrid .homeTileLocation .homeTileIcon svg{ animation-name: iconPin; animation-duration: 4.9s; animation-delay: .18s; }
 .homeGrid .homeTileContact .homeTileIcon svg{ animation-name: iconPhone; animation-duration: 5.1s; animation-delay: .28s; }
+.homeGrid .homeTileAccount .homeTileIcon svg{ animation-name: iconBadge; animation-duration: 5.2s; animation-delay: .22s; }
 
 .homeFlipTile{
   padding: 0;
@@ -1174,6 +1181,7 @@ h1{
 .homeGrid .homeTile:nth-child(4){ animation-delay: 260ms; }
 .homeGrid .homeTile:nth-child(5){ animation-delay: 320ms; }
 .homeGrid .homeTile:nth-child(6){ animation-delay: 380ms; }
+.homeGrid .homeTile:nth-child(7){ animation-delay: 440ms; }
 
 @keyframes cardRise{
   from{ opacity: 0; transform: translateY(14px); }
@@ -1608,6 +1616,12 @@ h1{
   40%{ transform: rotate(6deg); }
   50%{ transform: rotate(-4deg); }
   60%{ transform: rotate(2deg); }
+}
+
+@keyframes iconBadge{
+  0%, 100%{ transform: translateY(0); }
+  35%{ transform: translateY(-2px) scale(1.02); }
+  55%{ transform: translateY(0) scale(.99); }
 }
 
 @keyframes iconHaloPulse{
@@ -4174,6 +4188,13 @@ h1{
   padding: 10px;
 }
 
+.orderMenuCard.isInBasket{
+  border-color: rgba(15, 118, 110, .28);
+  box-shadow:
+    0 10px 22px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.96);
+}
+
 .orderMenuMain{
   display: grid;
   gap: 4px;
@@ -4236,12 +4257,20 @@ h1{
   border-color: rgba(22, 163, 74, .24);
 }
 
+.orderMenuSelectionBadge{
+  color: #0f766e;
+  background: rgba(236, 253, 250, .94);
+  border-color: rgba(15, 118, 110, .24);
+}
+
 .orderMenuMeta{
   font-size: 12px;
   color: #526176;
 }
 
 .orderMenuAdd{
+  position: relative;
+  overflow: visible;
   border: 0;
   border-radius: 9px;
   min-height: 36px;
@@ -4253,6 +4282,39 @@ h1{
   font-weight: 630;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.orderMenuAdd.hasCount{
+  box-shadow:
+    0 10px 18px rgba(15, 23, 42, .18),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+.orderMenuAddText{
+  display: inline-flex;
+  align-items: center;
+}
+
+.orderMenuAddCount{
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #de5266;
+  color: #fff7f8;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 10px 18px rgba(143, 34, 56, .2);
+}
+
+.orderMenuAddCount[hidden]{
+  display: none;
 }
 
 .orderMenuAdd:hover{
@@ -4668,6 +4730,13 @@ h1{
   box-shadow: 0 10px 18px rgba(15, 23, 42, .08);
 }
 
+.orderPage .orderMenuCard.isInBasket{
+  border-color: rgba(15, 118, 110, .32);
+  box-shadow:
+    0 14px 24px rgba(15, 23, 42, .1),
+    inset 0 1px 0 rgba(255,255,255,.96);
+}
+
 .orderPage .orderMenuName{
   font-size: 15px;
   font-weight: 700;
@@ -4923,4 +4992,483 @@ h1{
 .bookingResult[hidden],
 .bookingError[hidden]{
   display: none !important;
+}
+
+.accountPage{
+  display: grid;
+  gap: 18px;
+}
+
+.accountHero{
+  padding-bottom: 26px;
+}
+
+.accountWorkspace{
+  display: grid;
+}
+
+.accountPanel{
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.76);
+  background:
+    radial-gradient(260px 180px at 16% 12%, rgba(249, 115, 22, .09), transparent 76%),
+    radial-gradient(240px 160px at 88% 18%, rgba(20, 184, 166, .09), transparent 74%),
+    linear-gradient(150deg, rgba(255,255,255,.78) 0%, rgba(246, 250, 254, .52) 58%, rgba(240, 247, 255, .5) 100%);
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, .10),
+    inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.accountSectionIntro{
+  display: grid;
+  gap: 6px;
+}
+
+.accountAuthGrid,
+.accountHistoryGrid{
+  display: grid;
+  gap: 16px;
+}
+
+.accountCard,
+.accountHistoryCard{
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  background: rgba(255,255,255,.66);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+.accountEyebrow{
+  margin: 0;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.accountLeadCopy,
+.accountHelper,
+.accountVerifyEmail{
+  margin: 0;
+  color: #5e6978;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.accountForm{
+  display: grid;
+  gap: 12px;
+}
+
+.accountPrimaryBtn{
+  width: 100%;
+}
+
+.accountActionRow{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.accountSecondaryBtn,
+.accountTextButton{
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.2;
+  color: #334155;
+  background: rgba(255,255,255,.72);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.accountSecondaryBtn:hover,
+.accountTextButton:hover{
+  background: rgba(255,255,255,.9);
+  border-color: rgba(15, 118, 110, .24);
+  color: #0f172a;
+}
+
+.accountTextButton{
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #0f766e;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.accountTextButton:hover{
+  background: transparent;
+  color: #115e59;
+}
+
+.accountSignedInActions{
+  display: grid;
+  gap: 12px;
+}
+
+.accountSignedInBanner{
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(15, 118, 110, .10);
+  border: 1px solid rgba(15, 118, 110, .16);
+  color: #115e59;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.accountFeedback{
+  min-height: 20px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #5e6978;
+}
+
+.accountFeedback.isError{
+  color: #b42318;
+}
+
+.accountFeedback.isSuccess{
+  color: #0f766e;
+}
+
+.accountSummaryList{
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.accountSummaryList div{
+  display: grid;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, .08);
+}
+
+.accountSummaryList div:last-child{
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.accountSummaryList dt{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #667085;
+}
+
+.accountSummaryList dd{
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.accountHistoryHead{
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accountInlineLink{
+  font-size: 13px;
+  font-weight: 620;
+  color: #0f766e;
+  text-decoration: none;
+}
+
+.accountInlineLink:hover{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.accountHistoryList{
+  display: grid;
+  gap: 12px;
+}
+
+.accountHistoryItem,
+.accountEmptyState{
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  background: rgba(255,255,255,.76);
+}
+
+.accountHistoryHeader{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accountHistoryHeader h3,
+.accountEmptyState h3,
+.accountCard h2,
+.accountHistoryCard h2{
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.18;
+  color: #0f172a;
+}
+
+.accountStatusPill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(15, 23, 42, .10);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.accountHistoryPrimary,
+.accountHistoryMeta,
+.accountHistoryNote,
+.accountEmptyState p{
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #5e6978;
+}
+
+.accountHistoryPrimary{
+  color: #0f172a;
+  font-weight: 620;
+}
+
+.accountHistoryNote{
+  color: #475467;
+}
+
+@media (min-width: 720px){
+  .accountAuthGrid{
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px){
+  .accountPanel{
+    padding: 18px;
+  }
+
+  .accountActionRow,
+  .accountHistoryHead,
+  .accountHistoryHeader{
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .accountSecondaryBtn{
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.turnstileSlot{
+  min-height: 66px;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+  padding: 10px 0 2px;
+}
+
+.accountProfileGrid{
+  display: grid;
+  gap: 16px;
+}
+
+.accountHistoryActions{
+  margin-top: 6px;
+}
+
+.accountSecondaryBtn.isDanger{
+  color: #b42318;
+  border-color: rgba(180, 35, 24, .18);
+  background: rgba(254, 243, 242, .9);
+}
+
+.accountSecondaryBtn.isDanger:hover{
+  color: #912018;
+  border-color: rgba(180, 35, 24, .28);
+  background: rgba(254, 228, 226, .96);
+}
+
+.accountModalShell{
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+}
+
+.accountModalBackdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(6px);
+}
+
+.accountModalCard{
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  display: grid;
+  gap: 16px;
+}
+
+.adminPage{
+  display: grid;
+  gap: 18px;
+}
+
+.adminGrid{
+  display: grid;
+  gap: 18px;
+}
+
+.adminCard{
+  display: grid;
+  gap: 16px;
+}
+
+.adminSectionBlock{
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(15, 23, 42, .08);
+}
+
+.adminHoursGrid,
+.adminAnalyticsGrid{
+  display: grid;
+  gap: 14px;
+}
+
+.adminCheckboxGrid{
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminCheckboxGrid label{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  background: rgba(255,255,255,.72);
+  color: #334155;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.adminCheckboxGrid input{
+  margin: 0;
+}
+
+.adminTextarea{
+  min-height: 520px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.adminInlineField{
+  min-width: 170px;
+}
+
+.adminAnalyticsSummary{
+  display: grid;
+  gap: 14px;
+}
+
+.adminListCard{
+  display: grid;
+  gap: 8px;
+}
+
+.adminListRow,
+.adminDailyRow{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(15, 23, 42, .08);
+  color: #334155;
+}
+
+.adminListRow span,
+.adminDailyRow span{
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 880px){
+  .adminGrid{
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .adminCard:first-child,
+  .adminCard:last-child{
+    grid-column: 1 / -1;
+  }
+
+  .adminHoursGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accountProfileGrid,
+  .adminAnalyticsGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px){
+  .adminCheckboxGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accountModalShell{
+    padding: 14px;
+  }
+
+  .adminTextarea{
+    min-height: 360px;
+  }
 }

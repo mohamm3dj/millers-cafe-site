@@ -5,7 +5,7 @@
 
   <!-- Mobile sizing -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
 
@@ -17,12 +17,42 @@
 
   <title>Millers Café</title>
   <meta name="description" content="Millers Café — menu, collection, delivery and bookings.">
+  <link rel="canonical" href="https://millers.cafe/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Millers Café">
+  <meta property="og:description" content="Menu, table bookings, collection and delivery from Millers Café in Waltham, Grimsby.">
+  <meta property="og:url" content="https://millers.cafe/">
+  <meta property="og:image" content="https://millers.cafe/assets/millers-logo.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Millers Café">
+  <meta name="twitter:description" content="Menu, table bookings, collection and delivery from Millers Café in Waltham, Grimsby.">
+  <meta name="twitter:image" content="https://millers.cafe/assets/millers-logo.jpg">
 
   <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
 
-  <link rel="stylesheet" href="styles.css?v=20260217j">
+  <link rel="stylesheet" href="styles.css?v=20260419d">
+  <script type="application/ld+json" id="restaurantSchema">
+    {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      "name": "Millers Café",
+      "image": "https://millers.cafe/assets/millers-logo.jpg",
+      "url": "https://millers.cafe/",
+      "telephone": "+44 1472 828600",
+      "servesCuisine": ["Cafe", "Indian", "Desserts", "Milkshakes"],
+      "menu": "https://millers.cafe/menu/",
+      "acceptsReservations": "True",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "55 Brigsley Road, Waltham",
+        "addressLocality": "Grimsby",
+        "postalCode": "DN37 0JZ",
+        "addressCountry": "GB"
+      }
+    }
+  </script>
 </head>
 
 <body>
@@ -60,7 +90,7 @@
         <span class="statusDot" aria-hidden="true"></span>
         <span id="heroStatusText">Checking opening status...</span>
       </div>
-      <p id="heroHours" class="heroHours">Tue-Sun: 12:00-17:00 • Today: 12:00-17:00</p>
+      <p id="heroHours" class="heroHours">Loading live hours...</p>
       <p class="heroMeta">55 Brigsley Road, Waltham, Grimsby DN37 0JZ</p>
     </div>
 
@@ -115,6 +145,19 @@
         <div class="tileTitle">Bookings</div>
         <div class="tileSub">Reserve your table in under a minute</div>
         <div class="tileCta">Book a Table</div>
+      </a>
+
+      <a class="tile homeTile homeTileAccount" href="./account/">
+        <div class="homeTileIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="3.25"></circle>
+            <path d="M5 19.2c1.7-3.2 4.2-4.8 7-4.8s5.3 1.6 7 4.8"></path>
+            <path d="M17.8 4.8h1.9v1.9"></path>
+          </svg>
+        </div>
+        <div class="tileTitle">My Account</div>
+        <div class="tileSub">See bookings and order history in one place</div>
+        <div class="tileCta">Open Account</div>
       </a>
 
       <div
@@ -193,7 +236,8 @@
 
   </main>
 
-  <script src="./home.js?v=20260217j"></script>
+  <script src="./client-tools.js?v=20260419d"></script>
+  <script src="./home.js?v=20260419d"></script>
 
 </body>
 </html>

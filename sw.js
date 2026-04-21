@@ -1,9 +1,10 @@
-const CACHE_NAME = "millers-v54";
+const CACHE_NAME = "millers-v57";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./assets/millers-logo.jpg",
+  "./client-tools.js",
   "./page-transitions.js",
   "./home.js",
   "./manifest.webmanifest",
@@ -14,7 +15,14 @@ const ASSETS = [
   "./collection/index.html",
   "./delivery/",
   "./delivery/index.html",
+  "./account/",
+  "./account/index.html",
+  "./account/account.js",
+  "./admin/",
+  "./admin/index.html",
+  "./admin/admin.js",
   "./orders/order-form.js",
+  "./orders/order-draft.js",
   "./orders/menu-catalog.js",
   "./bookings/",
   "./bookings/index.html",

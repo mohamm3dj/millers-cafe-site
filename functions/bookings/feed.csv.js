@@ -1,22 +1,24 @@
 "use strict";
 
-import {
-  csvResponse,
-  feedRows,
-  isFeedAuthorized,
-  jsonResponse,
-  loadBookings,
-  toCSV
-} from "../_booking-core.js";
+import { isTokenAuthorized, resolveFeedTokens } from "../_lib/auth.js";
+import { listBookingFeed } from "../_lib/bookings-service.js";
+import { ApiError, errorResponse } from "../_lib/errors.js";
+import { queryFlag, urlOf } from "../_lib/http.js";
+import { csv, methodNotAllowed } from "../_lib/json.js";
 
 export async function onRequestGet(context) {
-  if (!isFeedAuthorized(context.request, context.env)) {
-    return jsonResponse({ error: "Unauthorized feed token." }, 401);
+  try {
+    if (!isTokenAuthorized(context.request, resolveFeedTokens(context.env, "bookings"))) {
+      throw new ApiError("Unauthorized feed token.", 401);
+    }
+    const includePast = queryFlag(urlOf(context.request), "includePast");
+    const result = await listBookingFeed(context.env, includePast, "csv");
+    return csv(result.body);
+  } catch (error) {
+    return errorResponse(error, "Could not load bookings CSV feed.");
   }
+}
 
-  const url = new URL(context.request.url);
-  const includePast = url.searchParams.get("includePast") === "1";
-
-  const bookings = await loadBookings(context.env);
-  return csvResponse(toCSV(feedRows(bookings, includePast)));
+export function onRequest() {
+  return methodNotAllowed(["GET"]);
 }

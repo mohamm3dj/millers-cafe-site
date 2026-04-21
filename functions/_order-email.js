@@ -14,6 +14,17 @@ function typeLabel(orderType) {
   return String(orderType || "").toLowerCase() === "delivery" ? "Delivery" : "Collection";
 }
 
+function formatPaymentAmount(order) {
+  const amountMinor = Number(order?.paymentAmountTotal);
+  const currency = String(order?.paymentCurrency || "gbp").trim().toUpperCase();
+  if (!Number.isFinite(amountMinor) || amountMinor < 0) return "";
+  const amount = amountMinor / 100;
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: currency || "GBP"
+  }).format(amount);
+}
+
 function formatDateForEmail(isoDate) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""))) return String(isoDate || "");
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -47,6 +58,14 @@ function orderDetailsLines(order, reference) {
     ["Order", order.itemsSummary],
     ["Notes", order.notes || "None"]
   ];
+
+  if (String(order.paymentProvider || "").toLowerCase() === "stripe") {
+    const paidAmount = formatPaymentAmount(order);
+    const paymentLine = paidAmount
+      ? `Paid via Stripe (${paidAmount})`
+      : "Paid via Stripe";
+    lines.splice(8, 0, ["Payment", paymentLine]);
+  }
 
   if (String(order.orderType || "").toLowerCase() === "delivery") {
     lines.splice(9, 0, ["Delivery address", fullAddress(order) || "None"]);
@@ -138,6 +157,10 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
   const status = decisionLabel(update.status);
   const type = typeLabel(order.orderType).toLowerCase();
   const etaLine = etaText(update.etaMinutes, update.scheduledDate, update.scheduledTime);
+  const refundStatus = String(update?.refundStatus || "").trim().toLowerCase();
+  const refundLine = String(order.paymentProvider || "").toLowerCase() === "stripe" && refundStatus === "succeeded"
+    ? "Your Stripe payment refund has been started."
+    : "";
 
   if (status === "accepted") {
     return {
@@ -171,14 +194,16 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
       "<div style=\"font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;\">",
       `<h2 style=\"margin: 0 0 12px;\">Order update</h2>`,
       `<p style=\"margin: 0 0 12px;\">Your ${htmlEscape(type)} order <strong>${htmlEscape(reference)}</strong> has been rejected.</p>`,
+      refundLine ? `<p style=\"margin: 0 0 12px;\">${htmlEscape(refundLine)}</p>` : "",
       "<p style=\"margin: 0;\">If this was unexpected, reply to this email and we'll help.</p>",
       "</div>"
     ].join(""),
     text: [
       `Your ${type} order ${reference} has been rejected.`,
+      refundLine,
       "",
       "If this was unexpected, reply to this email and we'll help."
-    ].join("\n")
+    ].filter(Boolean).join("\n")
   };
 }
 
@@ -189,10 +214,11 @@ function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference
   const listHtml = details
     .map(([label, value]) => `<li><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</li>`)
     .join("");
+  const refundStatus = String(update?.refundStatus || "").trim().toLowerCase();
 
   const statusLine = status === "accepted"
     ? `Accepted with ETA ${etaLine}.`
-    : "Rejected.";
+    : (refundStatus === "succeeded" ? "Rejected and Stripe refund started." : "Rejected.");
 
   return {
     from: fromAddress,

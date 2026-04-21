@@ -1,37 +1,28 @@
 "use strict";
 
-import {
-  isBookableDay,
-  jsonResponse,
-  loadBookings,
-  slotAvailability
-} from "../../_booking-core.js";
-
-function toPositiveInt(raw, fallbackValue) {
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return fallbackValue;
-  return Math.max(1, Math.round(parsed));
-}
+import { getBookingAvailability } from "../../_lib/bookings-service.js";
+import { errorResponse } from "../../_lib/errors.js";
+import { queryPositiveInt, queryString, urlOf } from "../../_lib/http.js";
+import { json, methodNotAllowed } from "../../_lib/json.js";
 
 export async function onRequestGet(context) {
-  const url = new URL(context.request.url);
-  const date = url.searchParams.get("date") || "";
-  const partySize = Math.min(40, toPositiveInt(url.searchParams.get("partySize"), 2));
-  const durationMinutes = Math.min(240, Math.max(15, toPositiveInt(url.searchParams.get("durationMinutes"), 90)));
+  try {
+    const url = urlOf(context.request);
+    const date = queryString(url, "date", "");
+    const partySize = queryPositiveInt(url, "partySize", 2, { min: 1, max: 40 });
+    const durationMinutes = queryPositiveInt(url, "durationMinutes", 90, { min: 15, max: 240 });
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return jsonResponse({ error: "Date is required in yyyy-MM-dd format." }, 400);
-  }
-
-  if (!isBookableDay(date)) {
-    return jsonResponse({
-      open: false,
-      message: "Bookings are available Tuesday to Sunday only.",
-      slots: []
+    const availability = await getBookingAvailability(context.env, {
+      date,
+      partySize,
+      durationMinutes
     });
+    return json(availability);
+  } catch (error) {
+    return errorResponse(error, "Could not load booking availability.");
   }
+}
 
-  const bookings = await loadBookings(context.env);
-  const availability = slotAvailability(bookings, date, partySize, durationMinutes);
-  return jsonResponse(availability);
+export function onRequest() {
+  return methodNotAllowed(["GET"]);
 }

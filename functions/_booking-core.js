@@ -4,6 +4,7 @@ const STORAGE_KEY = "bookings_v1";
 const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 16 * 60;
 const SLOT_STEP_MINUTES = 15;
+const MAX_BOOKING_LOOKAHEAD_DAYS = 120;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat
 const VALID_OCCASIONS = new Set([
   "None",
@@ -14,6 +15,14 @@ const VALID_OCCASIONS = new Set([
   "Business",
   "Celebration"
 ]);
+
+const DEFAULT_BOOKING_RULES = {
+  serviceStartMinutes: SERVICE_START_MINUTES,
+  serviceEndMinutes: SERVICE_END_MINUTES,
+  slotStepMinutes: SLOT_STEP_MINUTES,
+  maxLookaheadDays: MAX_BOOKING_LOOKAHEAD_DAYS,
+  openDayIndexes: [...OPEN_DAY_INDEXES]
+};
 
 const TABLE_CAPACITIES = {
   1: 4, 2: 4, 3: 4, 4: 2, 5: 6, 6: 4, 7: 4, 8: 4, 9: 4, 10: 4,
@@ -74,15 +83,73 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
+function parseISODateUTC(isoDate) {
+  if (!isISODate(isoDate)) return null;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toISODateUTC(date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
 function minutesToClock(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${pad2(hours)}:${pad2(minutes)}`;
 }
 
-export function slotTimes() {
+function roundUpToStep(minutes, stepMinutes) {
+  return Math.ceil(minutes / stepMinutes) * stepMinutes;
+}
+
+function normalizedBookingRules(rawRules = null) {
+  const source = rawRules && typeof rawRules === "object" ? rawRules : {};
+  const openDayIndexes = Array.isArray(source.openDayIndexes)
+    ? source.openDayIndexes
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+    : DEFAULT_BOOKING_RULES.openDayIndexes;
+
+  return {
+    serviceStartMinutes: Math.max(0, Math.round(Number(source.serviceStartMinutes ?? DEFAULT_BOOKING_RULES.serviceStartMinutes))),
+    serviceEndMinutes: Math.max(0, Math.round(Number(source.serviceEndMinutes ?? DEFAULT_BOOKING_RULES.serviceEndMinutes))),
+    slotStepMinutes: Math.max(1, Math.round(Number(source.slotStepMinutes ?? DEFAULT_BOOKING_RULES.slotStepMinutes))),
+    maxLookaheadDays: Math.max(1, Math.round(Number(source.maxLookaheadDays ?? DEFAULT_BOOKING_RULES.maxLookaheadDays))),
+    openDayIndexes: openDayIndexes.length > 0 ? openDayIndexes : DEFAULT_BOOKING_RULES.openDayIndexes
+  };
+}
+
+function dayListSummary(dayIndexes) {
+  const cleaned = Array.from(new Set(
+    (Array.isArray(dayIndexes) ? dayIndexes : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+  )).sort((left, right) => left - right);
+
+  if (cleaned.length === 7) return "every day";
+  if (cleaned.length === 6 && !cleaned.includes(1)) return "Tuesday to Sunday";
+
+  const labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return cleaned.map((dayIndex) => labels[dayIndex]).join(", ");
+}
+
+function bookingOpenDaysMessage(rules) {
+  return `Bookings are available on ${dayListSummary(rules.openDayIndexes)} only.`;
+}
+
+function bookingRangeLabel(rules) {
+  return `${minutesToClock(rules.serviceStartMinutes)} and ${minutesToClock(rules.serviceEndMinutes)}`;
+}
+
+function bookingIntervalLabel(rules) {
+  return `${rules.slotStepMinutes}-minute intervals`;
+}
+
+export function slotTimes(rawRules = null) {
+  const rules = normalizedBookingRules(rawRules);
   const slots = [];
-  for (let minute = SERVICE_START_MINUTES; minute <= SERVICE_END_MINUTES; minute += SLOT_STEP_MINUTES) {
+  for (let minute = rules.serviceStartMinutes; minute <= rules.serviceEndMinutes; minute += rules.slotStepMinutes) {
     slots.push(minutesToClock(minute));
   }
   return slots;
@@ -127,35 +194,101 @@ function isISODate(isoDate) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""));
 }
 
+function todayISODateInLondon() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function londonNowDateAndMinutes() {
+  const dateISO = todayISODateInLondon();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || "0");
+
+  return {
+    dateISO,
+    minutesNow: (hour * 60) + minute
+  };
+}
+
+function maxBookableISODate(rawRules = null) {
+  const rules = normalizedBookingRules(rawRules);
+  const today = parseISODateUTC(todayISODateInLondon());
+  if (!today) return "";
+  today.setUTCDate(today.getUTCDate() + Math.max(0, rules.maxLookaheadDays - 1));
+  return toISODateUTC(today);
+}
+
 function dayIndexForISODate(isoDate) {
   if (!isISODate(isoDate)) return null;
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-export function isBookableDay(isoDate) {
+export function isBookableDay(isoDate, rawRules = null) {
+  const rules = normalizedBookingRules(rawRules);
   const day = dayIndexForISODate(isoDate);
-  return day !== null && OPEN_DAY_INDEXES.has(day);
+  return day !== null && new Set(rules.openDayIndexes).has(day);
 }
 
-export function validateBookingWindow(isoDate, clock) {
+export function validateBookingWindow(isoDate, clock, rawRules = null) {
+  const rules = normalizedBookingRules(rawRules);
   if (!isISODate(isoDate)) {
     return { ok: false, status: 400, error: "Date must be in yyyy-MM-dd format." };
   }
 
-  if (!isBookableDay(isoDate)) {
-    return { ok: false, status: 400, error: "Bookings are available Tuesday to Sunday only." };
+  const today = todayISODateInLondon();
+  if (isoDate < today) {
+    return { ok: false, status: 400, error: "Bookings are no longer available for past dates." };
+  }
+
+  const maxDate = maxBookableISODate(rules);
+  if (maxDate && isoDate > maxDate) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Bookings can only be made up to ${rules.maxLookaheadDays} days ahead.`
+    };
+  }
+
+  if (!isBookableDay(isoDate, rules)) {
+    return { ok: false, status: 400, error: bookingOpenDaysMessage(rules) };
   }
 
   const minutes = parseClockToMinutes(clock);
   if (!Number.isFinite(minutes)) {
     return { ok: false, status: 400, error: "Time must be in HH:mm format." };
   }
-  if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return { ok: false, status: 400, error: "Bookings must be between 12:00 and 16:00." };
+  if (minutes < rules.serviceStartMinutes || minutes > rules.serviceEndMinutes) {
+    return { ok: false, status: 400, error: `Bookings must be between ${bookingRangeLabel(rules)}.` };
   }
-  if (minutes % SLOT_STEP_MINUTES !== 0) {
-    return { ok: false, status: 400, error: "Bookings must be in 15-minute intervals." };
+  if (minutes % rules.slotStepMinutes !== 0) {
+    return { ok: false, status: 400, error: `Bookings must be in ${bookingIntervalLabel(rules)}.` };
+  }
+
+  const now = londonNowDateAndMinutes();
+  if (isoDate === now.dateISO) {
+    const earliestAvailable = roundUpToStep(now.minutesNow, rules.slotStepMinutes);
+    if (earliestAvailable > rules.serviceEndMinutes) {
+      return { ok: false, status: 400, error: "No slots are left today. Please choose another date." };
+    }
+    if (minutes < earliestAvailable) {
+      return {
+        ok: false,
+        status: 400,
+        error: `Today's bookings must be from ${minutesToClock(earliestAvailable)} onwards.`
+      };
+    }
   }
 
   return { ok: true, minutes };
@@ -354,7 +487,7 @@ function makeReference(bookingId) {
   return `MC-${cleaned.slice(0, 8)}`;
 }
 
-function validatePayloadShape(payload) {
+function validatePayloadShape(payload, rawRules = null) {
   if (!payload || typeof payload !== "object") {
     return { ok: false, status: 400, error: "Invalid booking payload." };
   }
@@ -382,7 +515,7 @@ function validatePayloadShape(payload) {
   const date = String(payload.date || "");
   const time = String(payload.time || "");
   const specialOccasion = normalizeSpecialOccasion(payload.specialOccasion);
-  const windowCheck = validateBookingWindow(date, time);
+  const windowCheck = validateBookingWindow(date, time, rawRules);
   if (!windowCheck.ok) {
     return windowCheck;
   }
@@ -404,8 +537,8 @@ function validatePayloadShape(payload) {
   };
 }
 
-export function createBookingRecord(bookings, payload) {
-  const shapeCheck = validatePayloadShape(payload);
+export function createBookingRecord(bookings, payload, options = {}) {
+  const shapeCheck = validatePayloadShape(payload, options.rules);
   if (!shapeCheck.ok) {
     return shapeCheck;
   }
@@ -459,15 +592,6 @@ export function createBookingRecord(bookings, payload) {
     record,
     reference: makeReference(bookingId)
   };
-}
-
-function todayISODateInLondon() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
 }
 
 export function feedRows(bookings, includePast = false) {
@@ -537,13 +661,42 @@ export function toCSV(rows) {
   return `${lines.join("\n")}\n`;
 }
 
-export function slotAvailability(bookings, isoDate, partySize, durationMinutes) {
-  const dayCheck = isBookableDay(isoDate);
+export function slotAvailability(bookings, isoDate, partySize, durationMinutes, rawRules = null) {
+  const rules = normalizedBookingRules(rawRules);
+  const dayCheck = isBookableDay(isoDate, rules);
   if (!dayCheck) {
-    return { open: false, message: "Bookings are available Tuesday to Sunday only.", slots: [] };
+    return { open: false, message: bookingOpenDaysMessage(rules), slots: [] };
   }
 
-  const slots = slotTimes().map((time) => {
+  const today = todayISODateInLondon();
+  if (isoDate < today) {
+    return { open: false, message: "Bookings are no longer available for past dates.", slots: [] };
+  }
+
+  const maxDate = maxBookableISODate(rules);
+  if (maxDate && isoDate > maxDate) {
+    return {
+      open: false,
+      message: `Bookings can only be made up to ${rules.maxLookaheadDays} days ahead.`,
+      slots: []
+    };
+  }
+
+  const now = londonNowDateAndMinutes();
+  const minimumMinutes = isoDate === now.dateISO
+    ? roundUpToStep(now.minutesNow, rules.slotStepMinutes)
+    : rules.serviceStartMinutes;
+
+  const slots = slotTimes(rules).map((time) => {
+    const minutes = parseClockToMinutes(time);
+    if (!Number.isFinite(minutes) || minutes < minimumMinutes) {
+      return {
+        time,
+        available: false,
+        tables: []
+      };
+    }
+
     const assignment = suggestTableAssignment(bookings, isoDate, time, partySize, durationMinutes);
     return {
       time,
@@ -552,32 +705,12 @@ export function slotAvailability(bookings, isoDate, partySize, durationMinutes) 
     };
   });
 
-  return { open: true, slots };
-}
+  let message = "";
+  if (isoDate === now.dateISO && minimumMinutes > rules.serviceEndMinutes) {
+    message = "No slots are left today. Please choose another date.";
+  } else if (!slots.some((slot) => slot.available)) {
+    message = "No availability remains for that date and party size.";
+  }
 
-export function isFeedAuthorized(request, env) {
-  const configuredToken = String(env.BOOKINGS_FEED_TOKEN || "").trim();
-  if (!configuredToken) return true;
-  const provided = new URL(request.url).searchParams.get("token") || "";
-  return provided === configuredToken;
-}
-
-export function jsonResponse(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
-}
-
-export function csvResponse(text, status = 200) {
-  return new Response(text, {
-    status,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
+  return { open: true, message, slots };
 }

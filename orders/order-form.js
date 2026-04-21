@@ -1,21 +1,31 @@
-"use strict";
+import { MILLERS_ORDER_MENU } from "./menu-catalog.js";
+import {
+  createEmptyOrderDraftMeta,
+  createEmptyOrderDraftState,
+  reconcileOrderDraftState
+} from "./order-draft.js";
 
-const API_BASE = "/api/orders";
+const CHECKOUT_API_BASE = "/api/orders/checkout";
+const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
 const STATUS_API_BASE = "/api/order-status";
+const SITE_CONFIG_API_BASE = "/api/site-config";
+const MENU_CATALOG_API_BASE = "/api/menu-catalog";
 const BUSINESS_TIMEZONE = "Europe/London";
-const SERVICE_START_MINUTES = 12 * 60;
-const SERVICE_END_MINUTES = 17 * 60;
-const SLOT_STEP_MINUTES = 15;
+let SERVICE_START_MINUTES = 12 * 60;
+let SERVICE_END_MINUTES = 17 * 60;
+let SLOT_STEP_MINUTES = 15;
 const ASAP_VALUE = "ASAP";
-const COLLECTION_MIN_LEAD_MINUTES = 30;
-const DELIVERY_MIN_LEAD_MINUTES = 60;
-const COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
-const DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
-const MAX_ORDER_LOOKAHEAD_DAYS = 90;
-const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
+const ORDER_DRAFT_STORAGE_KEY = "millers-cafe-order-draft-v2";
+const ORDER_DRAFT_VERSION = 2;
+let COLLECTION_MIN_LEAD_MINUTES = 30;
+let DELIVERY_MIN_LEAD_MINUTES = 60;
+let COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
+let DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
+let MAX_ORDER_LOOKAHEAD_DAYS = 90;
+let OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
 const MAX_ITEM_QUANTITY = 20;
 const UK_POSTCODE_REGEX = /^([A-Z]{1,2}\d[A-Z\d]?)\s(\d[A-Z]{2})$/;
-const DELIVERY_OUTWARD_PREFIXES = new Set([
+let DELIVERY_OUTWARD_PREFIXES = new Set([
   "DN31",
   "DN32",
   "DN33",
@@ -31,7 +41,6 @@ const DELIVERY_OUTWARD_PREFIXES = new Set([
 const HIDDEN_ORDER_CATEGORY_KEYS = new Set([
   "beer",
   "wine by glass",
-  "soft drinks",
   "spirits",
   "red wine bottles",
   "white wine bottles",
@@ -106,6 +115,7 @@ const stickyCheckoutBar = document.getElementById("stickyCheckoutBar");
 const stickyCheckoutDateTime = document.getElementById("stickyCheckoutDateTime");
 const stickyCheckoutOrder = document.getElementById("stickyCheckoutOrder");
 const stickyCheckoutBtn = document.getElementById("stickyCheckoutBtn");
+const turnstileContainer = document.getElementById("orderTurnstile");
 const orderStepBadge1 = document.getElementById("orderStepBadge1");
 const orderStepBadge2 = document.getElementById("orderStepBadge2");
 const orderCheckoutFields = [...document.querySelectorAll(".orderCheckoutField")];
@@ -141,8 +151,16 @@ let activeCategorySyncRaf = null;
 let lastActiveCategoryPillText = "";
 let pendingRemovedCartLine = null;
 let removeUndoTimer = null;
+let persistedOrderDraft = createEmptyOrderDraft();
+let restoredDraftMeta = createEmptyOrderDraftMeta();
+let restoredBasketOpen = false;
+let restoredDraftHadCart = false;
+let checkoutFinalizeTimer = null;
+let orderTurnstileToken = "";
+let orderTurnstileWidget = null;
+let siteConfigState = null;
 
-const normalizedMenu = normalizeMenuCatalog(window.MILLERS_ORDER_MENU);
+let normalizedMenu = normalizeMenuCatalog(MILLERS_ORDER_MENU);
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -173,6 +191,137 @@ function normalizeKey(value) {
     normalized = cleaned;
   }
   return normalized.replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function trackClientEvent(eventName, details = {}) {
+  if (!window.MillersClient || typeof window.MillersClient.trackEvent !== "function") {
+    return Promise.resolve(false);
+  }
+  return window.MillersClient.trackEvent(eventName, details);
+}
+
+function orderOpenDaySummary() {
+  const values = Array.from(OPEN_DAY_INDEXES).sort((left, right) => left - right);
+  if (values.length === 7) return "every day";
+  if (values.length === 6 && !values.includes(1)) return "Tuesday to Sunday";
+  const labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return values.map((value) => labels[value]).join(", ");
+}
+
+function orderHoursSummary() {
+  return `${minutesToClock(SERVICE_START_MINUTES)}-${minutesToClock(SERVICE_END_MINUTES)}`;
+}
+
+function orderIntervalSummary() {
+  return `${SLOT_STEP_MINUTES}-minute intervals`;
+}
+
+function applyLiveSiteConfig(config) {
+  const next = config && typeof config === "object" ? config : {};
+  const orders = next.orders && typeof next.orders === "object" ? next.orders : {};
+  const delivery = next.delivery && typeof next.delivery === "object" ? next.delivery : {};
+
+  SERVICE_START_MINUTES = Math.round(Number(orders.serviceStartMinutes ?? SERVICE_START_MINUTES));
+  SERVICE_END_MINUTES = Math.round(Number(orders.serviceEndMinutes ?? SERVICE_END_MINUTES));
+  SLOT_STEP_MINUTES = Math.round(Number(orders.slotStepMinutes ?? SLOT_STEP_MINUTES));
+  COLLECTION_MIN_LEAD_MINUTES = Math.round(Number(orders.collectionMinLeadMinutes ?? COLLECTION_MIN_LEAD_MINUTES));
+  DELIVERY_MIN_LEAD_MINUTES = Math.round(Number(orders.deliveryMinLeadMinutes ?? DELIVERY_MIN_LEAD_MINUTES));
+  COLLECTION_EARLIEST_SCHEDULED_MINUTES = Math.round(Number(
+    orders.collectionEarliestScheduledMinutes ?? COLLECTION_EARLIEST_SCHEDULED_MINUTES
+  ));
+  DELIVERY_EARLIEST_SCHEDULED_MINUTES = Math.round(Number(
+    orders.deliveryEarliestScheduledMinutes ?? DELIVERY_EARLIEST_SCHEDULED_MINUTES
+  ));
+  MAX_ORDER_LOOKAHEAD_DAYS = Math.round(Number(orders.maxLookaheadDays ?? MAX_ORDER_LOOKAHEAD_DAYS));
+
+  if (Array.isArray(orders.openDayIndexes) && orders.openDayIndexes.length > 0) {
+    OPEN_DAY_INDEXES = new Set(
+      orders.openDayIndexes
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+    );
+  }
+
+  if (Array.isArray(delivery.allowedOutwardPrefixes) && delivery.allowedOutwardPrefixes.length > 0) {
+    DELIVERY_OUTWARD_PREFIXES = new Set(
+      delivery.allowedOutwardPrefixes
+        .map((value) => String(value || "").trim().toUpperCase())
+        .filter(Boolean)
+    );
+  }
+
+  siteConfigState = next;
+}
+
+async function loadLiveOrderData() {
+  try {
+    const [configResponse, menuResponse] = await Promise.all([
+      fetch(SITE_CONFIG_API_BASE, {
+        headers: { Accept: "application/json" }
+      }),
+      fetch(MENU_CATALOG_API_BASE, {
+        headers: { Accept: "application/json" }
+      })
+    ]);
+
+    if (configResponse.ok) {
+      const body = await configResponse.json();
+      if (body?.config) {
+        applyLiveSiteConfig(body.config);
+      }
+    }
+
+    if (menuResponse.ok) {
+      const body = await menuResponse.json();
+      if (Array.isArray(body?.menu) && body.menu.length > 0) {
+        normalizedMenu = normalizeMenuCatalog(body.menu);
+      }
+    }
+  } catch (error) {
+    // Keep bundled defaults if the live config endpoints are unavailable.
+  }
+}
+
+async function setupOrderTurnstile() {
+  const enabled = Boolean(siteConfigState?.security?.turnstileEnabled && siteConfigState?.security?.turnstileSiteKey);
+  orderTurnstileToken = "";
+
+  if (!turnstileContainer || !enabled || !window.MillersClient || typeof window.MillersClient.mountTurnstile !== "function") {
+    if (turnstileContainer) turnstileContainer.hidden = true;
+    return;
+  }
+
+  try {
+    orderTurnstileWidget = await window.MillersClient.mountTurnstile(
+      turnstileContainer,
+      String(siteConfigState.security.turnstileSiteKey || ""),
+      {
+        onToken(token) {
+          orderTurnstileToken = String(token || "");
+        },
+        onExpire() {
+          orderTurnstileToken = "";
+        },
+        onError() {
+          orderTurnstileToken = "";
+        }
+      }
+    );
+  } catch (error) {
+    orderTurnstileWidget = null;
+  }
+}
+
+function currentOrderType() {
+  return String(orderTypeField?.value || "collection").toLowerCase() === "delivery"
+    ? "delivery"
+    : "collection";
+}
+
+function createMenuItemId(categoryKey, itemName, itemIndex) {
+  const safeCategory = normalizeKey(categoryKey || "menu") || "menu";
+  const safeItem = normalizeKey(itemName || "item") || "item";
+  return `${safeCategory}::${safeItem}::${itemIndex}`;
 }
 
 function minutesToClock(totalMinutes) {
@@ -389,6 +538,12 @@ function renderDeliveryAreaHint(primaryText, secondaryText = "", state = "") {
 
 function updateDeliveryAreaHint() {
   if (!deliveryAreaHint || !postcodeInput) return;
+  const deliveryConfig = siteConfigState?.delivery || {};
+  const feeLabel = Number.isFinite(Number(deliveryConfig.baseFeeGBP))
+    ? formatGBP(Number(deliveryConfig.baseFeeGBP))
+    : "£2.00";
+  const etaMin = Number.isFinite(Number(deliveryConfig.etaMinMinutes)) ? Math.round(Number(deliveryConfig.etaMinMinutes)) : 35;
+  const etaMax = Number.isFinite(Number(deliveryConfig.etaMaxMinutes)) ? Math.round(Number(deliveryConfig.etaMaxMinutes)) : 55;
   const isDelivery = String(orderTypeField?.value || "").toLowerCase() === "delivery";
   if (!isDelivery) {
     renderDeliveryAreaHint("");
@@ -411,9 +566,14 @@ function updateDeliveryAreaHint() {
   }
 
   if (!isLikelyDeliveryPostcode(value)) {
+    const outsideAreaMode = String(deliveryConfig.outsideAreaMode || "review").trim().toLowerCase();
     renderDeliveryAreaHint(
-      "This postcode may be outside our normal delivery area.",
-      "Estimated fee and ETA will be confirmed after checkout.",
+      outsideAreaMode === "reject"
+        ? "This postcode is outside our online delivery area."
+        : "This postcode may be outside our normal delivery area.",
+      outsideAreaMode === "reject"
+        ? "Please call Millers Café before placing a delivery order."
+        : "Estimated fee and ETA will be confirmed after checkout.",
       "warning"
     );
     return;
@@ -421,7 +581,7 @@ function updateDeliveryAreaHint() {
 
   renderDeliveryAreaHint(
     "This postcode looks within our usual delivery area.",
-    "Typical delivery fee from £2.00. Typical arrival: 35-55 minutes.",
+    `Typical delivery fee from ${feeLabel}. Typical arrival: ${etaMin}-${etaMax} minutes.`,
     "ok"
   );
 }
@@ -480,7 +640,7 @@ function validateDateField() {
     return setInlineError(dateSelect, "Choose a valid date.");
   }
   if (!isBookableDay(value)) {
-    return setInlineError(dateSelect, "Available Tuesday to Sunday only.");
+    return setInlineError(dateSelect, `Available on ${orderOpenDaySummary()} only.`);
   }
   return setInlineError(dateSelect, "");
 }
@@ -599,6 +759,13 @@ function setOrderStep(step, options = {}) {
   updateOrderFlowStepLabels();
 
   if (currentOrderStep === 2) {
+    if (nextStep === 2) {
+      void trackClientEvent("order_step_continue", {
+        page: "order",
+        route: window.location.pathname,
+        orderType: currentOrderType()
+      });
+    }
     setBasketOpen(false);
     hideModifierPanel();
     updateOrderReviewRow();
@@ -607,7 +774,7 @@ function setOrderStep(step, options = {}) {
   } else if (!options.silent) {
     const orderType = String(orderTypeField?.value || "collection").toLowerCase();
     const label = orderType === "delivery" ? "Delivery" : "Collection";
-    setNotice(`${label} hours: Tue-Sun, 12:00-17:00. ${label} slots are in 15-minute intervals.`, false);
+    setNotice(`${label} hours: ${orderOpenDaySummary()}, ${orderHoursSummary()}. ${label} slots are in ${orderIntervalSummary()}.`, false);
     orderItemsField?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -712,6 +879,7 @@ function renderOrderCalendar() {
         setOrderCalendarOpen(false);
         clearFeedback();
         renderTimeOptions();
+        validateDateField();
       });
     }
 
@@ -813,7 +981,10 @@ function renderOrderSlotCards(rows) {
       card.addEventListener("click", () => {
         timeSelect.value = row.time;
         renderOrderSlotCards(rows);
+        validateTimeField();
+        updateOrderReviewRow();
         updateStickyCheckoutBar();
+        persistOrderDraft();
       });
     }
 
@@ -909,10 +1080,12 @@ function renderTimeOptions() {
   updateSubmitButtonState();
   updateTimeNotice(orderType, selectedDate, slots, asapEnabled);
   updateStickyCheckoutBar();
+  persistOrderDraft();
 }
 
 function clearFeedback() {
   stopStatusPolling();
+  stopCheckoutFinalizePolling();
   if (resultEl) {
     resultEl.hidden = true;
     resultEl.textContent = "";
@@ -979,6 +1152,171 @@ function showResult(message, referenceText) {
 
   card.appendChild(actions);
   resultEl.appendChild(card);
+}
+
+function showCheckoutProcessing(message) {
+  if (!resultEl) return;
+  resultEl.hidden = false;
+  resultEl.textContent = "";
+
+  const card = document.createElement("section");
+  card.className = "orderResultCard";
+
+  const title = document.createElement("h3");
+  title.className = "orderResultTitle";
+  title.textContent = "Secure payment received";
+  card.appendChild(title);
+
+  const lead = document.createElement("p");
+  lead.className = "orderResultLead";
+  lead.textContent = message;
+  card.appendChild(lead);
+
+  resultEl.appendChild(card);
+}
+
+function stopCheckoutFinalizePolling() {
+  if (!checkoutFinalizeTimer) return;
+  clearTimeout(checkoutFinalizeTimer);
+  checkoutFinalizeTimer = null;
+}
+
+function clearCheckoutReturnParams() {
+  const url = new URL(window.location.href);
+  const hadCheckoutParams = url.searchParams.has("checkout") || url.searchParams.has("session_id");
+  if (!hadCheckoutParams) return;
+
+  url.searchParams.delete("checkout");
+  url.searchParams.delete("session_id");
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, document.title, next);
+}
+
+function checkoutCartPayload() {
+  return cartItems.map((item) => ({
+    itemName: item.itemName,
+    quantity: Number(item.quantity || 0),
+    modifierSelections: (item.modifierSelections || []).map((selection) => ({
+      groupName: selection.groupName,
+      optionName: selection.optionName,
+      isTextInput: Boolean(selection.isTextInput)
+    }))
+  }));
+}
+
+function clearSavedOrderDraft() {
+  persistedOrderDraft = createEmptyOrderDraft();
+  writeOrderDraft(persistedOrderDraft);
+}
+
+function resetAfterSuccessfulCheckout(orderType, preservedPostcode = "") {
+  const preservedDate = dateSelect?.value || "";
+  const preservedTime = timeSelect?.value || "";
+
+  form?.reset();
+  if (orderTypeField) orderTypeField.value = orderType;
+  if (postcodeInput) postcodeInput.value = preservedPostcode;
+  if (dateSelect) dateSelect.value = preservedDate;
+
+  if (timeSelect) {
+    renderTimeOptions();
+    if ([...timeSelect.options].some((option) => option.value === preservedTime)) {
+      timeSelect.value = preservedTime;
+    }
+  }
+
+  syncOrderCalendarToSelectedDate();
+  updateDeliveryAreaHint();
+  clearSavedOrderDraft();
+  resetOrderBuilder();
+  clearInlineValidation();
+  setOrderStep(1, { instant: true, silent: true });
+}
+
+function finishCheckoutSuccess(body, orderType, preservedPostcode = "") {
+  clearFeedback();
+  stopCheckoutFinalizePolling();
+  clearCheckoutReturnParams();
+
+  const orderLabel = orderType === "delivery" ? "Delivery" : "Collection";
+  const successMessage = body.emailStatus === "pending"
+    ? `${orderLabel} order paid and placed. Staff approval is still required. Confirmation email is delayed right now.`
+    : `${orderLabel} order paid and placed. We are waiting for staff approval.`;
+  const reference = body.reference ? `Reference: ${body.reference}` : "";
+
+  showResult(successMessage, reference);
+  setNotice(
+    body.emailStatus === "pending"
+      ? `${orderLabel} order submitted and paid. Confirmation email is delayed right now.`
+      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Café.`,
+    false
+  );
+
+  if (body.reference && body.trackingToken) {
+    startOrderStatusTracking(body.reference, body.trackingToken, orderType);
+  }
+
+  resetAfterSuccessfulCheckout(orderType, preservedPostcode);
+}
+
+async function fetchCheckoutSessionStatus(sessionId) {
+  const params = new URLSearchParams({ session_id: sessionId });
+  const response = await fetch(`${CHECKOUT_SESSION_API_BASE}?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json"
+    }
+  });
+
+  let body = {};
+  try {
+    body = await response.json();
+  } catch (error) {
+    body = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(body.error || "Could not verify Stripe checkout status.");
+  }
+
+  return body;
+}
+
+async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcode = "", attempt = 0) {
+  const maxAttempts = 20;
+
+  try {
+    const body = await fetchCheckoutSessionStatus(sessionId);
+    if (body.status === "completed") {
+      finishCheckoutSuccess(body, orderType, preservedPostcode);
+      return;
+    }
+
+    if (body.status === "expired") {
+      stopCheckoutFinalizePolling();
+      clearCheckoutReturnParams();
+      showError("This Stripe checkout session has expired. Please try again.");
+      setNotice("Your payment session expired before the order was confirmed.", true);
+      return;
+    }
+
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café now.");
+    setNotice("Secure payment received. Finalizing your order now.", false);
+
+    if (attempt >= maxAttempts) {
+      stopCheckoutFinalizePolling();
+      setNotice("Payment was received, but order confirmation is still syncing. Please refresh this page in a moment.", true);
+      return;
+    }
+
+    checkoutFinalizeTimer = window.setTimeout(() => {
+      finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcode, attempt + 1);
+    }, 1500);
+  } catch (error) {
+    stopCheckoutFinalizePolling();
+    showError(error.message || "Could not confirm your paid order right now.");
+    setNotice("We couldn't confirm the Stripe checkout result right now. If you've been charged, please call Millers Café.", true);
+  }
 }
 
 function stopStatusPolling() {
@@ -1147,6 +1485,63 @@ function setNotice(message, warning = false) {
   noticeEl.classList.toggle("isWarning", warning);
 }
 
+async function preloadAccountProfile() {
+  try {
+    const response = await fetch("/api/account/me", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    if (!response.ok) return;
+
+    let body = {};
+    try {
+      body = await response.json();
+    } catch (error) {
+      body = {};
+    }
+
+    if (!body?.authenticated || !body.account) return;
+
+    if (nameInput && !nameInput.value && body.account.fullName) {
+      nameInput.value = String(body.account.fullName).trim();
+    }
+
+    if (emailInput && !emailInput.value && body.account.email) {
+      emailInput.value = String(body.account.email).trim();
+      validateEmailField();
+    }
+
+    if (phoneInput && !phoneInput.value && body.account.phoneNumber) {
+      phoneInput.value = String(body.account.phoneNumber).trim();
+      normalizePhoneField();
+      validatePhoneField();
+    }
+
+    const savedAddress = body.account?.profile?.defaultDeliveryAddress;
+    if (savedAddress && typeof savedAddress === "object") {
+      if (address1Input && !address1Input.value && savedAddress.addressLine1) {
+        address1Input.value = String(savedAddress.addressLine1).trim();
+      }
+      if (address2Input && !address2Input.value && savedAddress.addressLine2) {
+        address2Input.value = String(savedAddress.addressLine2).trim();
+      }
+      if (townInput && !townInput.value && savedAddress.townCity) {
+        townInput.value = String(savedAddress.townCity).trim();
+      }
+      if (postcodeInput && !postcodeInput.value && savedAddress.postcode) {
+        postcodeInput.value = String(savedAddress.postcode).trim();
+        normalizePostcodeField();
+        updateDeliveryAreaHint();
+        validatePostcodeField();
+      }
+    }
+  } catch (error) {
+    // Ignore account prefill failures so checkout still works when auth is unavailable.
+  }
+}
+
 function setSubmitting(submitting) {
   if (!submitBtn) return;
   isSubmitting = Boolean(submitting);
@@ -1155,10 +1550,9 @@ function setSubmitting(submitting) {
 
 function updateSubmitButtonState() {
   if (!submitBtn) return;
-  const orderType = String(orderTypeField?.value || "collection").toLowerCase();
-  const idleLabel = orderType === "delivery" ? "Place delivery order" : "Place collection order";
+  const idleLabel = "Continue to secure payment";
   submitBtn.disabled = isSubmitting || !hasSelectableTime || cartItems.length === 0;
-  submitBtn.textContent = isSubmitting ? "Submitting..." : idleLabel;
+  submitBtn.textContent = isSubmitting ? "Redirecting..." : idleLabel;
   updateStickyCheckoutBar();
 }
 
@@ -1166,7 +1560,7 @@ function updateTimeNotice(orderType, isoDate, slots, asapEnabled) {
   const label = orderType === "delivery" ? "Delivery" : "Collection";
   const isToday = isoDate === ukTodayISODate();
   if (!isToday) {
-    setNotice(`${label} hours: Tue-Sun, 12:00-17:00. ${label} slots are in 15-minute intervals.`, false);
+    setNotice(`${label} hours: ${orderOpenDaySummary()}, ${orderHoursSummary()}. ${label} slots are in ${orderIntervalSummary()}.`, false);
     return;
   }
 
@@ -1199,7 +1593,7 @@ function normalizeMenuCatalog(rawCatalog) {
       if (HIDDEN_ORDER_CATEGORY_KEYS.has(categoryKey)) return null;
 
       const items = category.items
-        .map((item) => {
+        .map((item, itemIndex) => {
           const itemName = normalizeText(item?.name);
           const basePrice = Number(item?.basePrice);
           if (!itemName || !Number.isFinite(basePrice) || basePrice < 0) return null;
@@ -1250,6 +1644,7 @@ function normalizeMenuCatalog(rawCatalog) {
             : [];
 
           return {
+            id: createMenuItemId(categoryKey, itemName, itemIndex),
             name: itemName,
             basePrice: roundMoney(basePrice),
             modifierGroups,
@@ -1410,7 +1805,7 @@ function renderCategoryChips() {
   });
 }
 
-function createMenuActionButton(label, actionType, entry, secondary = false, single = false) {
+function createMenuActionButton(label, actionType, entry, secondary = false, single = false, countable = false) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = secondary ? "orderMenuAdd orderMenuCustomize" : "orderMenuAdd";
@@ -1422,7 +1817,23 @@ function createMenuActionButton(label, actionType, entry, secondary = false, sin
   button.dataset.actionType = actionType;
   button.dataset.categoryIndex = String(entry.categoryIndex);
   button.dataset.itemIndex = String(entry.itemIndex);
-  button.textContent = label;
+  button.dataset.itemId = entry.item.id;
+  button.dataset.baseLabel = label;
+
+  const text = document.createElement("span");
+  text.className = "orderMenuAddText";
+  text.textContent = label;
+  button.appendChild(text);
+
+  if (countable) {
+    const badge = document.createElement("span");
+    badge.className = "orderMenuAddCount";
+    badge.dataset.itemCount = entry.item.id;
+    badge.hidden = true;
+    badge.setAttribute("aria-hidden", "true");
+    button.appendChild(badge);
+  }
+
   return button;
 }
 
@@ -1430,6 +1841,7 @@ function buildMenuCard(entry) {
   const article = document.createElement("article");
   article.className = "orderMenuCard";
   article.dataset.category = entry.categoryName;
+  article.dataset.itemId = entry.item.id;
 
   const main = document.createElement("div");
   main.className = "orderMenuMain";
@@ -1449,19 +1861,24 @@ function buildMenuCard(entry) {
   top.appendChild(price);
 
   const badgeDescriptors = itemBadgeDescriptors(entry);
-  if (badgeDescriptors.length > 0) {
-    const badgeWrap = document.createElement("div");
-    badgeWrap.className = "orderMenuBadges";
-    badgeDescriptors.forEach((descriptor) => {
-      const badge = document.createElement("span");
-      badge.className = `orderMenuBadge ${descriptor.className}`;
-      badge.textContent = descriptor.label;
-      badgeWrap.appendChild(badge);
-    });
-    main.appendChild(top);
+  const badgeWrap = document.createElement("div");
+  badgeWrap.className = "orderMenuBadges";
+  badgeDescriptors.forEach((descriptor) => {
+    const badge = document.createElement("span");
+    badge.className = `orderMenuBadge ${descriptor.className}`;
+    badge.textContent = descriptor.label;
+    badgeWrap.appendChild(badge);
+  });
+
+  const selectedBadge = document.createElement("span");
+  selectedBadge.className = "orderMenuBadge orderMenuSelectionBadge";
+  selectedBadge.dataset.selectedBadge = entry.item.id;
+  selectedBadge.hidden = true;
+  badgeWrap.appendChild(selectedBadge);
+
+  main.appendChild(top);
+  if (badgeDescriptors.length > 0 || selectedBadge) {
     main.appendChild(badgeWrap);
-  } else {
-    main.appendChild(top);
   }
 
   const meta = document.createElement("div");
@@ -1489,7 +1906,7 @@ function buildMenuCard(entry) {
   const primaryLabel = requiresCustomize ? "Customize" : "Add";
   const primaryAction = requiresCustomize ? "customize" : "add";
   const singleButton = !hasModifiers || requiresCustomize;
-  actions.appendChild(createMenuActionButton(primaryLabel, primaryAction, entry, false, singleButton));
+  actions.appendChild(createMenuActionButton(primaryLabel, primaryAction, entry, false, singleButton, true));
 
   article.appendChild(main);
   article.appendChild(actions);
@@ -1520,6 +1937,7 @@ function renderMenuItems() {
     menuItemsList.appendChild(card);
   });
 
+  syncMenuItemSelectionState();
   updateActiveCategoryPill(true);
 }
 
@@ -1785,12 +2203,12 @@ function cartLineTotals(basePrice, selections, quantity) {
   return { unitPrice, linePrice };
 }
 
-function cartLineSignature(itemName, modifierSelections) {
+function cartLineSignature(itemKey, modifierSelections) {
   const modKey = (modifierSelections || [])
     .map((entry) => `${entry.groupName}::${entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
     .sort()
     .join("||");
-  return `${itemName}__${modKey}`;
+  return `${String(itemKey || "").trim() || "item"}__${modKey}`;
 }
 
 function recalculateCartItem(item) {
@@ -1801,10 +2219,129 @@ function recalculateCartItem(item) {
   item.linePrice = totals.linePrice;
 }
 
+function createEmptyOrderDraft() {
+  return createEmptyOrderDraftState({
+    orderDraftVersion: ORDER_DRAFT_VERSION
+  });
+}
+
+function readOrderDraft() {
+  try {
+    const rawValue = window.localStorage.getItem(ORDER_DRAFT_STORAGE_KEY);
+    if (!rawValue) {
+      return {
+        draft: createEmptyOrderDraft(),
+        meta: createEmptyOrderDraftMeta()
+      };
+    }
+
+    const parsed = rawValue ? JSON.parse(rawValue) : null;
+    const reconciled = reconcileOrderDraftState(parsed, normalizedMenu, {
+      maxItemQuantity: MAX_ITEM_QUANTITY,
+      orderDraftVersion: ORDER_DRAFT_VERSION,
+      asapValue: ASAP_VALUE
+    });
+    const serialized = JSON.stringify(reconciled.draft);
+    if (serialized !== rawValue) {
+      window.localStorage.setItem(ORDER_DRAFT_STORAGE_KEY, serialized);
+    }
+    return reconciled;
+  } catch (error) {
+    return {
+      draft: createEmptyOrderDraft(),
+      meta: createEmptyOrderDraftMeta()
+    };
+  }
+}
+
+function writeOrderDraft(draft) {
+  const reconciled = reconcileOrderDraftState(draft, normalizedMenu, {
+    maxItemQuantity: MAX_ITEM_QUANTITY,
+    orderDraftVersion: ORDER_DRAFT_VERSION,
+    asapValue: ASAP_VALUE
+  });
+  persistedOrderDraft = reconciled.draft;
+  try {
+    window.localStorage.setItem(ORDER_DRAFT_STORAGE_KEY, JSON.stringify(reconciled.draft));
+  } catch (error) {
+    // Ignore persistence failures and keep the current in-memory draft.
+  }
+}
+
+function persistOrderDraft() {
+  const orderType = currentOrderType();
+  writeOrderDraft({
+    ...persistedOrderDraft,
+    cartItems: cartItems.map((item) => ({
+      id: item.id,
+      itemId: item.itemId,
+      itemName: item.itemName,
+      basePrice: item.basePrice,
+      modifierSelections: (item.modifierSelections || []).map((selection) => ({ ...selection })),
+      quantity: item.quantity
+    })),
+    nextCartId,
+    selectedCategory,
+    searchQuery,
+    basketOpen: currentOrderStep === 1 &&
+      cartItems.length > 0 &&
+      basketToggleBtn?.getAttribute("aria-expanded") === "true",
+    schedules: {
+      ...persistedOrderDraft.schedules,
+      [orderType]: {
+        date: String(dateSelect?.value || ""),
+        time: String(timeSelect?.value || "")
+      }
+    }
+  });
+}
+
+function restoreOrderDraft() {
+  const restored = readOrderDraft();
+  persistedOrderDraft = restored.draft;
+  restoredDraftMeta = restored.meta;
+  cartItems = persistedOrderDraft.cartItems.map((item) => ({
+    ...item,
+    modifierSelections: (item.modifierSelections || []).map((selection) => ({ ...selection }))
+  }));
+  nextCartId = persistedOrderDraft.nextCartId;
+  selectedCategory = persistedOrderDraft.selectedCategory;
+  searchQuery = persistedOrderDraft.searchQuery;
+  restoredBasketOpen = persistedOrderDraft.basketOpen;
+  restoredDraftHadCart = restoredDraftMeta.sourceLineCount > 0;
+
+  if (menuSearchInput) {
+    menuSearchInput.value = searchQuery;
+  }
+}
+
+function applyRestoredScheduleDraft() {
+  if (!dateSelect || !timeSelect) return;
+
+  const schedule = persistedOrderDraft.schedules[currentOrderType()] || { date: "", time: "" };
+  if (schedule.date && availableOrderDateSet.has(schedule.date)) {
+    dateSelect.value = schedule.date;
+  }
+
+  syncOrderCalendarToSelectedDate();
+  renderTimeOptions();
+
+  if (schedule.time) {
+    const canRestoreTime = [...timeSelect.options].some((option) => option.value === schedule.time);
+    if (canRestoreTime) {
+      timeSelect.value = schedule.time;
+      renderOrderSlotCards(lastRenderedTimeRows);
+      validateTimeField();
+      updateOrderReviewRow();
+      updateStickyCheckoutBar();
+    }
+  }
+}
+
 function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
   const wasEmpty = cartItems.length === 0;
   const cleanQty = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)));
-  const signature = cartLineSignature(item.name, modifierSelections);
+  const signature = cartLineSignature(item.id || item.name, modifierSelections);
 
   const existing = cartItems.find((entry) => entry.signature === signature);
   if (existing) {
@@ -1814,6 +2351,7 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
     const totals = cartLineTotals(item.basePrice, modifierSelections, cleanQty);
     cartItems.push({
       id: nextCartId,
+      itemId: item.id || "",
       signature,
       itemName: item.name,
       basePrice: item.basePrice,
@@ -1863,11 +2401,12 @@ function syncItemsSummary() {
 
   const lines = cartItems.map(lineSummary);
   const total = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
+  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
   lines.push(`Total = ${formatGBP(total)}`);
 
   itemsInput.value = lines.join("\n");
   if (orderSummaryPreview) {
-    orderSummaryPreview.textContent = `${cartItems.length} ${cartItems.length === 1 ? "dish" : "dishes"} · Total ${formatGBP(total)}.`;
+    orderSummaryPreview.textContent = `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · Total ${formatGBP(total)}.`;
   }
 }
 
@@ -1878,6 +2417,7 @@ function setBasketOpen(open) {
   const nextState = Boolean(open) && canOpen;
   basketPanel.hidden = !nextState;
   basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+  persistOrderDraft();
 }
 
 function updateBasketSummary(totalPrice, totalQuantity) {
@@ -1972,6 +2512,46 @@ function showUndoToast(removedItem) {
   }, 7000);
 }
 
+function buildCartCountsByItemId() {
+  return cartItems.reduce((counts, item) => {
+    const key = String(item.itemId || "").trim();
+    if (!key) return counts;
+    counts.set(key, (counts.get(key) || 0) + Number(item.quantity || 0));
+    return counts;
+  }, new Map());
+}
+
+function syncMenuItemSelectionState() {
+  if (!menuItemsList) return;
+
+  const counts = buildCartCountsByItemId();
+  const cards = menuItemsList.querySelectorAll(".orderMenuCard");
+
+  cards.forEach((card) => {
+    if (!(card instanceof HTMLElement)) return;
+    const itemId = String(card.dataset.itemId || "");
+    const count = counts.get(itemId) || 0;
+    card.classList.toggle("isInBasket", count > 0);
+
+    const selectedBadge = card.querySelector("[data-selected-badge]");
+    if (selectedBadge instanceof HTMLElement) {
+      selectedBadge.hidden = count <= 0;
+      selectedBadge.textContent = count === 1 ? "1 in basket" : `${count} in basket`;
+    }
+
+    const countBadge = card.querySelector("[data-item-count]");
+    if (countBadge instanceof HTMLElement) {
+      countBadge.hidden = count <= 0;
+      countBadge.textContent = count > 0 ? String(count) : "";
+    }
+
+    const primaryAction = card.querySelector("button.orderMenuActionBtn[data-item-count]");
+    if (primaryAction instanceof HTMLElement) {
+      primaryAction.classList.toggle("hasCount", count > 0);
+    }
+  });
+}
+
 function renderCart() {
   if (!cartList || !cartEmpty || !orderTotalEl) {
     updateSubmitButtonState();
@@ -1997,7 +2577,7 @@ function renderCart() {
 
     const title = document.createElement("strong");
     title.className = "orderCartName";
-    title.textContent = `${item.quantity}x ${item.itemName}`;
+    title.textContent = item.itemName;
 
     const linePrice = document.createElement("span");
     linePrice.className = "orderCartPrice";
@@ -2010,10 +2590,7 @@ function renderCart() {
     unit.className = "orderCartUnit";
     unit.textContent = `${formatGBP(item.unitPrice)} each`;
 
-    const modifiers = document.createElement("div");
-    modifiers.className = "orderCartModifiers";
     const lines = (item.modifierSelections || []).map(modifierSummary);
-    modifiers.textContent = lines.length > 0 ? lines.join(" | ") : "No modifiers";
 
     const actions = document.createElement("div");
     actions.className = "orderCartActionsRow";
@@ -2030,7 +2607,12 @@ function renderCart() {
 
     li.appendChild(top);
     li.appendChild(unit);
-    li.appendChild(modifiers);
+    if (lines.length > 0) {
+      const modifiers = document.createElement("div");
+      modifiers.className = "orderCartModifiers";
+      modifiers.textContent = lines.join(" | ");
+      li.appendChild(modifiers);
+    }
     li.appendChild(actions);
 
     cartList.appendChild(li);
@@ -2049,9 +2631,11 @@ function renderCart() {
   }
 
   syncItemsSummary();
+  syncMenuItemSelectionState();
   updateOrderReviewRow();
   updateOrderFlowStepLabels();
   updateSubmitButtonState();
+  persistOrderDraft();
 }
 
 function updateCartQuantity(cartId, delta) {
@@ -2113,7 +2697,7 @@ function validatePayload(payload) {
   }
 
   if (!isBookableDay(payload.date)) {
-    return "Orders are available Tuesday to Sunday only.";
+    return `Orders are available on ${orderOpenDaySummary()} only.`;
   }
 
   if (payload.time === ASAP_VALUE) {
@@ -2138,11 +2722,11 @@ function validatePayload(payload) {
 
     if (minutes < earliestScheduled || minutes > SERVICE_END_MINUTES) {
       const orderLabel = payload.orderType === "delivery" ? "Delivery" : "Collection";
-      return `${orderLabel} scheduled times must be between ${minutesToClock(earliestScheduled)} and 17:00.`;
+      return `${orderLabel} scheduled times must be between ${minutesToClock(earliestScheduled)} and ${minutesToClock(SERVICE_END_MINUTES)}.`;
     }
 
     if (minutes % SLOT_STEP_MINUTES !== 0) {
-      return "Orders must be in 15-minute intervals.";
+      return `Orders must be in ${orderIntervalSummary()}.`;
     }
 
     if (payload.date === ukTodayISODate()) {
@@ -2212,19 +2796,35 @@ async function handleSubmit(event) {
   }
 
   if (payload.orderType === "delivery" && payload.postcode && !isLikelyDeliveryPostcode(payload.postcode)) {
-    setNotice("This postcode may be outside our usual delivery area. We will confirm availability after submission.", true);
+    const outsideAreaMode = String(siteConfigState?.delivery?.outsideAreaMode || "review").trim().toLowerCase();
+    if (outsideAreaMode === "reject") {
+      showError("This postcode is outside our online delivery area. Please call Millers Café before placing a delivery order.");
+      return;
+    }
+
+    setNotice("This postcode may be outside our usual delivery area. We will review it after payment and contact you if there is a problem.", true);
   }
 
   setSubmitting(true);
 
   try {
-    const response = await fetch(API_BASE, {
+    void trackClientEvent("order_checkout_redirect", {
+      page: "order",
+      route: window.location.pathname,
+      orderType
+    });
+
+    const response = await fetch(CHECKOUT_API_BASE, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        ...payload,
+        turnstileToken: orderTurnstileToken,
+        cartItems: checkoutCartPayload()
+      })
     });
 
     let body = {};
@@ -2235,47 +2835,19 @@ async function handleSubmit(event) {
     }
 
     if (!response.ok) {
-      showError(body.error || "Could not place order right now. Please try again.");
+      showError(body.error || "Could not start secure checkout right now. Please try again.");
       return;
     }
 
-    const orderLabel = payload.orderType === "delivery" ? "Delivery" : "Collection";
-    const whenText = payload.time === ASAP_VALUE
-      ? "as soon as possible"
-      : `for ${payload.date} at ${payload.time}`;
-
-    const successMessage = `${orderLabel} order placed ${whenText}. We are waiting for staff approval.`;
-    const reference = body.reference ? `Reference: ${body.reference}` : "";
-
-    showResult(successMessage, reference);
-    setNotice(`${orderLabel} order submitted. Waiting for approval from Millers Café.`, false);
-
-    if (body.reference && body.trackingToken) {
-      startOrderStatusTracking(body.reference, body.trackingToken, orderType);
+    if (!body.checkoutUrl) {
+      showError("Secure checkout could not be started right now. Please try again.");
+      return;
     }
 
-    const preservedDate = payload.date;
-    const preservedTime = payload.time;
-
-    form.reset();
-    if (orderTypeField) orderTypeField.value = orderType;
-    if (postcodeInput) postcodeInput.value = payload.postcode;
-
-    if (dateSelect) dateSelect.value = preservedDate;
-    if (timeSelect) {
-      renderTimeOptions();
-      if ([...timeSelect.options].some((option) => option.value === preservedTime)) {
-        timeSelect.value = preservedTime;
-      }
-    }
-    syncOrderCalendarToSelectedDate();
-    updateDeliveryAreaHint();
-
-    resetOrderBuilder();
-    clearInlineValidation();
-    setOrderStep(1, { instant: true, silent: true });
+    setNotice("Redirecting you to secure Stripe checkout...", false);
+    window.location.href = body.checkoutUrl;
   } catch (error) {
-    showError("Order service is currently unavailable. Please try again shortly.");
+    showError("Secure checkout is currently unavailable. Please try again shortly.");
   } finally {
     setSubmitting(false);
   }
@@ -2300,9 +2872,15 @@ function initializeMenuInteractions() {
   }
 
   if (!selectedCategory) selectedCategory = defaultCategoryName();
+  if (menuSearchInput) {
+    menuSearchInput.value = searchQuery;
+  }
   renderCategoryChips();
   renderMenuItems();
   renderCart();
+  if (restoredBasketOpen && cartItems.length > 0) {
+    setBasketOpen(true);
+  }
 
   menuCategoryChips.addEventListener("click", (event) => {
     const target = event.target;
@@ -2315,12 +2893,14 @@ function initializeMenuInteractions() {
     renderCategoryChips();
     renderMenuItems();
     queueActiveCategoryPillSync();
+    persistOrderDraft();
   });
 
   menuSearchInput.addEventListener("input", () => {
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
     queueActiveCategoryPillSync();
+    persistOrderDraft();
   });
 
   menuItemsList.addEventListener("click", (event) => {
@@ -2421,14 +3001,57 @@ function initializeMenuInteractions() {
   return true;
 }
 
-function initialize() {
+function handleCheckoutReturnState() {
+  const url = new URL(window.location.href);
+  const checkoutState = String(url.searchParams.get("checkout") || "").trim().toLowerCase();
+  const sessionId = String(url.searchParams.get("session_id") || "").trim();
+  if (!checkoutState) return false;
+
+  const orderType = currentOrderType();
+  const preservedPostcode = normalizeUkPostcode((postcodeInput?.value || "").trim());
+
+  if (checkoutState === "cancelled") {
+    void trackClientEvent("order_checkout_return_cancelled", {
+      page: "order",
+      route: window.location.pathname,
+      orderType
+    });
+    clearFeedback();
+    clearCheckoutReturnParams();
+    setNotice("Stripe checkout was cancelled. Your basket is still saved here.", true);
+    if (cartItems.length > 0) {
+      setOrderStep(2, { instant: true, silent: true });
+    }
+    return true;
+  }
+
+  if (checkoutState === "success" && sessionId) {
+    void trackClientEvent("order_checkout_return_success", {
+      page: "order",
+      route: window.location.pathname,
+      orderType
+    });
+    clearFeedback();
+    setOrderStep(2, { instant: true, silent: true });
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café.");
+    setNotice("Secure payment received. Finalizing your order now.", false);
+    finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcode);
+    return true;
+  }
+
+  return false;
+}
+
+async function initialize() {
   if (!form) return;
 
+  await loadLiveOrderData();
+  restoreOrderDraft();
   setOrderCalendarOpen(false);
   renderDateOptions();
-  syncOrderCalendarToSelectedDate();
-  renderTimeOptions();
+  applyRestoredScheduleDraft();
   initializeMenuInteractions();
+  await setupOrderTurnstile();
 
   form.addEventListener("submit", handleSubmit);
   dateSelect?.addEventListener("change", () => {
@@ -2510,8 +3133,35 @@ function initialize() {
   validateDateField();
   validateTimeField();
   updateOrderReviewRow();
+  await preloadAccountProfile();
   setOrderStep(1, { instant: true, silent: true });
   updateSubmitButtonState();
+  const handledCheckoutReturn = handleCheckoutReturnState();
+  if (handledCheckoutReturn) {
+    return;
+  }
+
+  if (restoredDraftHadCart && restoredDraftMeta.removedItems > 0 && cartItems.length === 0) {
+    setNotice("Saved basket could not be restored because those items are no longer on the current menu.", true);
+    return;
+  }
+
+  if (restoredDraftHadCart && restoredDraftMeta.hadChanges) {
+    const warning = restoredDraftMeta.removedItems > 0;
+    setNotice("Saved basket restored and refreshed against the current menu. Some items, prices, or selections changed.", warning);
+    return;
+  }
+
+  if (restoredDraftHadCart) {
+    const label = currentOrderType() === "delivery" ? "delivery" : "collection";
+    setNotice(`Saved ${label} basket restored. Review your time and continue when ready.`, false);
+  }
+
+  void trackClientEvent("page_view", {
+    page: "order",
+    route: window.location.pathname,
+    orderType: currentOrderType()
+  });
 }
 
-initialize();
+void initialize();

@@ -1,20 +1,24 @@
 "use strict";
 
-import {
-  feedRows,
-  isFeedAuthorized,
-  jsonResponse,
-  loadOrders
-} from "../_orders-core.js";
+import { isTokenAuthorized, resolveFeedTokens } from "../_lib/auth.js";
+import { ApiError, errorResponse } from "../_lib/errors.js";
+import { queryFlag, urlOf } from "../_lib/http.js";
+import { json, methodNotAllowed } from "../_lib/json.js";
+import { listOrderFeed } from "../_lib/orders-service.js";
 
 export async function onRequestGet(context) {
-  if (!isFeedAuthorized(context.request, context.env)) {
-    return jsonResponse({ error: "Unauthorized feed token." }, 401);
+  try {
+    if (!isTokenAuthorized(context.request, resolveFeedTokens(context.env, "orders"))) {
+      throw new ApiError("Unauthorized feed token.", 401);
+    }
+    const includePast = queryFlag(urlOf(context.request), "includePast");
+    const result = await listOrderFeed(context.env, includePast, "json");
+    return json(result.body);
+  } catch (error) {
+    return errorResponse(error, "Could not load orders JSON feed.");
   }
+}
 
-  const url = new URL(context.request.url);
-  const includePast = url.searchParams.get("includePast") === "1";
-
-  const orders = await loadOrders(context.env);
-  return jsonResponse(feedRows(orders, includePast));
+export function onRequest() {
+  return methodNotAllowed(["GET"]);
 }

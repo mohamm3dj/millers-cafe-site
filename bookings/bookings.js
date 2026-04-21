@@ -1,13 +1,15 @@
 "use strict";
 
 const API_BASE = "/api/bookings";
+const AVAILABILITY_API_BASE = "/api/bookings/slots";
+const SITE_CONFIG_API_BASE = "/api/site-config";
 const BUSINESS_TIMEZONE = "Europe/London";
-const SERVICE_START_MINUTES = 12 * 60;
-const SERVICE_END_MINUTES = 16 * 60;
-const SLOT_STEP_MINUTES = 15;
-const DEFAULT_DURATION_MINUTES = 90;
-const MAX_BOOKING_LOOKAHEAD_DAYS = 120;
-const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
+let SERVICE_START_MINUTES = 12 * 60;
+let SERVICE_END_MINUTES = 16 * 60;
+let SLOT_STEP_MINUTES = 15;
+let DEFAULT_DURATION_MINUTES = 90;
+let MAX_BOOKING_LOOKAHEAD_DAYS = 120;
+let OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
 const OCCASION_OPTIONS = [
   "None",
   "Birthday",
@@ -41,6 +43,9 @@ const bookingSlotCards = document.getElementById("bookingSlotCards");
 const bookingDateToggle = document.getElementById("bookingDateToggle");
 const bookingDateSummary = document.getElementById("bookingDateSummary");
 const bookingCalendarWrap = document.getElementById("bookingCalendarWrap");
+const bookingTurnstile = document.getElementById("bookingTurnstile");
+const bookingsInfoHours = document.getElementById("bookingsInfoHours");
+const bookingsInfoSlots = document.getElementById("bookingsInfoSlots");
 let bookingSuccessFxStageTimer = null;
 let bookingSuccessFxCloseTimer = null;
 let bookingSuccessFxResolver = null;
@@ -48,6 +53,112 @@ let availableBookingDates = [];
 let availableBookingDateSet = new Set();
 let calendarViewMonthUTC = null;
 let isCalendarOpen = false;
+let activeAvailabilityRequestId = 0;
+let bookingTurnstileToken = "";
+let bookingTurnstileWidget = null;
+let siteConfigState = null;
+
+function trackClientEvent(eventName, details = {}) {
+  if (!window.MillersClient || typeof window.MillersClient.trackEvent !== "function") {
+    return Promise.resolve(false);
+  }
+  return window.MillersClient.trackEvent(eventName, details);
+}
+
+function bookingOpenDaySummary() {
+  const values = Array.from(OPEN_DAY_INDEXES).sort((left, right) => left - right);
+  if (values.length === 7) return "every day";
+  if (values.length === 6 && !values.includes(1)) return "Tuesday to Sunday";
+  const labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return values.map((value) => labels[value]).join(", ");
+}
+
+function bookingHoursSummary() {
+  return `${minutesToClock(SERVICE_START_MINUTES)}-${minutesToClock(SERVICE_END_MINUTES)}`;
+}
+
+function bookingIntervalSummary() {
+  return `${SLOT_STEP_MINUTES}-minute intervals`;
+}
+
+function refreshBookingCopy() {
+  setNotice(
+    `Service hours: ${bookingOpenDaySummary()}, ${bookingHoursSummary()}. Bookings are in ${bookingIntervalSummary()}.`,
+    false
+  );
+
+  if (bookingsInfoHours) {
+    bookingsInfoHours.textContent = `We are open ${bookingOpenDaySummary()}, ${bookingHoursSummary()}.`;
+  }
+  if (bookingsInfoSlots) {
+    bookingsInfoSlots.textContent = `Bookings are seated in ${bookingIntervalSummary()}.`;
+  }
+}
+
+function applyLiveBookingConfig(config) {
+  const bookings = config?.bookings || {};
+  SERVICE_START_MINUTES = Math.round(Number(bookings.serviceStartMinutes ?? SERVICE_START_MINUTES));
+  SERVICE_END_MINUTES = Math.round(Number(bookings.serviceEndMinutes ?? SERVICE_END_MINUTES));
+  SLOT_STEP_MINUTES = Math.round(Number(bookings.slotStepMinutes ?? SLOT_STEP_MINUTES));
+  DEFAULT_DURATION_MINUTES = Math.round(Number(bookings.defaultDurationMinutes ?? DEFAULT_DURATION_MINUTES));
+  MAX_BOOKING_LOOKAHEAD_DAYS = Math.round(Number(bookings.maxLookaheadDays ?? MAX_BOOKING_LOOKAHEAD_DAYS));
+
+  if (Array.isArray(bookings.openDayIndexes) && bookings.openDayIndexes.length > 0) {
+    OPEN_DAY_INDEXES = new Set(
+      bookings.openDayIndexes
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
+    );
+  }
+
+  siteConfigState = config;
+  refreshBookingCopy();
+}
+
+async function loadLiveBookingConfig() {
+  try {
+    const response = await fetch(SITE_CONFIG_API_BASE, {
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) return;
+    const body = await response.json();
+    if (body?.config) {
+      applyLiveBookingConfig(body.config);
+    }
+  } catch (error) {
+    // Keep bundled defaults if live config is unavailable.
+  }
+}
+
+async function setupBookingTurnstile() {
+  const enabled = Boolean(siteConfigState?.security?.turnstileEnabled && siteConfigState?.security?.turnstileSiteKey);
+  bookingTurnstileToken = "";
+
+  if (!bookingTurnstile || !enabled || !window.MillersClient || typeof window.MillersClient.mountTurnstile !== "function") {
+    if (bookingTurnstile) bookingTurnstile.hidden = true;
+    return;
+  }
+
+  try {
+    bookingTurnstileWidget = await window.MillersClient.mountTurnstile(
+      bookingTurnstile,
+      String(siteConfigState.security.turnstileSiteKey || ""),
+      {
+        onToken(token) {
+          bookingTurnstileToken = String(token || "");
+        },
+        onExpire() {
+          bookingTurnstileToken = "";
+        },
+        onError() {
+          bookingTurnstileToken = "";
+        }
+      }
+    );
+  } catch (error) {
+    bookingTurnstileWidget = null;
+  }
+}
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -353,6 +464,42 @@ function showError(message) {
   errorEl.textContent = message;
 }
 
+async function preloadAccountProfile() {
+  try {
+    const response = await fetch("/api/account/me", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    if (!response.ok) return;
+
+    let body = {};
+    try {
+      body = await response.json();
+    } catch (error) {
+      body = {};
+    }
+
+    if (!body?.authenticated || !body.account) return;
+
+    if (nameInput && !nameInput.value && body.account.fullName) {
+      nameInput.value = String(body.account.fullName).trim();
+    }
+
+    if (emailInput && !emailInput.value && body.account.email) {
+      emailInput.value = String(body.account.email).trim();
+    }
+
+    if (phoneInput && !phoneInput.value && body.account.phoneNumber) {
+      phoneInput.value = String(body.account.phoneNumber).trim();
+      normalizePhoneField();
+    }
+  } catch (error) {
+    // Ignore account prefill failures so booking stays available without auth.
+  }
+}
+
 function showResult(message, referenceText) {
   if (!resultEl) return;
   resultEl.hidden = false;
@@ -578,8 +725,9 @@ function renderTimeOptions(slotRows) {
   const priorValue = timeSelect.value;
   timeSelect.innerHTML = "";
 
-  const hasRows = Array.isArray(slotRows) && slotRows.length > 0;
-  const rows = hasRows ? slotRows : slotTimes().map((time) => ({ time, available: true }));
+  const rows = Array.isArray(slotRows)
+    ? slotRows
+    : slotTimes().map((time) => ({ time, available: true }));
 
   let firstAvailable = "";
   for (const row of rows) {
@@ -592,12 +740,18 @@ function renderTimeOptions(slotRows) {
     timeSelect.appendChild(option);
   }
 
-  if (priorValue && rows.some((row) => row.time === priorValue && row.available)) {
+  if (!firstAvailable) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No times available";
+    option.disabled = true;
+    option.selected = true;
+    timeSelect.appendChild(option);
+    timeSelect.value = "";
+  } else if (priorValue && rows.some((row) => row.time === priorValue && row.available)) {
     timeSelect.value = priorValue;
-  } else if (firstAvailable) {
-    timeSelect.value = firstAvailable;
   } else {
-    timeSelect.selectedIndex = 0;
+    timeSelect.value = firstAvailable;
   }
 
   renderSlotCards(rows);
@@ -606,14 +760,70 @@ function renderTimeOptions(slotRows) {
 async function loadAvailability() {
   clearFeedback();
   const date = dateInput?.value || "";
-  if (!date || isBookableDay(date)) {
-    renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
-    setNotice("Service hours: Tue-Sun, 12:00-16:00. Bookings are in 15-minute intervals.", false);
+  const partySize = Number(partySizeInput?.value || "2");
+  const defaultRows = slotTimes().map((time) => ({ time, available: true }));
+  const requestId = activeAvailabilityRequestId + 1;
+  activeAvailabilityRequestId = requestId;
+
+  if (!date) {
+    renderTimeOptions(defaultRows);
+    refreshBookingCopy();
     return;
   }
 
-  renderTimeOptions(slotTimes().map((time) => ({ time, available: false })));
-  setNotice("Bookings are available Tue-Sun only. Please choose another date.", true);
+  if (!isBookableDay(date)) {
+    renderTimeOptions([]);
+    setNotice(`Bookings are available on ${bookingOpenDaySummary()} only. Please choose another date.`, true);
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      date,
+      partySize: String(Number.isInteger(partySize) && partySize > 0 ? partySize : 2),
+      durationMinutes: String(DEFAULT_DURATION_MINUTES)
+    });
+
+    const response = await fetch(`${AVAILABILITY_API_BASE}?${params.toString()}`, {
+      method: "GET",
+      headers: { Accept: "application/json" }
+    });
+
+    let body = {};
+    try {
+      body = await response.json();
+    } catch (error) {
+      body = {};
+    }
+
+    if (requestId !== activeAvailabilityRequestId) return;
+    if (!response.ok) {
+      throw new Error(body.error || "Could not load live availability.");
+    }
+
+    const rows = Array.isArray(body.slots) ? body.slots : [];
+    renderTimeOptions(rows);
+
+    if (body.open === false) {
+      setNotice(body.message || "Bookings are not available for the selected date.", true);
+      return;
+    }
+
+    if (!rows.some((row) => row.available)) {
+      setNotice(body.message || "No live availability remains for that date and party size.", true);
+      return;
+    }
+
+    setNotice(
+      body.message || `Service hours: ${bookingOpenDaySummary()}, ${bookingHoursSummary()}. Bookings are in ${bookingIntervalSummary()}.`,
+      false
+    );
+    return;
+  } catch (error) {
+    if (requestId !== activeAvailabilityRequestId) return;
+    renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
+    setNotice("Live availability could not be loaded. You can still submit and we will recheck on booking.", true);
+  }
 }
 
 function validateClientPayload(payload) {
@@ -634,7 +844,7 @@ function validateClientPayload(payload) {
   }
 
   if (!isBookableDay(payload.date)) {
-    return "Bookings are available Tue-Sun only.";
+    return `Bookings are available on ${bookingOpenDaySummary()} only.`;
   }
 
   if (!/^\d{2}:\d{2}$/.test(payload.time)) {
@@ -645,10 +855,10 @@ function validateClientPayload(payload) {
     return "Please choose a valid time.";
   }
   if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return "Bookings must be between 12:00 and 16:00.";
+    return `Bookings must be between ${minutesToClock(SERVICE_START_MINUTES)} and ${minutesToClock(SERVICE_END_MINUTES)}.`;
   }
   if (minutes % SLOT_STEP_MINUTES !== 0) {
-    return "Bookings must be in 15-minute intervals.";
+    return `Bookings must be in ${bookingIntervalSummary()}.`;
   }
 
   if (!Number.isInteger(payload.partySize) || payload.partySize < 1 || payload.partySize > 40) {
@@ -691,13 +901,21 @@ async function handleSubmit(event) {
   setSubmitting(true);
 
   try {
+    void trackClientEvent("booking_submit", {
+      page: "bookings",
+      route: window.location.pathname
+    });
+
     const response = await fetch(API_BASE, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        ...payload,
+        turnstileToken: bookingTurnstileToken
+      })
     });
 
     let body = {};
@@ -755,15 +973,18 @@ async function handleSubmit(event) {
   }
 }
 
-function initialize() {
+async function initialize() {
   if (!form) return;
 
+  await loadLiveBookingConfig();
+  refreshBookingCopy();
   setCalendarOpen(false);
   renderDateOptions();
   renderPartySizeOptions();
   renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
   syncCalendarToSelectedDate();
   void loadAvailability();
+  await setupBookingTurnstile();
 
   form.addEventListener("submit", handleSubmit);
   dateInput?.addEventListener("change", () => {
@@ -775,9 +996,18 @@ function initialize() {
   });
   calendarPrevBtn?.addEventListener("click", () => moveCalendarMonth(-1));
   calendarNextBtn?.addEventListener("click", () => moveCalendarMonth(1));
+  partySizeInput?.addEventListener("change", () => {
+    void loadAvailability();
+  });
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
+  await preloadAccountProfile();
+
+  void trackClientEvent("booking_form_view", {
+    page: "bookings",
+    route: window.location.pathname
+  });
 
 }
 
-initialize();
+void initialize();

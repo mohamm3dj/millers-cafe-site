@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+  <title>My Account | Millers Café</title>
+  <meta name="description" content="Sign in to your Millers Café account to view bookings, orders, saved details and manage future visits.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://millers.cafe/account/">
+  <link rel="stylesheet" href="../styles.css?v=20260419d">
+</head>
+<body>
+  <main class="accountPage">
+    <div class="bookingsTopBar">
+      <a href="../" class="tile backBtn">← Back</a>
+    </div>
+
+    <section class="header glassHero accountHero">
+      <div class="logo">
+        <span class="logoSteam logoSteam1" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam2" aria-hidden="true"></span>
+        <span class="logoSteam logoSteam3" aria-hidden="true"></span>
+        <img class="logoImg" src="../assets/millers-logo.jpg" alt="Millers Cafe logo">
+      </div>
+      <h1>My Account</h1>
+      <p class="subtitle">Use the same email you used for bookings or orders.</p>
+      <p class="heroMeta">Secure one-time email codes. No password to remember.</p>
+    </section>
+
+    <section class="accountWorkspace">
+      <section class="tile simplePanel accountPanel">
+        <div class="accountSectionIntro">
+          <h2 class="bookingPanelTitle">Customer account</h2>
+          <p class="bookingPanelLead">
+            View your booking history, collection and delivery orders, and saved contact details in one place.
+          </p>
+        </div>
+
+        <section class="accountAuthGrid" aria-label="Account sign-in and summary">
+          <article class="accountCard">
+            <p class="accountEyebrow">Sign in</p>
+            <h2 id="accountAuthTitle">Request a one-time code.</h2>
+            <p id="accountAuthCopy" class="accountLeadCopy">
+              We will email a secure 6-digit code to the address attached to your Millers Café activity.
+            </p>
+
+            <form id="accountRequestForm" class="accountForm" novalidate>
+              <label class="bookingField bookingFieldWide">
+                <span class="bookingLabel">Email address</span>
+                <input
+                  id="accountEmail"
+                  name="email"
+                  type="email"
+                  maxlength="120"
+                  placeholder="name@example.com"
+                  required
+                  autocomplete="email"
+                >
+              </label>
+              <div id="accountTurnstile" class="turnstileSlot" hidden></div>
+              <button id="accountRequestBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">
+                Email my sign-in code
+              </button>
+            </form>
+
+            <form id="accountVerifyForm" class="accountForm" hidden novalidate>
+              <p id="accountVerifyEmail" class="accountVerifyEmail"></p>
+              <label class="bookingField bookingFieldWide">
+                <span class="bookingLabel">6-digit code</span>
+                <input
+                  id="accountCode"
+                  name="code"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="\d{6}"
+                  maxlength="6"
+                  placeholder="123456"
+                  required
+                  autocomplete="one-time-code"
+                >
+              </label>
+              <div class="accountActionRow">
+                <button id="accountVerifyBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">
+                  Sign in
+                </button>
+                <button id="accountResendBtn" class="accountSecondaryBtn" type="button">
+                  Resend code
+                </button>
+              </div>
+              <button id="accountChangeEmailBtn" class="accountTextButton" type="button">
+                Use a different email address
+              </button>
+            </form>
+
+            <div id="accountSignedInActions" class="accountSignedInActions" hidden>
+              <div id="accountSignedInBanner" class="accountSignedInBanner"></div>
+              <div class="accountActionRow">
+                <a id="accountPreferredOrderLink" class="accountSecondaryBtn" href="../collection/">Start a collection order</a>
+                <button id="accountLogoutBtn" class="accountSecondaryBtn" type="button">Sign out</button>
+              </div>
+            </div>
+
+            <p id="accountAuthFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+          </article>
+
+          <article class="accountCard">
+            <p class="accountEyebrow">Summary</p>
+            <h2>Your details at a glance.</h2>
+            <dl id="accountSummaryList" class="accountSummaryList">
+              <div>
+                <dt>Name</dt>
+                <dd>Sign in to load</dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>Sign in to load</dd>
+              </div>
+              <div>
+                <dt>Phone</dt>
+                <dd>Sign in to load</dd>
+              </div>
+              <div>
+                <dt>Bookings</dt>
+                <dd>No account history loaded</dd>
+              </div>
+              <div>
+                <dt>Orders</dt>
+                <dd>No account history loaded</dd>
+              </div>
+              <div>
+                <dt>Latest activity</dt>
+                <dd>Sign in to load</dd>
+              </div>
+            </dl>
+            <p id="accountSummaryHelper" class="accountHelper">
+              Use the same email address you entered at checkout or booking.
+            </p>
+          </article>
+        </section>
+
+        <section class="accountProfileGrid" aria-label="Saved customer details">
+          <article class="accountCard accountProfileCard">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Saved details</p>
+                <h2>Profile and defaults</h2>
+              </div>
+            </div>
+            <p class="accountLeadCopy">
+              Save your name, phone number and default delivery address so checkout and booking forms fill faster next time.
+            </p>
+
+            <form id="accountProfileForm" class="accountForm" hidden novalidate>
+              <div class="bookingGrid bookingGridContact">
+                <label class="bookingField">
+                  <span class="bookingLabel">Full name</span>
+                  <input id="accountProfileName" type="text" maxlength="80" autocomplete="name" placeholder="John Smith">
+                </label>
+
+                <label class="bookingField">
+                  <span class="bookingLabel">Phone</span>
+                  <input id="accountProfilePhone" type="tel" maxlength="12" autocomplete="tel" inputmode="numeric" placeholder="07123 456789">
+                </label>
+
+                <label class="bookingField">
+                  <span class="bookingLabel">Preferred order type</span>
+                  <select id="accountPreferredOrderType">
+                    <option value="collection">Collection</option>
+                    <option value="delivery">Delivery</option>
+                  </select>
+                </label>
+
+                <label class="bookingField bookingFieldWide">
+                  <span class="bookingLabel">Address label</span>
+                  <input id="accountAddressLabel" type="text" maxlength="40" placeholder="Home">
+                </label>
+
+                <label class="bookingField bookingFieldWide">
+                  <span class="bookingLabel">Address line 1</span>
+                  <input id="accountAddress1" type="text" maxlength="120" autocomplete="address-line1" placeholder="123 High Street">
+                </label>
+
+                <label class="bookingField">
+                  <span class="bookingLabel">Address line 2</span>
+                  <input id="accountAddress2" type="text" maxlength="120" autocomplete="address-line2" placeholder="Flat 2">
+                </label>
+
+                <label class="bookingField">
+                  <span class="bookingLabel">Town / City</span>
+                  <input id="accountTown" type="text" maxlength="80" autocomplete="address-level2" placeholder="Grimsby">
+                </label>
+
+                <label class="bookingField">
+                  <span class="bookingLabel">Postcode</span>
+                  <input id="accountPostcode" type="text" maxlength="10" autocomplete="postal-code" placeholder="DN37 0JZ">
+                </label>
+              </div>
+
+              <div class="accountActionRow">
+                <button id="accountProfileSaveBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Save details</button>
+                <button id="accountProfileResetBtn" class="accountSecondaryBtn" type="button">Reset fields</button>
+              </div>
+            </form>
+
+            <article id="accountProfileEmptyState" class="accountEmptyState">
+              <h3>Sign in to save your details.</h3>
+              <p>Your profile will keep your usual contact and delivery information ready for future orders.</p>
+            </article>
+
+            <p id="accountProfileFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+          </article>
+        </section>
+
+        <section class="accountHistoryGrid" aria-label="Account history">
+          <article class="accountHistoryCard">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Bookings</p>
+                <h2>Table bookings</h2>
+              </div>
+              <a class="accountInlineLink" href="../bookings/">Book a table</a>
+            </div>
+            <div id="accountBookingsList" class="accountHistoryList">
+              <article class="accountEmptyState">
+                <h3>No booking history loaded yet.</h3>
+                <p>Sign in to see reservations linked to your email address.</p>
+              </article>
+            </div>
+          </article>
+
+          <article class="accountHistoryCard">
+            <div class="accountHistoryHead">
+              <div>
+                <p class="accountEyebrow">Orders</p>
+                <h2>Collection and delivery</h2>
+              </div>
+              <a class="accountInlineLink" href="../collection/">Start an order</a>
+            </div>
+            <div id="accountOrdersList" class="accountHistoryList">
+              <article class="accountEmptyState">
+                <h3>No order history loaded yet.</h3>
+                <p>Sign in to view previous collection and delivery orders.</p>
+              </article>
+            </div>
+          </article>
+        </section>
+      </section>
+    </section>
+
+    <section id="accountReschedulePanel" class="accountModalShell" hidden aria-hidden="true">
+      <div class="accountModalBackdrop" data-close-reschedule="true"></div>
+      <section class="tile simplePanel accountModalCard" aria-labelledby="accountRescheduleTitle">
+        <div class="accountHistoryHead">
+          <div>
+            <p class="accountEyebrow">Booking update</p>
+            <h2 id="accountRescheduleTitle">Reschedule booking</h2>
+          </div>
+          <button id="accountRescheduleCloseBtn" class="accountSecondaryBtn" type="button">Close</button>
+        </div>
+
+        <p id="accountRescheduleMeta" class="accountLeadCopy">Choose a new date and time for your booking.</p>
+
+        <form id="accountRescheduleForm" class="accountForm" novalidate>
+          <div class="bookingGrid bookingGridReservation">
+            <label class="bookingField">
+              <span class="bookingLabel">Date</span>
+              <select id="accountRescheduleDate" required></select>
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Time</span>
+              <select id="accountRescheduleTime" required></select>
+            </label>
+
+            <label class="bookingField">
+              <span class="bookingLabel">Party size</span>
+              <select id="accountReschedulePartySize" required></select>
+            </label>
+
+            <label class="bookingField bookingFieldWide">
+              <span class="bookingLabel">Requests</span>
+              <textarea id="accountRescheduleNotes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
+            </label>
+          </div>
+
+          <div class="accountActionRow">
+            <button id="accountRescheduleSaveBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Save booking</button>
+            <button id="accountRescheduleCancelBtn" class="accountSecondaryBtn" type="button">Cancel</button>
+          </div>
+          <p id="accountRescheduleFeedback" class="accountFeedback" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </section>
+
+    <div class="footer">
+      <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
+    </div>
+  </main>
+  <script src="../client-tools.js?v=20260419d"></script>
+  <script type="module" src="./account.js?v=20260419d"></script>
+</body>
+</html>

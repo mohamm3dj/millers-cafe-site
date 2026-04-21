@@ -1,15 +1,16 @@
 "use strict";
 
-const addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
+const SITE_CONFIG_API_BASE = "/api/site-config";
+let addressText = "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ";
 const businessTimezone = "Europe/London";
-const openingSummary = "Tue-Sun: 12:00-17:00";
+let openingSummary = "Tue-Sun: 12:00-17:00";
 let prefersReducedMotion = false;
 try {
   prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 } catch (error) {
   prefersReducedMotion = false;
 }
-const weeklyHours = {
+let weeklyHours = {
   0: [["12:00", "17:00"]],
   1: [],
   2: [["12:00", "17:00"]],
@@ -49,6 +50,39 @@ function getNowInBusinessTimezone() {
   };
 }
 
+function trackClientEvent(eventName, details = {}) {
+  if (!window.MillersClient || typeof window.MillersClient.trackEvent !== "function") {
+    return Promise.resolve(false);
+  }
+  return window.MillersClient.trackEvent(eventName, details);
+}
+
+function updateRestaurantSchema(config) {
+  const schemaEl = document.getElementById("restaurantSchema");
+  if (!(schemaEl instanceof HTMLScriptElement)) return;
+
+  const business = config?.business || {};
+  const phoneDigits = String(business.phoneTel || "1472828600").trim().replace(/\D/g, "").replace(/^0+/, "");
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    name: String(business.name || "Millers Café").trim() || "Millers Café",
+    image: `${window.location.origin}/assets/millers-logo.jpg`,
+    url: `${window.location.origin}/`,
+    telephone: `+44 ${phoneDigits || "1472828600"}`,
+    servesCuisine: ["Cafe", "Indian", "Desserts", "Milkshakes"],
+    menu: `${window.location.origin}/menu/`,
+    acceptsReservations: "True",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: String(business.address || addressText).trim(),
+      addressCountry: "GB"
+    }
+  };
+
+  schemaEl.textContent = JSON.stringify(schema);
+}
+
 function updateOpeningStatus() {
   const statusWrap = document.getElementById("heroStatus");
   const statusText = document.getElementById("heroStatusText");
@@ -67,6 +101,38 @@ function updateOpeningStatus() {
   statusWrap.classList.toggle("isClosed", !isOpen);
   statusText.textContent = isOpen ? "Open now" : "Closed now";
   heroHours.textContent = `${openingSummary} • Today: ${formatDayHours(windows)}`;
+}
+
+async function loadHomeConfig() {
+  try {
+    const response = await fetch(SITE_CONFIG_API_BASE, {
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) return;
+    const body = await response.json();
+    const config = body?.config;
+    if (!config) return;
+
+    if (config.business?.address) {
+      addressText = String(config.business.address).trim();
+    }
+    if (config.home?.openingSummary) {
+      openingSummary = String(config.home.openingSummary).trim();
+    }
+    if (config.home?.weeklyHours && typeof config.home.weeklyHours === "object") {
+      weeklyHours = config.home.weeklyHours;
+    }
+
+    const heroMeta = document.querySelector(".heroMeta");
+    if (heroMeta instanceof HTMLElement && config.business?.address) {
+      heroMeta.textContent = String(config.business.address).trim();
+    }
+
+    updateRestaurantSchema(config);
+    updateOpeningStatus();
+  } catch (error) {
+    // Keep bundled defaults if live config is unavailable.
+  }
 }
 
 async function copyAddress() {
@@ -132,8 +198,13 @@ if (intro) {
   }
 }
 
+void loadHomeConfig();
 updateOpeningStatus();
 window.setInterval(updateOpeningStatus, 60 * 1000);
+void trackClientEvent("page_view", {
+  page: "home",
+  route: window.location.pathname
+});
 
 const findCopyAddressBtn = document.getElementById("findCopyAddressBtn");
 if (findCopyAddressBtn) {
