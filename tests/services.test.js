@@ -100,6 +100,7 @@ test("createBooking sends customer and owner emails through Resend", async () =>
     RESEND_API_KEY: "re_test_123",
     BOOKINGS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
     BOOKINGS_NOTIFICATION_EMAIL: "help@millers.cafe",
+    NOTIFICATION_BACKUP_EMAILS: "backup@example.com",
     BOOKINGS_REPLY_TO: "help@millers.cafe"
   }, makeBookingPayload({
     email: "customer@example.com"
@@ -111,7 +112,7 @@ test("createBooking sends customer and owner emails through Resend", async () =>
   assert.equal(result.emailTotal, 2);
   assert.deepEqual(sentPayloads.map((payload) => payload.to), [
     ["customer@example.com"],
-    ["help@millers.cafe"]
+    ["help@millers.cafe", "backup@example.com"]
   ]);
   assert.equal(sentPayloads[0].from, "Millers Cafe <help@millers.cafe>");
   assert.equal(sentPayloads[0].reply_to, "help@millers.cafe");
@@ -178,6 +179,7 @@ test("createOrder sends customer and owner emails through Resend", async () => {
     RESEND_API_KEY: "re_test_123",
     ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
     ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe",
+    NOTIFICATION_BACKUP_EMAILS: "backup@example.com",
     ORDERS_REPLY_TO: "help@millers.cafe"
   }, makeOrderPayload({
     email: "customer@example.com"
@@ -189,7 +191,7 @@ test("createOrder sends customer and owner emails through Resend", async () => {
   assert.equal(result.emailTotal, 2);
   assert.deepEqual(sentPayloads.map((payload) => payload.to), [
     ["customer@example.com"],
-    ["help@millers.cafe"]
+    ["help@millers.cafe", "backup@example.com"]
   ]);
   assert.equal(sentPayloads[0].from, "Millers Cafe <help@millers.cafe>");
   assert.equal(sentPayloads[0].reply_to, "help@millers.cafe");

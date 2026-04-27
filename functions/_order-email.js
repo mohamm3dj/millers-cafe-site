@@ -1,6 +1,6 @@
 "use strict";
 
-import { sendResendEmail, singleRecipient } from "./_lib/resend.js";
+import { recipientList, sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
   return String(value ?? "")
@@ -104,7 +104,7 @@ function customerEmailPayload(fromAddress, replyTo, order, reference) {
   };
 }
 
-function ownerEmailPayload(fromAddress, replyTo, ownerEmail, order, reference) {
+function ownerEmailPayload(fromAddress, replyTo, ownerEmails, order, reference) {
   const details = orderDetailsLines(order, reference);
   const listHtml = details
     .map(([label, value]) => `<li><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</li>`)
@@ -112,7 +112,7 @@ function ownerEmailPayload(fromAddress, replyTo, ownerEmail, order, reference) {
 
   return {
     from: fromAddress,
-    to: singleRecipient(ownerEmail),
+    to: recipientList(ownerEmails),
     reply_to: replyTo,
     subject: `New ${typeLabel(order.orderType).toLowerCase()} order (${reference})`,
     html: [
@@ -207,7 +207,7 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
   };
 }
 
-function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference, update) {
+function ownerDecisionPayload(fromAddress, replyTo, ownerEmails, order, reference, update) {
   const status = decisionLabel(update.status);
   const etaLine = etaText(update.etaMinutes, update.scheduledDate, update.scheduledTime);
   const details = orderDetailsLines(order, reference);
@@ -222,7 +222,7 @@ function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference
 
   return {
     from: fromAddress,
-    to: singleRecipient(ownerEmail),
+    to: recipientList(ownerEmails),
     reply_to: replyTo,
     subject: `${reference} ${status === "accepted" ? "accepted" : "rejected"}`,
     html: [
@@ -241,11 +241,22 @@ function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference
   };
 }
 
+function orderEmailAddresses(env) {
+  const ownerEmail = String(env.ORDERS_NOTIFICATION_EMAIL || env.BOOKINGS_NOTIFICATION_EMAIL || "help@millers.cafe").trim();
+  return {
+    fromAddress: String(env.ORDERS_EMAIL_FROM || env.BOOKINGS_EMAIL_FROM || "").trim(),
+    ownerEmails: recipientList(
+      ownerEmail,
+      env.NOTIFICATION_BACKUP_EMAILS,
+      env.ORDERS_NOTIFICATION_BACKUP_EMAILS
+    ),
+    replyTo: String(env.ORDERS_REPLY_TO || env.BOOKINGS_REPLY_TO || ownerEmail).trim()
+  };
+}
+
 export async function sendOrderEmails(env, order, reference) {
   const apiKey = String(env.RESEND_API_KEY || "").trim();
-  const fromAddress = String(env.ORDERS_EMAIL_FROM || env.BOOKINGS_EMAIL_FROM || "").trim();
-  const ownerEmail = String(env.ORDERS_NOTIFICATION_EMAIL || env.BOOKINGS_NOTIFICATION_EMAIL || "help@millers.cafe").trim();
-  const replyTo = String(env.ORDERS_REPLY_TO || env.BOOKINGS_REPLY_TO || ownerEmail).trim();
+  const { fromAddress, ownerEmails, replyTo } = orderEmailAddresses(env);
 
   if (!apiKey || !fromAddress) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
@@ -253,7 +264,7 @@ export async function sendOrderEmails(env, order, reference) {
 
   const jobs = [
     customerEmailPayload(fromAddress, replyTo, order, reference),
-    ownerEmailPayload(fromAddress, replyTo, ownerEmail, order, reference)
+    ownerEmailPayload(fromAddress, replyTo, ownerEmails, order, reference)
   ];
 
   let delivered = 0;
@@ -279,9 +290,7 @@ export async function sendOrderEmails(env, order, reference) {
 
 export async function sendOrderDecisionEmails(env, order, reference, update) {
   const apiKey = String(env.RESEND_API_KEY || "").trim();
-  const fromAddress = String(env.ORDERS_EMAIL_FROM || env.BOOKINGS_EMAIL_FROM || "").trim();
-  const ownerEmail = String(env.ORDERS_NOTIFICATION_EMAIL || env.BOOKINGS_NOTIFICATION_EMAIL || "help@millers.cafe").trim();
-  const replyTo = String(env.ORDERS_REPLY_TO || env.BOOKINGS_REPLY_TO || ownerEmail).trim();
+  const { fromAddress, ownerEmails, replyTo } = orderEmailAddresses(env);
 
   if (!apiKey || !fromAddress) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
@@ -289,7 +298,7 @@ export async function sendOrderDecisionEmails(env, order, reference, update) {
 
   const jobs = [
     customerDecisionPayload(fromAddress, replyTo, order, reference, update),
-    ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference, update)
+    ownerDecisionPayload(fromAddress, replyTo, ownerEmails, order, reference, update)
   ];
 
   let delivered = 0;

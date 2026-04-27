@@ -48,6 +48,28 @@ export function singleRecipient(value) {
   return recipient ? [recipient] : [];
 }
 
+export function recipientList(...values) {
+  const seen = new Set();
+  const recipients = [];
+
+  for (const value of values.flat()) {
+    const parts = String(value || "")
+      .split(/[,;\n]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    for (const part of parts) {
+      const key = part.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        recipients.push(part);
+      }
+    }
+  }
+
+  return recipients;
+}
+
 export async function sendResendEmail(apiKey, payload) {
   const response = await fetch(RESEND_API_URL, {
     method: "POST",

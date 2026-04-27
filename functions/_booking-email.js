@@ -1,6 +1,6 @@
 "use strict";
 
-import { sendResendEmail, singleRecipient } from "./_lib/resend.js";
+import { recipientList, sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
   return String(value ?? "")
@@ -78,7 +78,7 @@ function customerRequestEmailPayload(fromAddress, replyTo, booking, reference) {
   };
 }
 
-function ownerRequestEmailPayload(fromAddress, replyTo, ownerEmail, booking, reference) {
+function ownerRequestEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference) {
   const details = bookingDetailsLines(booking, reference);
   const listHtml = details
     .map(([label, value]) => `<li><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</li>`)
@@ -86,7 +86,7 @@ function ownerRequestEmailPayload(fromAddress, replyTo, ownerEmail, booking, ref
 
   return {
     from: fromAddress,
-    to: singleRecipient(ownerEmail),
+    to: recipientList(ownerEmails),
     reply_to: replyTo,
     subject: `New booking request received (${reference})`,
     html: [
@@ -167,7 +167,7 @@ function customerDecisionEmailPayload(fromAddress, replyTo, booking, reference, 
   };
 }
 
-function ownerDecisionEmailPayload(fromAddress, replyTo, ownerEmail, booking, reference, decision) {
+function ownerDecisionEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference, decision) {
   const details = [
     ...bookingDetailsLines(booking, reference),
     ["Tables", tableLabel(booking)]
@@ -179,7 +179,7 @@ function ownerDecisionEmailPayload(fromAddress, replyTo, ownerEmail, booking, re
 
   return {
     from: fromAddress,
-    to: singleRecipient(ownerEmail),
+    to: recipientList(ownerEmails),
     reply_to: replyTo,
     subject: `${reference} booking ${text.subjectStatus}`,
     html: [
@@ -228,32 +228,36 @@ function bookingEmailAddresses(env) {
   const ownerEmail = String(env.BOOKINGS_NOTIFICATION_EMAIL || "help@millers.cafe").trim();
   return {
     fromAddress: String(env.BOOKINGS_EMAIL_FROM || "").trim(),
-    ownerEmail,
+    ownerEmails: recipientList(
+      ownerEmail,
+      env.NOTIFICATION_BACKUP_EMAILS,
+      env.BOOKINGS_NOTIFICATION_BACKUP_EMAILS
+    ),
     replyTo: String(env.BOOKINGS_REPLY_TO || ownerEmail).trim()
   };
 }
 
 export async function sendBookingRequestEmails(env, booking, reference) {
-  const { fromAddress, ownerEmail, replyTo } = bookingEmailAddresses(env);
+  const { fromAddress, ownerEmails, replyTo } = bookingEmailAddresses(env);
   if (!fromAddress) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
   }
 
   return sendBookingEmailJobs(env, [
     customerRequestEmailPayload(fromAddress, replyTo, booking, reference),
-    ownerRequestEmailPayload(fromAddress, replyTo, ownerEmail, booking, reference)
+    ownerRequestEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference)
   ]);
 }
 
 export async function sendBookingDecisionEmails(env, booking, reference, decision) {
-  const { fromAddress, ownerEmail, replyTo } = bookingEmailAddresses(env);
+  const { fromAddress, ownerEmails, replyTo } = bookingEmailAddresses(env);
   if (!fromAddress) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
   }
 
   return sendBookingEmailJobs(env, [
     customerDecisionEmailPayload(fromAddress, replyTo, booking, reference, decision),
-    ownerDecisionEmailPayload(fromAddress, replyTo, ownerEmail, booking, reference, decision)
+    ownerDecisionEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference, decision)
   ]);
 }
 
