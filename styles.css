@@ -4382,19 +4382,21 @@ h1{
 }
 
 .orderPage{
-  padding-bottom: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 112px);
 }
 
 .stickyCheckoutBar{
-  position: sticky;
-  left: auto;
-  top: calc(env(safe-area-inset-top) + 10px);
-  transform: none;
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  transform: translate(-50%, 18px);
   display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  width: min(624px, calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,.72);
@@ -4404,7 +4406,7 @@ h1{
     inset 0 1px 0 rgba(255,255,255,.95);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  z-index: 8;
+  z-index: 30;
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease, transform 220ms ease;
@@ -4414,7 +4416,7 @@ h1{
   display: grid;
   opacity: 1;
   pointer-events: auto;
-  transform: none;
+  transform: translate(-50%, 0);
 }
 
 .stickyCheckoutSummary{
@@ -4506,7 +4508,7 @@ h1{
 
 @media (max-width: 640px){
   .orderPage{
-    padding-bottom: 0;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 96px);
   }
 
   .orderHub{
@@ -4523,8 +4525,9 @@ h1{
   }
 
   .stickyCheckoutBar{
-    top: calc(env(safe-area-inset-top) + 8px);
-    width: 100%;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom) + 9px);
+    width: calc(100vw - 14px - env(safe-area-inset-left) - env(safe-area-inset-right));
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px;
     padding: 7px 8px;
@@ -4557,7 +4560,7 @@ h1{
 
 @media (max-width: 420px){
   .orderPage{
-    padding-bottom: 0;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 88px);
   }
 
   .stickyCheckoutBar{
@@ -4844,7 +4847,7 @@ h1{
   }
 
   .orderPage .stickyCheckoutBar{
-    width: calc(100% - 14px);
+    width: calc(100vw - 14px - env(safe-area-inset-left) - env(safe-area-inset-right));
     border-radius: 13px;
   }
 
