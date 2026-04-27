@@ -113,7 +113,9 @@ function titleCaseWords(value) {
 
 function bookingStatusLabel(status) {
   const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "approved") return "Confirmed";
+  if (normalized === "approved" || normalized === "accepted" || normalized === "confirmed") return "Confirmed";
+  if (normalized === "pending" || normalized === "submitted") return "Pending review";
+  if (normalized === "rejected" || normalized === "declined") return "Declined";
   if (normalized === "completed") return "Completed";
   if (normalized === "cancelled" || normalized === "canceled") return "Cancelled";
   if (normalized === "no_show" || normalized === "noshow") return "No show";

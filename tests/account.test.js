@@ -36,6 +36,7 @@ async function createAccountSession(email) {
   globalThis.fetch = async (url, options = {}) => {
     assert.equal(String(url), "https://api.resend.com/emails");
     const payload = JSON.parse(String(options.body || "{}"));
+    assert.deepEqual(payload.to, [email]);
     const subjectMatch = /(\d{6})/.exec(String(payload.subject || ""));
     assert.ok(subjectMatch);
     sentCode = subjectMatch[1];

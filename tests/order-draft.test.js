@@ -135,3 +135,63 @@ test("reconcileOrderDraftState merges duplicate restored lines after normalizati
   assert.equal(meta.mergedLines, 1);
   assert.equal(meta.hadChanges, true);
 });
+
+test("reconcileOrderDraftState restores POS ids for items and modifiers", () => {
+  const menu = [
+    {
+      id: "cat-main",
+      name: "Mains",
+      items: [
+        {
+          id: "pos-item-korma",
+          posItemId: "pos-item-korma",
+          posCategoryId: "cat-main",
+          categoryName: "Mains",
+          name: "Korma",
+          basePrice: 11.5,
+          modifierGroups: [
+            {
+              id: "group-spice",
+              posModifierGroupId: "group-spice",
+              name: "Spice",
+              selectionType: "single",
+              isRequired: true,
+              options: [
+                {
+                  id: "option-hot",
+                  posModifierOptionId: "option-hot",
+                  name: "Hot",
+                  priceAdjustment: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ];
+
+  const { draft } = reconcileOrderDraftState({
+    cartItems: [
+      {
+        posItemId: "pos-item-korma",
+        itemName: "Old Korma",
+        basePrice: 10,
+        quantity: 1,
+        modifierSelections: [
+          {
+            posModifierGroupId: "group-spice",
+            posModifierOptionId: "option-hot",
+            groupName: "Old Spice",
+            optionName: "Old Hot"
+          }
+        ]
+      }
+    ]
+  }, menu);
+
+  assert.equal(draft.cartItems[0].posItemId, "pos-item-korma");
+  assert.equal(draft.cartItems[0].posCategoryId, "cat-main");
+  assert.equal(draft.cartItems[0].modifierSelections[0].posModifierGroupId, "group-spice");
+  assert.equal(draft.cartItems[0].modifierSelections[0].posModifierOptionId, "option-hot");
+});

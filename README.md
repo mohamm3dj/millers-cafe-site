@@ -64,3 +64,7 @@ This integration does not use Stripe Connect or OAuth. To link the website to yo
 
 - Frontend design is intentionally preserved while backend structure is being strengthened.
 - More detail on the current backend layout is in `ARCHITECTURE.md`.
+
+## POS bridge
+
+Bookings now enter the site as pending requests. The venue POS bridge should use a Cloudflare Pages secret named `VENUE_BRIDGE_TOKEN`, then read pending bookings from `GET /api/bridge/bookings?status=pending` and post decisions to `POST /api/bridge/bookings`.

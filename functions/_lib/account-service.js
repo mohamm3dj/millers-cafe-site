@@ -86,7 +86,9 @@ function isTerminalBookingStatus(status) {
     || normalized === "canceled"
     || normalized === "completed"
     || normalized === "no_show"
-    || normalized === "noshow";
+    || normalized === "noshow"
+    || normalized === "rejected"
+    || normalized === "declined";
 }
 
 function bookingReference(bookingId) {
@@ -141,7 +143,9 @@ function statusIsTerminalForBooking(status) {
     value === "canceled" ||
     value === "completed" ||
     value === "no_show" ||
-    value === "noshow";
+    value === "noshow" ||
+    value === "rejected" ||
+    value === "declined";
 }
 
 function isUpcomingBooking(booking) {

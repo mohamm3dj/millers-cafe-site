@@ -930,24 +930,21 @@ async function handleSubmit(event) {
       return;
     }
 
-    const assignedTables = Array.isArray(body.assignedTables) ? body.assignedTables.join(", ") : "";
     const referenceValue = String(body.reference || "").trim();
     const reference = referenceValue ? `Reference: ${referenceValue}` : "";
     const emailStatus = String(body.emailStatus || "").toLowerCase();
     const emailNote = String(body.emailMessage || "").trim() || (
       emailStatus === "sent"
-        ? "Confirmation emails sent to you and Millers Café."
-        : "Booking is confirmed. Email confirmation is delayed right now."
+        ? "Request emails sent to you and Millers Café."
+        : "Booking request received. Email is delayed right now."
     );
-    const successMessage = assignedTables
-      ? `Booking confirmed for ${payload.date} at ${payload.time}. Assigned table(s): ${assignedTables}.`
-      : `Booking confirmed for ${payload.date} at ${payload.time}.`;
+    const successMessage = `Booking request received for ${payload.date} at ${payload.time}.`;
 
     showResult(`${successMessage} ${emailNote}`, reference);
     setNotice(
       emailStatus === "sent"
-        ? "Booking confirmed and synced to Millers Cafe POS feed."
-        : "Booking confirmed and synced to Millers Cafe POS feed. Email is delayed.",
+        ? "Booking request sent to Millers Cafe for review."
+        : "Booking request sent to Millers Cafe for review. Email is delayed.",
       emailStatus !== "sent"
     );
 
@@ -956,7 +953,7 @@ async function handleSubmit(event) {
       date: payload.date,
       time: payload.time,
       partySize: payload.partySize,
-      tables: assignedTables
+      tables: ""
     });
 
     const preservedDate = payload.date;

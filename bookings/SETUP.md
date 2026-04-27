@@ -35,14 +35,19 @@ Then your app feed URL should include:
 To email both customer + staff receipts on each booking, add these env vars in Cloudflare Pages (Production):
 
 - `RESEND_API_KEY=<your-resend-api-key>`
-- `BOOKINGS_EMAIL_FROM=Millers Cafe <bookings@your-verified-domain>`
+- `BOOKINGS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
 - `BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe`
 - `BOOKINGS_REPLY_TO=help@millers.cafe`
+- `ORDERS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
+- `ORDERS_NOTIFICATION_EMAIL=help@millers.cafe`
+- `ORDERS_REPLY_TO=help@millers.cafe`
+- `ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
+- `ACCOUNT_REPLY_TO=help@millers.cafe`
 
 Notes:
 
-- `BOOKINGS_EMAIL_FROM` must use a sender/domain verified in Resend.
-- If email vars are missing or delivery fails, booking creation is rejected.
+- The sender domain, `millers.cafe`, must be verified in Resend.
+- If email vars are missing or delivery fails, bookings are still saved with `emailStatus: "pending"` so staff can follow up.
 
 ## 5. App feed URL
 

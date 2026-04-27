@@ -225,11 +225,21 @@ function normalizeCartItemSelection(rawSelection) {
   const optionName = String(rawSelection?.optionName || "").trim();
   if (!groupName || !optionName) return null;
 
-  return {
+  const selection = {
     groupName,
     optionName,
     isTextInput: Boolean(rawSelection?.isTextInput)
   };
+  if (Object.prototype.hasOwnProperty.call(rawSelection || {}, "priceAdjustment")) {
+    selection.priceAdjustment = Number.isFinite(Number(rawSelection?.priceAdjustment))
+      ? Math.round(Number(rawSelection.priceAdjustment) * 100) / 100
+      : 0;
+  }
+  const posModifierGroupId = String(rawSelection?.posModifierGroupId || rawSelection?.groupId || "").trim();
+  const posModifierOptionId = String(rawSelection?.posModifierOptionId || rawSelection?.optionId || "").trim();
+  if (posModifierGroupId) selection.posModifierGroupId = posModifierGroupId;
+  if (posModifierOptionId) selection.posModifierOptionId = posModifierOptionId;
+  return selection;
 }
 
 function normalizeCartItem(rawItem) {
@@ -237,13 +247,33 @@ function normalizeCartItem(rawItem) {
   const quantity = Number(rawItem?.quantity);
   if (!itemName || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) return null;
 
-  return {
+  const item = {
     itemName,
     quantity,
     modifierSelections: Array.isArray(rawItem?.modifierSelections)
       ? rawItem.modifierSelections.map(normalizeCartItemSelection).filter(Boolean)
       : []
   };
+  const posItemId = String(rawItem?.posItemId || rawItem?.itemId || rawItem?.menuItemId || "").trim();
+  const posCategoryId = String(rawItem?.posCategoryId || rawItem?.categoryId || "").trim();
+  const categoryName = String(rawItem?.categoryName || "").trim();
+  const printRouting = String(rawItem?.printRouting || "").trim();
+  const menuVersion = String(rawItem?.menuVersion || "").trim();
+  const basePrice = Number(rawItem?.basePrice);
+  const unitPrice = Number(rawItem?.unitPrice);
+  const linePrice = Number(rawItem?.linePrice);
+  if (posItemId) {
+    item.posItemId = posItemId;
+    item.itemId = posItemId;
+  }
+  if (posCategoryId) item.posCategoryId = posCategoryId;
+  if (categoryName) item.categoryName = categoryName;
+  if (printRouting) item.printRouting = printRouting;
+  if (menuVersion) item.menuVersion = menuVersion;
+  if (Number.isFinite(basePrice) && basePrice >= 0) item.basePrice = Math.round(basePrice * 100) / 100;
+  if (Number.isFinite(unitPrice) && unitPrice >= 0) item.unitPrice = Math.round(unitPrice * 100) / 100;
+  if (Number.isFinite(linePrice) && linePrice >= 0) item.linePrice = Math.round(linePrice * 100) / 100;
+  return item;
 }
 
 function normalizeCartItems(rawItems) {

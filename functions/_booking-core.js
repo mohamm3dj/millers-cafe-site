@@ -186,8 +186,13 @@ function normalizedStatus(status) {
 
 function statusBlocksTables(status) {
   const current = normalizedStatus(status);
+  return current === "accepted" || current === "approved" || current === "confirmed";
+}
+
+function statusPreventsDuplicates(status) {
+  const current = normalizedStatus(status);
   return current !== "cancelled" && current !== "canceled" && current !== "completed" &&
-    current !== "no_show" && current !== "noshow";
+    current !== "no_show" && current !== "noshow" && current !== "rejected" && current !== "declined";
 }
 
 function isISODate(isoDate) {
@@ -354,6 +359,8 @@ function normalizeBookingRecord(raw) {
     status: normalizedStatus(raw.status || "approved"),
     source: String(raw.source || "Millers Cafe Website"),
     createdAt: String(raw.createdAt || nowISO()),
+    statusUpdatedAt: String(raw.statusUpdatedAt || raw.createdAt || nowISO()),
+    decisionReason: String(raw.decisionReason || "").trim(),
     assignedTables: normalizeAssignedTables(raw)
   };
 }
@@ -385,6 +392,8 @@ export async function saveBookings(env, bookings) {
     status: booking.status,
     source: booking.source,
     createdAt: booking.createdAt,
+    statusUpdatedAt: booking.statusUpdatedAt || booking.createdAt,
+    decisionReason: String(booking.decisionReason || "").trim(),
     tableNumber: booking.assignedTables[0] || null,
     additionalTableNumbers: booking.assignedTables.slice(1),
     assignedTables: booking.assignedTables
@@ -482,9 +491,16 @@ export function suggestTableAssignment(bookings, isoDate, clock, partySize, dura
   return null;
 }
 
-function makeReference(bookingId) {
+export function makeReference(bookingId) {
   const cleaned = bookingId.replace(/-/g, "").toUpperCase();
   return `MC-${cleaned.slice(0, 8)}`;
+}
+
+export function findBookingIndexByReference(bookings, reference) {
+  const target = String(reference || "").trim().toUpperCase();
+  if (!target) return -1;
+
+  return bookings.findIndex((booking) => makeReference(String(booking.id || "")).toUpperCase() === target);
 }
 
 function validatePayloadShape(payload, rawRules = null) {
@@ -550,25 +566,14 @@ export function createBookingRecord(bookings, payload, options = {}) {
     booking.partySize === data.partySize &&
     booking.phoneDigits.length > 0 &&
     booking.phoneDigits === data.phoneDigits &&
-    statusBlocksTables(booking.status)
+    statusPreventsDuplicates(booking.status)
   );
   if (duplicate) {
     return { ok: false, status: 409, error: "A similar booking already exists for this customer and time." };
   }
 
-  const assignedTables = suggestTableAssignment(
-    bookings,
-    data.date,
-    data.time,
-    data.partySize,
-    data.durationMinutes
-  );
-
-  if (!assignedTables || assignedTables.length === 0) {
-    return { ok: false, status: 409, error: "No availability for that slot. Please choose another time." };
-  }
-
   const bookingId = randomId();
+  const createdAt = nowISO();
   const record = {
     id: bookingId,
     customerName: data.customerName,
@@ -581,10 +586,12 @@ export function createBookingRecord(bookings, payload, options = {}) {
     durationMinutes: data.durationMinutes,
     specialOccasion: data.specialOccasion,
     notes: data.notes,
-    status: "approved",
+    status: "pending",
     source: "Millers Cafe Website",
-    createdAt: nowISO(),
-    assignedTables
+    createdAt,
+    statusUpdatedAt: createdAt,
+    decisionReason: "",
+    assignedTables: []
   };
 
   return {

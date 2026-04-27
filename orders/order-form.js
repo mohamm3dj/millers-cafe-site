@@ -1589,6 +1589,7 @@ function normalizeMenuCatalog(rawCatalog) {
     .map((category) => {
       const categoryName = normalizeText(category?.name);
       const categoryKey = normalizeKey(categoryName);
+      const categoryId = normalizeText(category?.id || category?.posCategoryId || category?.categoryId);
       if (!categoryName || !Array.isArray(category?.items)) return null;
       if (HIDDEN_ORDER_CATEGORY_KEYS.has(categoryKey)) return null;
 
@@ -1603,6 +1604,7 @@ function normalizeMenuCatalog(rawCatalog) {
               .map((group) => {
                 const groupName = normalizeText(group?.name);
                 if (!groupName) return null;
+                const groupId = normalizeText(group?.id || group?.posModifierGroupId || group?.groupId);
 
                 const selectionType = normalizeText(group?.selectionType).toLowerCase() === "multiple"
                   ? "multiple"
@@ -1614,10 +1616,16 @@ function normalizeMenuCatalog(rawCatalog) {
                       const optionName = normalizeText(option?.name);
                       const priceAdjustment = Number(option?.priceAdjustment || 0);
                       if (!optionName || !Number.isFinite(priceAdjustment)) return null;
-                      return {
+                      const optionId = normalizeText(option?.id || option?.posModifierOptionId || option?.optionId);
+                      const normalizedOption = {
                         name: optionName,
                         priceAdjustment: roundMoney(priceAdjustment)
                       };
+                      if (optionId) {
+                        normalizedOption.id = optionId;
+                        normalizedOption.posModifierOptionId = normalizeText(option?.posModifierOptionId || optionId);
+                      }
+                      return normalizedOption;
                     })
                     .filter(Boolean)
                   : [];
@@ -1627,7 +1635,7 @@ function normalizeMenuCatalog(rawCatalog) {
                   ? (Number.isInteger(maxSelectionsRaw) && maxSelectionsRaw > 0 ? maxSelectionsRaw : Math.max(1, options.length))
                   : 1;
 
-                return {
+                const normalizedGroup = {
                   name: groupName,
                   selectionType,
                   isRequired: Boolean(group?.isRequired),
@@ -1635,6 +1643,11 @@ function normalizeMenuCatalog(rawCatalog) {
                   maxSelections: computedMax,
                   options
                 };
+                if (groupId) {
+                  normalizedGroup.id = groupId;
+                  normalizedGroup.posModifierGroupId = normalizeText(group?.posModifierGroupId || groupId);
+                }
+                return normalizedGroup;
               })
               .filter(Boolean)
             : [];
@@ -1643,8 +1656,15 @@ function normalizeMenuCatalog(rawCatalog) {
             ? item.tags.map((tag) => normalizeText(tag)).filter(Boolean)
             : [];
 
+          const itemId = normalizeText(item?.id || item?.posItemId || item?.itemId) ||
+            createMenuItemId(categoryKey, itemName, itemIndex);
           return {
-            id: createMenuItemId(categoryKey, itemName, itemIndex),
+            id: itemId,
+            posItemId: normalizeText(item?.posItemId || itemId),
+            posCategoryId: normalizeText(item?.posCategoryId || category?.posCategoryId || categoryId),
+            categoryName,
+            printRouting: normalizeText(item?.printRouting),
+            menuVersion: normalizeText(item?.menuVersion),
             name: itemName,
             basePrice: roundMoney(basePrice),
             modifierGroups,
@@ -1656,6 +1676,8 @@ function normalizeMenuCatalog(rawCatalog) {
       if (items.length === 0) return null;
 
       return {
+        id: categoryId,
+        posCategoryId: normalizeText(category?.posCategoryId || categoryId),
         name: categoryName,
         categoryKey,
         items
@@ -2129,6 +2151,8 @@ function selectedModifiersFromDraft() {
 
       if (text.length > 0) {
         selections.push({
+          posModifierGroupId: group.posModifierGroupId || group.id || "",
+          posModifierOptionId: "",
           groupName: group.name,
           optionName: text,
           priceAdjustment: 0,
@@ -2156,6 +2180,8 @@ function selectedModifiersFromDraft() {
 
         const option = group.options[optionIndex];
         selections.push({
+          posModifierGroupId: group.posModifierGroupId || group.id || "",
+          posModifierOptionId: option.posModifierOptionId || option.id || "",
           groupName: group.name,
           optionName: option.name,
           priceAdjustment: Number(option.priceAdjustment || 0),
@@ -2183,6 +2209,8 @@ function selectedModifiersFromDraft() {
 
     const option = group.options[optionIndex];
     selections.push({
+      posModifierGroupId: group.posModifierGroupId || group.id || "",
+      posModifierOptionId: option.posModifierOptionId || option.id || "",
       groupName: group.name,
       optionName: option.name,
       priceAdjustment: Number(option.priceAdjustment || 0),
@@ -2205,7 +2233,7 @@ function cartLineTotals(basePrice, selections, quantity) {
 
 function cartLineSignature(itemKey, modifierSelections) {
   const modKey = (modifierSelections || [])
-    .map((entry) => `${entry.groupName}::${entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
+    .map((entry) => `${entry.posModifierGroupId || entry.groupName}::${entry.posModifierOptionId || entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
     .sort()
     .join("||");
   return `${String(itemKey || "").trim() || "item"}__${modKey}`;
@@ -2275,6 +2303,11 @@ function persistOrderDraft() {
     cartItems: cartItems.map((item) => ({
       id: item.id,
       itemId: item.itemId,
+      posItemId: item.posItemId || item.itemId,
+      posCategoryId: item.posCategoryId || "",
+      categoryName: item.categoryName || "",
+      printRouting: item.printRouting || "",
+      menuVersion: item.menuVersion || "",
       itemName: item.itemName,
       basePrice: item.basePrice,
       modifierSelections: (item.modifierSelections || []).map((selection) => ({ ...selection })),
@@ -2352,6 +2385,11 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
     cartItems.push({
       id: nextCartId,
       itemId: item.id || "",
+      posItemId: item.posItemId || item.id || "",
+      posCategoryId: item.posCategoryId || "",
+      categoryName: item.categoryName || "",
+      printRouting: item.printRouting || "",
+      menuVersion: item.menuVersion || "",
       signature,
       itemName: item.name,
       basePrice: item.basePrice,

@@ -59,6 +59,7 @@ function normalizedOrderType(value) {
 function normalizeModifierGroup(rawGroup) {
   const groupName = normalizeText(rawGroup?.name);
   if (!groupName) return null;
+  const groupId = normalizeText(rawGroup?.id || rawGroup?.posModifierGroupId || rawGroup?.groupId);
 
   const selectionType = normalizeText(rawGroup?.selectionType).toLowerCase() === "multiple"
     ? "multiple"
@@ -70,11 +71,17 @@ function normalizeModifierGroup(rawGroup) {
         const optionName = normalizeText(rawOption?.name);
         const priceAdjustment = Number(rawOption?.priceAdjustment || 0);
         if (!optionName || !Number.isFinite(priceAdjustment)) return null;
-        return {
+        const optionId = normalizeText(rawOption?.id || rawOption?.posModifierOptionId || rawOption?.optionId);
+        const normalized = {
           key: normalizeKey(optionName),
           name: optionName,
           priceAdjustment: roundMoney(priceAdjustment)
         };
+        if (optionId) {
+          normalized.id = optionId;
+          normalized.posModifierOptionId = normalizeText(rawOption?.posModifierOptionId || optionId);
+        }
+        return normalized;
       })
       .filter(Boolean)
     : [];
@@ -84,7 +91,7 @@ function normalizeModifierGroup(rawGroup) {
     ? (Number.isInteger(maxSelectionsRaw) && maxSelectionsRaw > 0 ? maxSelectionsRaw : Math.max(1, options.length))
     : 1;
 
-  return {
+  const normalized = {
     key: normalizeKey(groupName),
     name: groupName,
     selectionType,
@@ -93,6 +100,11 @@ function normalizeModifierGroup(rawGroup) {
     maxSelections,
     options
   };
+  if (groupId) {
+    normalized.id = groupId;
+    normalized.posModifierGroupId = normalizeText(rawGroup?.posModifierGroupId || groupId);
+  }
+  return normalized;
 }
 
 function buildOrderMenuItemMap(menuCatalog = MILLERS_ORDER_MENU) {
@@ -117,12 +129,26 @@ function buildOrderMenuItemMap(menuCatalog = MILLERS_ORDER_MENU) {
       const modifierGroups = Array.isArray(rawItem?.modifierGroups)
         ? rawItem.modifierGroups.map(normalizeModifierGroup).filter(Boolean)
         : [];
+      const itemId = normalizeText(rawItem?.id || rawItem?.posItemId || rawItem?.itemId);
+      const posItemId = normalizeText(rawItem?.posItemId || itemId);
+      const posCategoryId = normalizeText(rawItem?.posCategoryId || category?.posCategoryId || category?.id);
 
-      map.set(itemKey, {
+      const normalizedItem = {
         key: itemKey,
+        id: itemId,
+        posItemId,
+        posCategoryId,
+        categoryName: normalizeText(category?.name),
+        printRouting: normalizeText(rawItem?.printRouting),
+        menuVersion: normalizeText(rawItem?.menuVersion),
         name: itemName,
         basePrice: roundMoney(basePrice),
         modifierGroups
+      };
+
+      map.set(itemKey, normalizedItem);
+      [itemId, posItemId].filter(Boolean).forEach((id) => {
+        map.set(`id:${id}`, normalizedItem);
       });
     });
   });
@@ -137,6 +163,16 @@ export function getOrderMenuItemByName(itemName, menuCatalog = MILLERS_ORDER_MEN
   const itemKey = normalizeKey(itemName);
   if (!itemKey) return null;
   return buildOrderMenuItemMap(menuCatalog).get(itemKey) || null;
+}
+
+export function getOrderMenuItem(rawItem, menuCatalog = MILLERS_ORDER_MENU) {
+  const map = buildOrderMenuItemMap(menuCatalog);
+  const itemId = normalizeText(rawItem?.posItemId || rawItem?.itemId || rawItem?.menuItemId || rawItem?.id);
+  if (itemId) {
+    const match = map.get(`id:${itemId}`);
+    if (match) return match;
+  }
+  return getOrderMenuItemByName(rawItem?.itemName || rawItem?.name, menuCatalog);
 }
 
 function modifierSummary(selection) {
@@ -167,12 +203,19 @@ function normalizeModifierSelections(rawSelections, menuItem) {
     return { ok: true, selections: [] };
   }
 
-  const groupsByKey = new Map(menuItem.modifierGroups.map((group) => [group.key, group]));
+  const groupsByKey = new Map();
+  menuItem.modifierGroups.forEach((group) => {
+    groupsByKey.set(group.key, group);
+    [group.id, group.posModifierGroupId].filter(Boolean).forEach((id) => {
+      groupsByKey.set(`id:${id}`, group);
+    });
+  });
   const countsByGroup = new Map();
   const normalizedSelections = [];
 
   for (const rawSelection of rawSelections) {
-    const groupKey = normalizeKey(rawSelection?.groupName);
+    const rawGroupId = normalizeText(rawSelection?.posModifierGroupId || rawSelection?.groupId);
+    const groupKey = rawGroupId ? `id:${rawGroupId}` : normalizeKey(rawSelection?.groupName);
     if (!groupKey || !groupsByKey.has(groupKey)) {
       return { ok: false, error: `An invalid modifier was provided for ${menuItem.name}.` };
     }
@@ -192,6 +235,8 @@ function normalizeModifierSelections(rawSelections, menuItem) {
       }
 
       normalizedSelections.push({
+        posModifierGroupId: group.posModifierGroupId || group.id || "",
+        posModifierOptionId: "",
         groupName: group.name,
         optionName,
         priceAdjustment: 0,
@@ -200,13 +245,20 @@ function normalizeModifierSelections(rawSelections, menuItem) {
       continue;
     }
 
-    const optionKey = normalizeKey(rawSelection?.optionName);
-    const option = group.options.find((entry) => entry.key === optionKey);
+    const rawOptionId = normalizeText(rawSelection?.posModifierOptionId || rawSelection?.optionId);
+    const optionKey = rawOptionId ? `id:${rawOptionId}` : normalizeKey(rawSelection?.optionName);
+    const option = group.options.find((entry) =>
+      rawOptionId
+        ? entry.id === rawOptionId || entry.posModifierOptionId === rawOptionId
+        : entry.key === optionKey
+    );
     if (!option) {
       return { ok: false, error: `An invalid option was provided for ${menuItem.name} (${group.name}).` };
     }
 
     normalizedSelections.push({
+      posModifierGroupId: group.posModifierGroupId || group.id || "",
+      posModifierOptionId: option.posModifierOptionId || option.id || "",
       groupName: group.name,
       optionName: option.name,
       priceAdjustment: option.priceAdjustment,
@@ -249,7 +301,7 @@ export function priceOrderCart(rawCartItems, options = {}) {
   const pricedItems = [];
 
   for (const rawItem of rawCartItems) {
-    const menuItem = getOrderMenuItemByName(rawItem?.itemName || rawItem?.name, menuCatalog);
+    const menuItem = getOrderMenuItem(rawItem, menuCatalog);
     if (!menuItem) {
       return { ok: false, error: `Menu item is unavailable: ${normalizeText(rawItem?.itemName || rawItem?.name) || "Unknown item"}.` };
     }
@@ -274,6 +326,12 @@ export function priceOrderCart(rawCartItems, options = {}) {
       : "";
 
     pricedItems.push({
+      posItemId: menuItem.posItemId || menuItem.id || "",
+      itemId: menuItem.id || menuItem.posItemId || "",
+      posCategoryId: menuItem.posCategoryId || "",
+      categoryName: menuItem.categoryName || "",
+      printRouting: menuItem.printRouting || "",
+      menuVersion: menuItem.menuVersion || "",
       itemName: menuItem.name,
       quantity,
       basePrice: menuItem.basePrice,

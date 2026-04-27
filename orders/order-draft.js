@@ -32,7 +32,7 @@ function cartLineTotals(basePrice, selections, quantity) {
 
 function cartLineSignature(itemKey, modifierSelections) {
   const modKey = (modifierSelections || [])
-    .map((entry) => `${entry.groupName}::${entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
+    .map((entry) => `${entry.posModifierGroupId || entry.groupName}::${entry.posModifierOptionId || entry.optionName}::${Number(entry.priceAdjustment || 0).toFixed(2)}::${entry.isTextInput ? 1 : 0}`)
     .sort()
     .join("||");
   return `${String(itemKey || "").trim() || "item"}__${modKey}`;
@@ -91,10 +91,12 @@ function buildMenuLookup(normalizedMenu) {
   normalizedMenu.forEach((category) => {
     if (!Array.isArray(category?.items)) return;
     category.items.forEach((item) => {
-      const itemId = normalizeText(item?.id);
+      const itemId = normalizeText(item?.id || item?.posItemId || item?.itemId);
+      const posItemId = normalizeText(item?.posItemId || itemId);
       const itemName = normalizeText(item?.name);
       const itemKey = normalizeKey(itemName);
       if (itemId) byId.set(itemId, item);
+      if (posItemId) byId.set(posItemId, item);
       if (itemKey) byName.set(itemKey, item);
     });
   });
@@ -107,22 +109,32 @@ function buildGroupLookup(modifierGroups) {
 
   (modifierGroups || []).forEach((group) => {
     const groupKey = normalizeKey(group?.name);
-    if (!groupKey) return;
+    const groupId = normalizeText(group?.id || group?.posModifierGroupId || group?.groupId);
+    if (!groupKey && !groupId) return;
 
     const optionsByKey = new Map();
     (group.options || []).forEach((option) => {
       const optionKey = normalizeKey(option?.name);
-      if (!optionKey) return;
-      optionsByKey.set(optionKey, option);
+      const optionId = normalizeText(option?.id || option?.posModifierOptionId || option?.optionId);
+      if (!optionKey && !optionId) return;
+      if (optionId) optionsByKey.set(`id:${optionId}`, option);
+      if (optionKey) optionsByKey.set(optionKey, option);
     });
 
-    groupsByKey.set(groupKey, {
+    const entry = {
       group,
       optionsByKey
-    });
+    };
+    if (groupKey) groupsByKey.set(groupKey, entry);
+    if (groupId) groupsByKey.set(`id:${groupId}`, entry);
   });
 
   return groupsByKey;
+}
+
+function modifierGroupCountKey(group) {
+  const groupId = normalizeText(group?.posModifierGroupId || group?.id || group?.groupId);
+  return groupId ? `id:${groupId}` : normalizeKey(group?.name);
 }
 
 function reconcileStoredModifierSelections(rawSelections, liveItem) {
@@ -146,7 +158,8 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
   let wasAdjusted = false;
 
   rawList.forEach((rawSelection) => {
-    const groupKey = normalizeKey(rawSelection?.groupName);
+    const rawGroupId = normalizeText(rawSelection?.posModifierGroupId || rawSelection?.groupId);
+    const groupKey = rawGroupId ? `id:${rawGroupId}` : normalizeKey(rawSelection?.groupName);
     const rawOptionName = normalizeText(rawSelection?.optionName || rawSelection?.value);
     if (!groupKey || !rawOptionName || !groupsByKey.has(groupKey)) {
       wasAdjusted = true;
@@ -154,16 +167,19 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
     }
 
     const { group, optionsByKey } = groupsByKey.get(groupKey);
-    const nextCount = (countsByGroup.get(groupKey) || 0) + 1;
+    const countKey = modifierGroupCountKey(group);
+    const nextCount = (countsByGroup.get(countKey) || 0) + 1;
     if (nextCount > Number(group?.maxSelections || 1)) {
       wasAdjusted = true;
       return;
     }
 
-    countsByGroup.set(groupKey, nextCount);
+    countsByGroup.set(countKey, nextCount);
 
     if (group.isTextInput) {
       selections.push({
+        posModifierGroupId: group.posModifierGroupId || group.id || "",
+        posModifierOptionId: "",
         groupName: group.name,
         optionName: rawOptionName,
         priceAdjustment: 0,
@@ -176,18 +192,21 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
       return;
     }
 
-    const optionKey = normalizeKey(rawOptionName);
+    const rawOptionId = normalizeText(rawSelection?.posModifierOptionId || rawSelection?.optionId);
+    const optionKey = rawOptionId ? `id:${rawOptionId}` : normalizeKey(rawOptionName);
     const option = optionsByKey.get(optionKey);
     if (!option) {
       wasAdjusted = true;
-      countsByGroup.set(groupKey, nextCount - 1);
-      if ((countsByGroup.get(groupKey) || 0) <= 0) {
-        countsByGroup.delete(groupKey);
+      countsByGroup.set(countKey, nextCount - 1);
+      if ((countsByGroup.get(countKey) || 0) <= 0) {
+        countsByGroup.delete(countKey);
       }
       return;
     }
 
     selections.push({
+      posModifierGroupId: group.posModifierGroupId || group.id || "",
+      posModifierOptionId: option.posModifierOptionId || option.id || "",
       groupName: group.name,
       optionName: option.name,
       priceAdjustment: roundMoney(option.priceAdjustment),
@@ -204,7 +223,7 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
     }
   });
 
-  const missingRequired = (liveItem.modifierGroups || []).find((group) => group.isRequired && !countsByGroup.has(normalizeKey(group.name)));
+  const missingRequired = (liveItem.modifierGroups || []).find((group) => group.isRequired && !countsByGroup.has(modifierGroupCountKey(group)));
   if (missingRequired) {
     return { ok: false };
   }
@@ -217,7 +236,7 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
 }
 
 function reconcileStoredCartItem(raw, fallbackId, lookup, maxItemQuantity) {
-  const rawItemId = normalizeText(raw?.itemId || raw?.menuItemId);
+  const rawItemId = normalizeText(raw?.posItemId || raw?.itemId || raw?.menuItemId);
   const rawItemName = normalizeText(raw?.itemName || raw?.name);
 
   const liveItem = (rawItemId && lookup.byId.get(rawItemId))
@@ -250,8 +269,13 @@ function reconcileStoredCartItem(raw, fallbackId, lookup, maxItemQuantity) {
   return {
     item: {
       id,
-      itemId: normalizeText(liveItem.id),
-      signature: cartLineSignature(liveItem.id || liveItem.name, modifierResult.selections),
+      itemId: normalizeText(liveItem.id || liveItem.posItemId),
+      posItemId: normalizeText(liveItem.posItemId || liveItem.id),
+      posCategoryId: normalizeText(liveItem.posCategoryId),
+      categoryName: normalizeText(liveItem.categoryName),
+      printRouting: normalizeText(liveItem.printRouting),
+      menuVersion: normalizeText(liveItem.menuVersion),
+      signature: cartLineSignature(liveItem.posItemId || liveItem.id || liveItem.name, modifierResult.selections),
       itemName: liveItem.name,
       basePrice,
       modifierSelections: modifierResult.selections,

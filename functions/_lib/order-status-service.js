@@ -131,8 +131,12 @@ export async function readOrderStatus(env, query) {
 export async function updateOrderStatus(env, payload = {}) {
   const reference = String(payload.reference || "").trim();
   const nextStatus = validDecisionStatus(payload.status);
+  const etaMinutes = parseEtaMinutes(payload.etaMinutes);
   if (!reference) throw new ApiError("reference is required.", 400);
   if (!nextStatus) throw new ApiError("status must be accepted or rejected.", 400);
+  if (nextStatus === "accepted" && (!Number.isFinite(etaMinutes) || etaMinutes <= 0)) {
+    throw new ApiError("etaMinutes is required when accepting an order.", 400);
+  }
 
   const orders = await loadOrders(env);
   const { index, order: existing } = findOrderOrThrow(orders, reference);
@@ -141,7 +145,7 @@ export async function updateOrderStatus(env, payload = {}) {
   const previousStatus = normalizedStatus(order.status || "submitted");
   order.status = nextStatus;
   order.statusUpdatedAt = new Date().toISOString();
-  order.etaMinutes = parseEtaMinutes(payload.etaMinutes);
+  order.etaMinutes = nextStatus === "accepted" ? etaMinutes : null;
   order.decisionDate = String(payload.scheduledDate || order.decisionDate || "").trim();
   order.decisionTime = String(payload.scheduledTime || order.decisionTime || "").trim().toUpperCase();
 

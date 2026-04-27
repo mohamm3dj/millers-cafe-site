@@ -75,6 +75,65 @@ test("priceOrderCart rebuilds the basket total and delivery fee from the catalog
   assert.match(priced.itemsSummary, /Total = £20\.00/);
 });
 
+test("priceOrderCart preserves POS menu ids from the live catalog", () => {
+  const menuCatalog = [
+    {
+      id: "cat-main",
+      name: "Mains",
+      items: [
+        {
+          id: "pos-item-korma",
+          posItemId: "pos-item-korma",
+          posCategoryId: "cat-main",
+          name: "Korma",
+          basePrice: 11.5,
+          printRouting: "kitchen",
+          modifierGroups: [
+            {
+              id: "group-spice",
+              posModifierGroupId: "group-spice",
+              name: "Spice",
+              selectionType: "single",
+              isRequired: true,
+              options: [
+                {
+                  id: "option-hot",
+                  posModifierOptionId: "option-hot",
+                  name: "Hot",
+                  priceAdjustment: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ];
+
+  const priced = priceOrderCart([
+    {
+      posItemId: "pos-item-korma",
+      itemName: "Renamed locally",
+      quantity: 1,
+      modifierSelections: [
+        {
+          posModifierGroupId: "group-spice",
+          posModifierOptionId: "option-hot",
+          groupName: "Old Spice",
+          optionName: "Old Hot"
+        }
+      ]
+    }
+  ], { menuCatalog });
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.items[0].itemName, "Korma");
+  assert.equal(priced.items[0].posItemId, "pos-item-korma");
+  assert.equal(priced.items[0].posCategoryId, "cat-main");
+  assert.equal(priced.items[0].modifierSelections[0].posModifierGroupId, "group-spice");
+  assert.equal(priced.items[0].modifierSelections[0].posModifierOptionId, "option-hot");
+});
+
 test("createOrderCheckout creates a hosted Stripe session and getCheckoutSessionStatus finalizes the paid order", async () => {
   const env = {
     STRIPE_SECRET_KEY: "sk_test_123",

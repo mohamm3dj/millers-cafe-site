@@ -1,6 +1,6 @@
 "use strict";
 
-const RESEND_API_URL = "https://api.resend.com/emails";
+import { sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
   return String(value ?? "")
@@ -82,7 +82,7 @@ function customerEmailPayload(fromAddress, replyTo, order, reference) {
 
   return {
     from: fromAddress,
-    to: order.email,
+    to: singleRecipient(order.email),
     reply_to: replyTo,
     subject: `We received your Millers Café ${typeLabel(order.orderType).toLowerCase()} order (${reference})`,
     html: [
@@ -112,7 +112,7 @@ function ownerEmailPayload(fromAddress, replyTo, ownerEmail, order, reference) {
 
   return {
     from: fromAddress,
-    to: ownerEmail,
+    to: singleRecipient(ownerEmail),
     reply_to: replyTo,
     subject: `New ${typeLabel(order.orderType).toLowerCase()} order (${reference})`,
     html: [
@@ -165,7 +165,7 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
   if (status === "accepted") {
     return {
       from: fromAddress,
-      to: order.email,
+      to: singleRecipient(order.email),
       reply_to: replyTo,
       subject: `Your Millers Café ${type} order is accepted (${reference})`,
       html: [
@@ -187,7 +187,7 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
 
   return {
     from: fromAddress,
-    to: order.email,
+    to: singleRecipient(order.email),
     reply_to: replyTo,
     subject: `Your Millers Café ${type} order update (${reference})`,
     html: [
@@ -222,7 +222,7 @@ function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference
 
   return {
     from: fromAddress,
-    to: ownerEmail,
+    to: singleRecipient(ownerEmail),
     reply_to: replyTo,
     subject: `${reference} ${status === "accepted" ? "accepted" : "rejected"}`,
     html: [
@@ -238,33 +238,6 @@ function ownerDecisionPayload(fromAddress, replyTo, ownerEmail, order, reference
       "",
       ...details.map(([label, value]) => `${label}: ${value}`)
     ].join("\n")
-  };
-}
-
-async function sendResendEmail(apiKey, payload) {
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (response.ok) {
-    return { ok: true };
-  }
-
-  let errorText = "";
-  try {
-    errorText = await response.text();
-  } catch (error) {
-    errorText = "";
-  }
-
-  return {
-    ok: false,
-    error: `HTTP ${response.status}${errorText ? `: ${errorText}` : ""}`
   };
 }
 

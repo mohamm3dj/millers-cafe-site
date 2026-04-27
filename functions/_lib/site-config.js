@@ -162,16 +162,23 @@ function normalizeWeeklyHours(rawWeeklyHours, fallback) {
 function normalizeModifierOption(rawOption) {
   const name = normalizeText(rawOption?.name);
   if (!name) return null;
+  const id = normalizeText(rawOption?.id || rawOption?.posModifierOptionId || rawOption?.optionId);
 
-  return {
+  const normalized = {
     name,
     priceAdjustment: Math.round(Number(rawOption?.priceAdjustment || 0) * 100) / 100
   };
+  if (id) {
+    normalized.id = id;
+    normalized.posModifierOptionId = normalizeText(rawOption?.posModifierOptionId || id);
+  }
+  return normalized;
 }
 
 function normalizeModifierGroup(rawGroup) {
   const name = normalizeText(rawGroup?.name);
   if (!name) return null;
+  const id = normalizeText(rawGroup?.id || rawGroup?.posModifierGroupId || rawGroup?.groupId);
 
   const selectionType = normalizeText(rawGroup?.selectionType).toLowerCase() === "multiple"
     ? "multiple"
@@ -183,7 +190,7 @@ function normalizeModifierGroup(rawGroup) {
     ? Math.max(1, toFiniteNumber(rawGroup?.maxSelections, options.length || 1, { min: 1, max: 50 }))
     : 1;
 
-  return {
+  const normalized = {
     name,
     selectionType,
     isRequired: Boolean(rawGroup?.isRequired),
@@ -191,14 +198,23 @@ function normalizeModifierGroup(rawGroup) {
     maxSelections,
     options
   };
+  if (id) {
+    normalized.id = id;
+    normalized.posModifierGroupId = normalizeText(rawGroup?.posModifierGroupId || id);
+  }
+  if (normalizeText(rawGroup?.textPlaceholder)) {
+    normalized.textPlaceholder = normalizeText(rawGroup.textPlaceholder);
+  }
+  return normalized;
 }
 
 function normalizeMenuItem(rawItem) {
   const name = normalizeText(rawItem?.name);
   const basePrice = Number(rawItem?.basePrice);
   if (!name || !Number.isFinite(basePrice) || basePrice < 0) return null;
+  const id = normalizeText(rawItem?.id || rawItem?.posItemId || rawItem?.itemId);
 
-  return {
+  const normalized = {
     name,
     basePrice: Math.round(basePrice * 100) / 100,
     description: normalizeText(rawItem?.description),
@@ -209,26 +225,51 @@ function normalizeMenuItem(rawItem) {
       ? rawItem.modifierGroups.map(normalizeModifierGroup).filter(Boolean)
       : []
   };
+  if (id) {
+    normalized.id = id;
+    normalized.posItemId = normalizeText(rawItem?.posItemId || id);
+  }
+  const posCategoryId = normalizeText(rawItem?.posCategoryId || rawItem?.categoryId);
+  if (posCategoryId) normalized.posCategoryId = posCategoryId;
+  const categoryName = normalizeText(rawItem?.categoryName);
+  if (categoryName) normalized.categoryName = categoryName;
+  const printRouting = normalizeText(rawItem?.printRouting);
+  if (printRouting) normalized.printRouting = printRouting;
+  const menuVersion = normalizeText(rawItem?.menuVersion);
+  if (menuVersion) normalized.menuVersion = menuVersion;
+  return normalized;
 }
 
 function normalizeMenuCategory(rawCategory) {
   const name = normalizeText(rawCategory?.name);
   if (!name) return null;
+  const id = normalizeText(rawCategory?.id || rawCategory?.posCategoryId || rawCategory?.categoryId);
 
   const items = Array.isArray(rawCategory?.items)
     ? rawCategory.items.map(normalizeMenuItem).filter(Boolean)
     : [];
   if (items.length === 0) return null;
 
-  return {
+  const normalized = {
     name,
     description: normalizeText(rawCategory?.description),
     items
   };
+  if (id) {
+    normalized.id = id;
+    normalized.posCategoryId = normalizeText(rawCategory?.posCategoryId || id);
+  }
+  const categoryType = normalizeText(rawCategory?.categoryType);
+  if (categoryType) normalized.categoryType = categoryType;
+  const source = normalizeText(rawCategory?.source);
+  if (source) normalized.source = source;
+  return normalized;
 }
 
 function normalizeMenuCatalog(rawMenu) {
-  const source = Array.isArray(rawMenu) ? rawMenu : MILLERS_ORDER_MENU;
+  const source = Array.isArray(rawMenu)
+    ? rawMenu
+    : (Array.isArray(rawMenu?.menu) ? rawMenu.menu : MILLERS_ORDER_MENU);
   const categories = source.map(normalizeMenuCategory).filter(Boolean);
   return categories.length > 0 ? categories : MILLERS_ORDER_MENU.map(normalizeMenuCategory).filter(Boolean);
 }

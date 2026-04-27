@@ -36,6 +36,17 @@ export function resolveOrderAdminTokens(env) {
   ]);
 }
 
+export function resolveVenueBridgeTokens(env) {
+  return uniqueNonEmpty([
+    env.VENUE_BRIDGE_TOKEN,
+    ...String(env?.ADMIN_API_TOKENS || "")
+      .split(",")
+      .map((value) => value.trim()),
+    env.ORDERS_ADMIN_TOKEN,
+    env.BOOKINGS_FEED_TOKEN
+  ]);
+}
+
 export function resolveAdminTokens(env) {
   const configured = uniqueNonEmpty(
     String(env?.ADMIN_API_TOKENS || "")

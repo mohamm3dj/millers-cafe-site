@@ -36,14 +36,15 @@ test("validateBookingWindow rejects past dates and dates beyond the lookahead wi
   assert.match(tooFarCheck.error, /120 days ahead/i);
 });
 
-test("createBookingRecord assigns the smallest fitting table and normalizes the occasion", () => {
+test("createBookingRecord creates a pending request and normalizes the occasion", () => {
   const created = createBookingRecord([], makeBookingPayload({
     specialOccasion: "Something custom",
     partySize: 2
   }));
 
   assert.equal(created.ok, true);
-  assert.deepEqual(created.record.assignedTables, [4]);
+  assert.equal(created.record.status, "pending");
+  assert.deepEqual(created.record.assignedTables, []);
   assert.equal(created.record.specialOccasion, "None");
   assert.match(created.reference, /^MC-/);
 });

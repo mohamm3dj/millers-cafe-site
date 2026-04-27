@@ -1,6 +1,6 @@
 "use strict";
 
-const RESEND_API_URL = "https://api.resend.com/emails";
+import { sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
   return String(value ?? "")
@@ -8,33 +8,6 @@ function htmlEscape(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;");
-}
-
-async function sendResendEmail(apiKey, payload) {
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (response.ok) {
-    return { ok: true };
-  }
-
-  let errorText = "";
-  try {
-    errorText = await response.text();
-  } catch (error) {
-    errorText = "";
-  }
-
-  return {
-    ok: false,
-    error: `HTTP ${response.status}${errorText ? `: ${errorText}` : ""}`
-  };
 }
 
 export async function sendAccountSignInEmail(env, email, code, options = {}) {
@@ -53,7 +26,7 @@ export async function sendAccountSignInEmail(env, email, code, options = {}) {
 
   const payload = {
     from: fromAddress,
-    to: String(email || "").trim(),
+    to: singleRecipient(email),
     reply_to: replyTo,
     subject: `Your Millers Cafe sign-in code: ${code}`,
     html: [

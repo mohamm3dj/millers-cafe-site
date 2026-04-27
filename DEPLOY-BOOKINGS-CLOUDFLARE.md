@@ -40,11 +40,16 @@ This repo is now ready for online bookings + app feed, but it must run on Cloudf
 
 Add email confirmation variables:
    - `RESEND_API_KEY=<your-resend-api-key>`
-   - `BOOKINGS_EMAIL_FROM=Millers Cafe <bookings@your-verified-domain>`
+   - `BOOKINGS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
    - `BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe`
    - `BOOKINGS_REPLY_TO=help@millers.cafe`
+   - `ORDERS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
+   - `ORDERS_NOTIFICATION_EMAIL=help@millers.cafe`
+   - `ORDERS_REPLY_TO=help@millers.cafe`
+   - `ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
+   - `ACCOUNT_REPLY_TO=help@millers.cafe`
 
-If these are missing or delivery fails, booking creation is rejected.
+The `millers.cafe` domain must be verified in Resend with the DNS records Resend gives you. If email configuration is missing or Resend rejects delivery, the site returns `emailStatus: "pending"` for bookings and Stripe-paid orders so the booking/order is still saved, while unpaid direct order creation is rejected.
 
 ## Final app setting
 
