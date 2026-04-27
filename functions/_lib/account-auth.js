@@ -137,7 +137,7 @@ async function writeStoreRecord(env, key, value, ttlSeconds) {
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.put === "function") {
     if (Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
       await env.BOOKINGS_KV.put(key, JSON.stringify(value), {
-        expirationTtl: Math.max(1, Math.round(ttlSeconds))
+        expirationTtl: Math.max(60, Math.round(ttlSeconds))
       });
       return;
     }

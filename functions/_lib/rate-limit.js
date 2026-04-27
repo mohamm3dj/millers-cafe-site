@@ -43,7 +43,7 @@ async function writeRecord(env, key, record, ttlSeconds) {
   const normalized = normalizeRecord(record);
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.put === "function") {
     await env.BOOKINGS_KV.put(key, JSON.stringify(normalized), {
-      expirationTtl: Math.max(1, Math.round(Number(ttlSeconds || 60)))
+      expirationTtl: Math.max(60, Math.round(Number(ttlSeconds || 60)))
     });
     return;
   }

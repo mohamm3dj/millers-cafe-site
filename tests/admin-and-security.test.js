@@ -399,3 +399,28 @@ test("rate limiting rejects requests after the configured threshold", async () =
     }
   );
 });
+
+test("rate limiting uses Cloudflare KV compatible minimum expiration TTL", async () => {
+  let writtenTtl = 0;
+  const env = {
+    BOOKINGS_KV: {
+      async get() {
+        return null;
+      },
+      async put(_key, _value, options = {}) {
+        writtenTtl = Number(options.expirationTtl || 0);
+        if (writtenTtl < 60) {
+          throw new Error(`Invalid expiration_ttl of ${writtenTtl}`);
+        }
+      }
+    }
+  };
+
+  await enforceRateLimit(env, new Request("https://example.com/api/orders/checkout"), {
+    prefix: "short_window",
+    limit: 5,
+    windowSeconds: 42
+  });
+
+  assert.equal(writtenTtl, 60);
+});
