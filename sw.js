@@ -1,9 +1,9 @@
-const CACHE_NAME = "millers-v57";
+const CACHE_NAME = "millers-v58";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./assets/millers-logo.jpg",
+  "./assets/millers-logo.png",
   "./client-tools.js",
   "./page-transitions.js",
   "./home.js",

@@ -67,7 +67,7 @@ function updateRestaurantSchema(config) {
     "@context": "https://schema.org",
     "@type": "Restaurant",
     name: String(business.name || "Millers Café").trim() || "Millers Café",
-    image: `${window.location.origin}/assets/millers-logo.jpg`,
+    image: `${window.location.origin}/assets/millers-logo.png`,
     url: `${window.location.origin}/`,
     telephone: `+44 ${phoneDigits || "1472828600"}`,
     servesCuisine: ["Cafe", "Indian", "Desserts", "Milkshakes"],

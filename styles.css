@@ -287,12 +287,13 @@ main{
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 160px;
+  width: 240px;
   height: 160px;
   transform: translate(-50%, -50%) scale(.52);
-  border-radius: 50%;
-  padding: 8px;
-  background: radial-gradient(circle at 30% 24%, rgba(255,255,255,.6), rgba(140, 180, 206, .24));
+  border-radius: 20px;
+  padding: 0;
+  overflow: hidden;
+  background: #020202;
   box-shadow:
     0 0 0 1px rgba(140, 180, 206, .2),
     0 14px 28px rgba(30, 41, 59, .20);
@@ -304,7 +305,7 @@ main{
   width: 100%;
   height: 100%;
   display: block;
-  border-radius: 50%;
+  border-radius: inherit;
   object-fit: cover;
 }
 
@@ -445,80 +446,43 @@ main{
 }
 
 .logo{
-  width: 56px;
+  width: 84px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: 14px;
   overflow: hidden;
   display: block;
-  background: rgba(255,255,255,.88);
+  background: #020202;
   box-shadow: var(--shadow);
   user-select: none;
 }
 
 .glassHero .logo{
-  width: 122px;
-  height: 122px;
+  width: min(270px, 78vw);
+  height: auto;
+  aspect-ratio: 3 / 2;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   isolation: isolate;
-  border: 1px solid rgba(255,255,255,.92);
-  background:
-    radial-gradient(circle at 34% 26%, rgba(255,255,255,.98), rgba(248, 252, 255, .84) 58%, rgba(234, 243, 252, .76) 100%);
+  border: 1px solid rgba(255,255,255,.74);
+  border-radius: 20px;
+  background: #020202;
   box-shadow:
     0 18px 34px rgba(15, 23, 42, .14),
-    0 0 0 1px rgba(255,255,255,.84),
-    inset 0 2px 1px rgba(255,255,255,.98),
-    inset 0 -8px 16px rgba(162, 184, 205, .2);
+    0 0 0 1px rgba(255,255,255,.5);
   transform: none;
   transition: box-shadow 220ms ease;
 }
 
 .glassHero .logo::before{
-  content: "";
-  position: absolute;
-  inset: -16px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 66%);
-  border: 2px solid rgba(20, 184, 166, .34);
-  filter: blur(6px);
-  opacity: .5;
-  will-change: auto;
-  box-shadow:
-    0 0 0 2px rgba(20, 184, 166, .14),
-    0 0 18px rgba(20, 184, 166, .2);
-  z-index: -1;
-  animation: none;
+  display: none;
 }
 
 .glassHero .logo::after{
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 44%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
-  pointer-events: none;
+  display: none;
 }
 
 .glassHero .logoSteam{
-  position: absolute;
-  bottom: calc(100% - 6px);
-  width: 8px;
-  height: 44px;
-  border-radius: 999px;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0;
-  transform: translateX(-50%) translateY(8px) scaleY(.74);
-  background: linear-gradient(
-    180deg,
-    rgba(210, 226, 240, 0) 0%,
-    rgba(210, 226, 240, .58) 35%,
-    rgba(210, 226, 240, .16) 72%,
-    rgba(210, 226, 240, 0) 100%
-  );
-  filter: blur(.35px);
-  animation: logoSteamRise 3.6s ease-out infinite;
+  display: none;
 }
 
 .glassHero .logoSteam1{
@@ -547,8 +511,8 @@ main{
 .glassHero .logoImg{
   position: relative;
   z-index: 1;
-  border-radius: 50%;
-  border: 1px solid rgba(15, 23, 42, .1);
+  border-radius: inherit;
+  border: 0;
   filter: contrast(1.08) saturate(1.06) brightness(1.01);
 }
 
@@ -2154,8 +2118,9 @@ h1{
 }
 
 .bookingsHero .logo{
-  width: 94px;
-  height: 94px;
+  width: min(240px, 74vw);
+  height: auto;
+  aspect-ratio: 3 / 2;
 }
 
 .bookingsHero h1{
@@ -3367,8 +3332,9 @@ h1{
   }
 
   .glassHero .logo{
-    width: 106px;
-    height: 106px;
+    width: min(244px, 74vw);
+    height: auto;
+    aspect-ratio: 3 / 2;
   }
 
   .glassHero h1{
@@ -3464,8 +3430,9 @@ h1{
   }
 
   .bookingsHero .logo{
-    width: 84px;
-    height: 84px;
+    width: min(216px, 72vw);
+    height: auto;
+    aspect-ratio: 3 / 2;
   }
 
   .bookingsHero .subtitle{
@@ -3592,8 +3559,9 @@ h1{
   }
 
   .glassHero .logo{
-    width: 94px;
-    height: 94px;
+    width: min(220px, 78vw);
+    height: auto;
+    aspect-ratio: 3 / 2;
   }
 
   .glassHero h1{
