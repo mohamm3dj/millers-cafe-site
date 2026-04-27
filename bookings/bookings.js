@@ -545,18 +545,18 @@ function ensureBookingSuccessFx() {
     "      <div class=\"bookingSuccessTableGlyph\" aria-hidden=\"true\"></div>",
     "    </div>",
     "  </div>",
-    "  <p class=\"bookingSuccessStageTitle\">Checking availability...</p>",
+    "  <p class=\"bookingSuccessStageTitle\">Sending booking request...</p>",
     "</div>",
     "<div class=\"bookingSuccessConfirm\">",
     "  <div class=\"bookingSuccessConfirmCard\">",
     "    <div class=\"bookingSuccessConfirmCheck\" aria-hidden=\"true\">✓</div>",
-    "    <p class=\"bookingSuccessConfirmTitle\">Booking Confirmed</p>",
+    "    <p class=\"bookingSuccessConfirmTitle\">Booking Request Sent</p>",
     "    <p class=\"bookingSuccessConfirmRef\" id=\"bookingSuccessConfirmRef\">Reference pending</p>",
     "    <div class=\"bookingSuccessConfirmGrid\">",
     "      <div class=\"bookingSuccessConfirmRow\"><span>Date</span><strong id=\"bookingSuccessConfirmDate\">--</strong></div>",
     "      <div class=\"bookingSuccessConfirmRow\"><span>Time</span><strong id=\"bookingSuccessConfirmTime\">--</strong></div>",
     "      <div class=\"bookingSuccessConfirmRow\"><span>Party</span><strong id=\"bookingSuccessConfirmParty\">--</strong></div>",
-    "      <div class=\"bookingSuccessConfirmRow\"><span>Table(s)</span><strong id=\"bookingSuccessConfirmTables\">--</strong></div>",
+    "      <div class=\"bookingSuccessConfirmRow\"><span>Status</span><strong id=\"bookingSuccessConfirmTables\">--</strong></div>",
     "    </div>",
     "    <button type=\"button\" class=\"bookingSuccessDoneBtn\" id=\"bookingSuccessDoneBtn\">Done</button>",
     "  </div>",
@@ -610,7 +610,7 @@ function populateBookingSuccessFx(details) {
   setBookingSuccessText("bookingSuccessConfirmRef", reference ? `Reference: ${reference}` : "Reference: pending");
   setBookingSuccessText("bookingSuccessConfirmTime", time || "--");
   setBookingSuccessText("bookingSuccessConfirmParty", Number.isInteger(partySize) ? `${partySize}` : "--");
-  setBookingSuccessText("bookingSuccessConfirmTables", tables || "Assigned on arrival");
+  setBookingSuccessText("bookingSuccessConfirmTables", tables || "Waiting for POS acceptance");
 }
 
 function closeBookingSuccessFx(host) {
