@@ -152,6 +152,7 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
       assert.equal(form.get("line_items[0][price_data][unit_amount]"), "100");
       assert.equal(form.get("line_items[0][quantity]"), "2");
       assert.equal(form.get("customer_email"), "mo@example.com");
+      assert.equal(form.has("payment_method_types[0]"), false);
       assert.ok(capturedDraftId.length > 0);
 
       return jsonResponse({

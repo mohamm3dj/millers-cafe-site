@@ -133,7 +133,6 @@ function buildCheckoutForm(draft, requestUrl) {
   form.set("cancel_url", buildReturnUrl(requestUrl, draft.orderType, "cancelled"));
   form.set("customer_email", draft.payload.email);
   form.set("billing_address_collection", "auto");
-  form.set("payment_method_types[0]", "card");
   form.set("metadata[order_draft_id]", draft.id);
   form.set("metadata[order_type]", draft.orderType);
   form.set("metadata[service_date]", draft.payload.date);
