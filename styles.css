@@ -311,7 +311,8 @@ main{
   height: 100%;
   display: block;
   border-radius: inherit;
-  object-fit: cover;
+  object-fit: contain;
+  transform: translateX(7.75%);
 }
 
 .introWordmark{
@@ -518,7 +519,9 @@ main{
   z-index: 1;
   border-radius: inherit;
   border: 0;
+  object-fit: contain;
   filter: contrast(1.08) saturate(1.06) brightness(1.01);
+  transform: translateX(7.75%);
 }
 
 h1{
