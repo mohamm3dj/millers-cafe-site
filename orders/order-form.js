@@ -89,6 +89,7 @@ const postcodeInput = document.getElementById("orderPostcode");
 const deliveryAreaHint = document.getElementById("deliveryAreaHint");
 
 const menuSearchInput = document.getElementById("menuSearch");
+const menuSearchSubmitBtn = document.getElementById("menuSearchSubmit");
 const menuCategoryChips = document.getElementById("menuCategoryChips");
 const orderActiveCategoryPill = document.getElementById("orderActiveCategoryPill");
 const menuItemsList = document.getElementById("menuItemsList");
@@ -99,6 +100,8 @@ const basketCountEl = document.getElementById("orderBasketCount");
 const basketInlineTotalEl = document.getElementById("orderBasketTotalInline");
 const basketPanel = document.getElementById("orderBasketPanel");
 const basketCloseBtn = document.getElementById("orderBasketClose");
+const basketColumn = document.querySelector(".orderBasketColumn");
+const basketCheckoutBtn = document.getElementById("orderBasketCheckout");
 
 const modifierPanel = document.getElementById("orderModifierPanel");
 const modifierTitle = document.getElementById("orderModifierTitle");
@@ -129,6 +132,12 @@ const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
   style: "currency",
   currency: "GBP"
 });
+const DESKTOP_BASKET_MEDIA = typeof window !== "undefined" && typeof window.matchMedia === "function"
+  ? window.matchMedia("(min-width: 960px)")
+  : null;
+const MOBILE_ORDER_MENU_MEDIA = typeof window !== "undefined" && typeof window.matchMedia === "function"
+  ? window.matchMedia("(max-width: 959px)")
+  : null;
 
 let isSubmitting = false;
 let hasSelectableTime = true;
@@ -137,6 +146,7 @@ let nextCartId = 1;
 let activeDraft = null;
 let activeDraftAnchor = null;
 let selectedCategory = "";
+let mobileOpenCategory = "";
 let searchQuery = "";
 let statusPollTimer = null;
 let statusPollKey = "";
@@ -998,6 +1008,7 @@ function updateStickyCheckoutBar() {
   const totalPrice = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
   const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
   const hasItems = totalQuantity > 0;
+  const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
 
   const selectedDate = String(dateSelect?.value || "");
   const selectedTime = String(timeSelect?.value || "");
@@ -1005,17 +1016,27 @@ function updateStickyCheckoutBar() {
   const timeLabel = selectedTime ? formatOrderSlotTime(selectedTime) : "Pick a time";
 
   if (stickyCheckoutDateTime) {
-    stickyCheckoutDateTime.textContent = `${dateLabel} · ${timeLabel}`;
+    stickyCheckoutDateTime.textContent = isMobileMenu
+      ? `${totalQuantity} item${totalQuantity === 1 ? "" : "s"} in cart`
+      : `${dateLabel} · ${timeLabel}`;
   }
   if (stickyCheckoutOrder) {
-    stickyCheckoutOrder.textContent = `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totalPrice)}`;
+    stickyCheckoutOrder.textContent = isMobileMenu
+      ? formatGBP(totalPrice)
+      : `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totalPrice)}`;
   }
   if (stickyCheckoutBtn) {
-    stickyCheckoutBtn.textContent = "Continue";
-    stickyCheckoutBtn.disabled = isSubmitting || !hasSelectableTime || totalQuantity === 0;
+    stickyCheckoutBtn.textContent = isMobileMenu ? "Cart" : "Continue";
+    stickyCheckoutBtn.disabled = isMobileMenu
+      ? isSubmitting
+      : isSubmitting || !hasSelectableTime || totalQuantity === 0;
+  }
+  if (basketCheckoutBtn) {
+    basketCheckoutBtn.disabled = isSubmitting || !hasSelectableTime || totalQuantity === 0;
+    basketCheckoutBtn.textContent = isSubmitting ? "Redirecting..." : "Checkout";
   }
 
-  const showBar = currentOrderStep === 1 && (hasItems || isSubmitting);
+  const showBar = currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
   queueActiveCategoryPillSync();
 }
@@ -1710,14 +1731,17 @@ function allMenuEntries() {
   return entries;
 }
 
+function menuEntryMatchesQuery(entry, query) {
+  if (!query) return true;
+  const haystack = [entry.item.name, entry.categoryName, ...(entry.item.tags || [])].join(" ").toLowerCase();
+  return haystack.includes(query);
+}
+
 function menuEntriesForView() {
   const entries = allMenuEntries();
   const query = searchQuery.toLowerCase();
   if (query) {
-    return entries.filter((entry) => {
-      const haystack = [entry.item.name, entry.categoryName, ...(entry.item.tags || [])].join(" ").toLowerCase();
-      return haystack.includes(query);
-    });
+    return entries.filter((entry) => menuEntryMatchesQuery(entry, query));
   }
 
   const activeCategory = selectedCategory || defaultCategoryName();
@@ -1765,6 +1789,13 @@ function activeCategoryFromViewport() {
 
 function updateActiveCategoryPill(force = false) {
   if (!orderActiveCategoryPill) return;
+
+  if (isMobileOrderMenuLayout() && !searchQuery) {
+    orderActiveCategoryPill.hidden = true;
+    orderActiveCategoryPill.textContent = "";
+    lastActiveCategoryPillText = "";
+    return;
+  }
 
   let category = "";
   if (searchQuery) {
@@ -1935,10 +1966,90 @@ function buildMenuCard(entry) {
   return article;
 }
 
+function renderMobileMenuSections() {
+  if (!menuItemsList) return;
+
+  const query = searchQuery.toLowerCase();
+  menuItemsList.innerHTML = "";
+  menuCardElements = [];
+
+  let renderedSections = 0;
+
+  normalizedMenu.forEach((category, categoryIndex) => {
+    const entries = category.items
+      .map((item, itemIndex) => ({
+        categoryName: category.name,
+        categoryKey: category.categoryKey,
+        categoryIndex,
+        itemIndex,
+        item
+      }))
+      .filter((entry) => menuEntryMatchesQuery(entry, query));
+
+    if (entries.length === 0) return;
+    renderedSections += 1;
+
+    const section = document.createElement("section");
+    section.className = "orderMobileCategorySection";
+    section.dataset.category = category.name;
+
+    const isOpen = Boolean(query) || mobileOpenCategory === category.name;
+    if (isOpen) {
+      section.classList.add("isOpen");
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "orderMobileCategoryToggle";
+    button.dataset.mobileCategory = category.name;
+    button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+
+    const title = document.createElement("span");
+    title.className = "orderMobileCategoryName";
+    title.textContent = category.name;
+
+    const meta = document.createElement("span");
+    meta.className = "orderMobileCategoryCount";
+    meta.textContent = `${entries.length} item${entries.length === 1 ? "" : "s"}`;
+
+    button.appendChild(title);
+    button.appendChild(meta);
+    section.appendChild(button);
+
+    if (isOpen) {
+      const items = document.createElement("div");
+      items.className = "orderMobileCategoryItems";
+      entries.forEach((entry) => {
+        const card = buildMenuCard(entry);
+        menuCardElements.push(card);
+        items.appendChild(card);
+      });
+      section.appendChild(items);
+    }
+
+    menuItemsList.appendChild(section);
+  });
+
+  if (renderedSections === 0) {
+    const empty = document.createElement("div");
+    empty.className = "orderMenuEmpty";
+    empty.textContent = "No menu items match this search.";
+    menuItemsList.appendChild(empty);
+  }
+
+  syncMenuItemSelectionState();
+  updateActiveCategoryPill(true);
+}
+
 function renderMenuItems() {
   if (!menuItemsList) return;
 
   hideModifierPanel();
+
+  if (isMobileOrderMenuLayout()) {
+    renderMobileMenuSections();
+    return;
+  }
 
   const entries = menuEntriesForView();
   menuItemsList.innerHTML = "";
@@ -2448,11 +2559,20 @@ function syncItemsSummary() {
   }
 }
 
+function isDesktopBasketLayout() {
+  return Boolean(DESKTOP_BASKET_MEDIA?.matches);
+}
+
+function isMobileOrderMenuLayout() {
+  return Boolean(MOBILE_ORDER_MENU_MEDIA?.matches);
+}
+
 function setBasketOpen(open) {
   if (!basketPanel || !basketToggleBtn) return;
 
-  const canOpen = cartItems.length > 0;
-  const nextState = Boolean(open) && canOpen;
+  const forceOpen = isDesktopBasketLayout() && currentOrderStep === 1;
+  const canOpen = forceOpen || cartItems.length > 0 || (isMobileOrderMenuLayout() && currentOrderStep === 1);
+  const nextState = canOpen && (forceOpen || Boolean(open));
   basketPanel.hidden = !nextState;
   basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
   persistOrderDraft();
@@ -2664,7 +2784,9 @@ function renderCart() {
   orderTotalEl.textContent = formatGBP(roundedTotal);
 
   updateBasketSummary(roundedTotal, totalQuantity);
-  if (!hasItems) {
+  if (isDesktopBasketLayout()) {
+    setBasketOpen(true);
+  } else if (!hasItems) {
     setBasketOpen(false);
   }
 
@@ -2707,6 +2829,7 @@ function resetOrderBuilder() {
   cartItems = [];
   nextCartId = 1;
   selectedCategory = defaultCategoryName();
+  mobileOpenCategory = "";
   searchQuery = "";
   if (menuSearchInput) menuSearchInput.value = "";
 
@@ -2900,12 +3023,10 @@ function initializeMenuInteractions() {
     return false;
   }
 
-  if (orderHub && stickyCheckoutBar) {
-    const searchWrap = orderHub.querySelector(".orderSearchWrap");
-    if (searchWrap) {
-      orderHub.insertBefore(stickyCheckoutBar, searchWrap);
-    } else {
-      orderHub.prepend(stickyCheckoutBar);
+  if (stickyCheckoutBar) {
+    const checkoutHost = basketColumn || orderHub;
+    if (checkoutHost && stickyCheckoutBar.parentElement !== checkoutHost) {
+      checkoutHost.appendChild(stickyCheckoutBar);
     }
   }
 
@@ -2928,6 +3049,7 @@ function initializeMenuInteractions() {
     if (!(button instanceof HTMLButtonElement)) return;
 
     selectedCategory = String(button.dataset.category || "");
+    mobileOpenCategory = selectedCategory;
     renderCategoryChips();
     renderMenuItems();
     queueActiveCategoryPillSync();
@@ -2941,9 +3063,35 @@ function initializeMenuInteractions() {
     persistOrderDraft();
   });
 
+  menuSearchSubmitBtn?.addEventListener("click", () => {
+    searchQuery = normalizeText(menuSearchInput.value || "");
+    renderMenuItems();
+    queueActiveCategoryPillSync();
+    menuSearchInput.focus();
+    persistOrderDraft();
+  });
+
   menuItemsList.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    const categoryToggle = target.closest("button[data-mobile-category]");
+    if (categoryToggle instanceof HTMLButtonElement) {
+      const categoryName = String(categoryToggle.dataset.mobileCategory || "");
+      if (!categoryName) return;
+
+      selectedCategory = categoryName;
+      if (!searchQuery) {
+        mobileOpenCategory = mobileOpenCategory === categoryName ? "" : categoryName;
+      } else {
+        mobileOpenCategory = categoryName;
+      }
+      renderCategoryChips();
+      renderMenuItems();
+      queueActiveCategoryPillSync();
+      persistOrderDraft();
+      return;
+    }
 
     const button = target.closest("button.orderMenuActionBtn");
     if (!(button instanceof HTMLButtonElement)) return;
@@ -2973,6 +3121,11 @@ function initializeMenuInteractions() {
 
   basketCloseBtn?.addEventListener("click", () => {
     setBasketOpen(false);
+  });
+
+  basketCheckoutBtn?.addEventListener("click", () => {
+    if (!form || basketCheckoutBtn.disabled) return;
+    setOrderStep(2);
   });
 
   cartList?.addEventListener("click", (event) => {
@@ -3138,8 +3291,19 @@ async function initialize() {
   orderEditItemsBtn?.addEventListener("click", () => setOrderStep(1));
   orderBackToItemsBtn?.addEventListener("click", () => setOrderStep(1));
   stickyCheckoutBtn?.addEventListener("click", () => {
+    if (isMobileOrderMenuLayout() && currentOrderStep === 1) {
+      setBasketOpen(true);
+      return;
+    }
     if (!form || stickyCheckoutBtn.disabled) return;
     setOrderStep(2);
+  });
+  DESKTOP_BASKET_MEDIA?.addEventListener?.("change", () => {
+    const isOpen = basketToggleBtn?.getAttribute("aria-expanded") === "true";
+    renderCategoryChips();
+    renderMenuItems();
+    setBasketOpen(isOpen || isDesktopBasketLayout());
+    updateStickyCheckoutBar();
   });
   resultEl?.addEventListener("click", (event) => {
     const target = event.target;

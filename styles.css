@@ -39,6 +39,11 @@ body{
   position: relative;
 }
 
+body.orderBody{
+  animation: none;
+  transform: none;
+}
+
 body::before{
   content: "";
   position: fixed;
@@ -4062,11 +4067,18 @@ h1{
   gap: 5px;
 }
 
-.orderSearchWrap span{
+.orderSearchWrap label{
   font-size: 11px;
   font-weight: 620;
   color: #475569;
   letter-spacing: .02em;
+}
+
+.orderSearchControl{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .orderSearchWrap input{
@@ -4085,6 +4097,23 @@ h1{
   outline: 2px solid rgba(15, 118, 110, .3);
   outline-offset: 1px;
   border-color: rgba(15, 118, 110, .4);
+}
+
+.orderSearchButton{
+  border: 0;
+  border-radius: 11px;
+  min-height: 42px;
+  padding: 10px 16px;
+  background: #ad2333;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.orderSearchButton:hover{
+  background: #c83449;
 }
 
 .orderCategoryChips{
@@ -4132,6 +4161,69 @@ h1{
 }
 
 .orderMenuList{
+  display: grid;
+  gap: 8px;
+}
+
+.orderMobileCategorySection{
+  display: grid;
+  gap: 8px;
+}
+
+.orderMobileCategoryToggle{
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid rgba(226, 82, 102, .34);
+  border-radius: 12px;
+  min-height: 58px;
+  padding: 12px 44px 12px 14px;
+  background: #f8ccd5;
+  color: #2875e7;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.orderMobileCategoryToggle::after{
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid #0f172a;
+  border-bottom: 2px solid #0f172a;
+  transform: translateY(-65%) rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.orderMobileCategorySection.isOpen .orderMobileCategoryToggle::after{
+  transform: translateY(-35%) rotate(225deg);
+}
+
+.orderMobileCategoryName{
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 560;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.orderMobileCategoryCount{
+  color: #8f2238;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.orderMobileCategoryItems{
   display: grid;
   gap: 8px;
 }
@@ -4318,6 +4410,11 @@ h1{
   padding: 10px;
 }
 
+.orderBasketColumn{
+  display: grid;
+  gap: 8px;
+}
+
 .orderUndoToast{
   display: flex;
   align-items: center;
@@ -4455,6 +4552,24 @@ h1{
   font-size: 12px;
   font-weight: 620;
   cursor: pointer;
+}
+
+.orderBasketCheckout{
+  border: 0;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #0f766e, #0f172a);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.orderBasketCheckout:disabled{
+  opacity: .55;
+  cursor: not-allowed;
 }
 
 .orderModifierPanel{
@@ -4832,6 +4947,363 @@ h1{
   }
 }
 
+@media (max-width: 959px){
+  .orderPage{
+    padding-bottom: calc(env(safe-area-inset-bottom) + 118px);
+  }
+
+  .orderPage .orderTrustStrip{
+    display: none;
+  }
+
+  .orderPage .bookingsPanel{
+    overflow: visible;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .orderPage .orderItemsField{
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .orderItemsField > .bookingLabel{
+    display: none;
+  }
+
+  .orderPage .orderHub{
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .orderSearchWrap{
+    position: sticky;
+    top: calc(env(safe-area-inset-top) + 8px);
+    z-index: 18;
+  }
+
+  .orderPage .orderSearchWrap label{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .orderPage .orderSearchControl{
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) minmax(92px, auto);
+    gap: 8px;
+    padding: 5px;
+    border-radius: 8px;
+    border: 1px solid rgba(15, 23, 42, .09);
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+  }
+
+  .orderPage .orderSearchControl::before{
+    content: "";
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    width: 17px;
+    height: 17px;
+    border: 2px solid #e33f58;
+    border-radius: 999px;
+    transform: translateY(-55%);
+    pointer-events: none;
+  }
+
+  .orderPage .orderSearchControl::after{
+    content: "";
+    position: absolute;
+    left: 31px;
+    top: 50%;
+    width: 9px;
+    height: 2px;
+    border-radius: 999px;
+    background: #e33f58;
+    transform: translateY(7px) rotate(45deg);
+    pointer-events: none;
+  }
+
+  .orderPage .orderSearchWrap input{
+    min-height: 48px;
+    border: 0;
+    border-radius: 6px;
+    padding: 11px 10px 11px 46px;
+    background: #ffffff;
+    font-size: 16px;
+  }
+
+  .orderPage .orderSearchWrap input:focus{
+    outline: 2px solid rgba(226, 82, 102, .28);
+    outline-offset: -2px;
+    border-color: transparent;
+  }
+
+  .orderPage .orderSearchButton{
+    min-height: 48px;
+    border-radius: 6px;
+    padding: 10px 18px;
+    background: #ad2333;
+    font-size: 16px;
+  }
+
+  .orderPage .orderCategoryChips,
+  .orderPage .orderActiveCategoryPill,
+  .orderPage .orderBasketToggle{
+    display: none;
+  }
+
+  .orderPage .orderMenuList{
+    gap: 10px;
+  }
+
+  .orderPage .orderMobileCategoryToggle{
+    min-height: 61px;
+  }
+
+  .orderPage .orderMenuCard{
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .orderPage .orderBasketColumn{
+    display: block;
+  }
+
+  .orderPage .orderBasketPanel{
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(env(safe-area-inset-bottom) + 88px);
+    z-index: 50;
+    max-height: min(62vh, 480px);
+    overflow: auto;
+    padding: 14px;
+    border-radius: 16px;
+    border-color: rgba(226, 82, 102, .24);
+    background: #ffffff;
+    box-shadow: 0 22px 46px rgba(15, 23, 42, .26);
+  }
+
+  .orderPage .orderBasketCheckout{
+    width: 100%;
+    background: #ad2333;
+  }
+
+  .orderPage .stickyCheckoutBar{
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: 0;
+    padding: 10px 0 10px max(20px, env(safe-area-inset-left));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    border-radius: 0;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 -10px 24px rgba(15, 23, 42, .13);
+    transform: translateY(100%);
+  }
+
+  .orderPage .stickyCheckoutBar.isVisible{
+    transform: translateY(0);
+  }
+
+  .orderPage .stickyCheckoutSummary{
+    align-self: center;
+    gap: 5px;
+    padding-right: 16px;
+  }
+
+  .orderPage .stickyCheckoutDateTime{
+    display: block;
+    color: #dc4058;
+    font-size: 12px;
+    font-weight: 780;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .orderPage .stickyCheckoutOrder{
+    color: #dc4058;
+    font-size: 24px;
+    font-weight: 760;
+    line-height: 1;
+  }
+
+  .orderPage .stickyCheckoutBtn{
+    position: relative;
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 66px;
+    border-radius: 0;
+    border-left: 1px solid rgba(15, 23, 42, .14);
+    padding: 6px 10px;
+    background: transparent;
+    box-shadow: none;
+    color: #dc4058;
+    font-size: 12px;
+    font-weight: 760;
+  }
+
+  .orderPage .stickyCheckoutBtn::before{
+    content: "";
+    display: block;
+    width: 23px;
+    height: 25px;
+    border: 2px solid #0f172a;
+    border-radius: 7px;
+    box-shadow: inset 0 8px 0 rgba(15, 23, 42, .03);
+  }
+
+  .orderPage .stickyCheckoutBtn::after{
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 5px;
+    border: 2px solid #0f172a;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    transform: translateY(-19px);
+  }
+}
+
+@media (min-width: 960px){
+  main.orderPage{
+    width: min(1440px, 100%);
+    padding-inline: 24px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 34px);
+  }
+
+  .orderPage .bookingsPanel{
+    padding: 24px;
+  }
+
+  .orderPage .orderItemsField{
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .orderItemsField > .bookingLabel{
+    padding: 0 2px;
+  }
+
+  .orderPage .orderHub{
+    grid-template-columns: minmax(180px, 236px) minmax(0, 1fr) minmax(300px, 360px);
+    align-items: start;
+    gap: 22px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .orderSearchWrap{
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .orderPage .orderActiveCategoryPill{
+    grid-column: 2;
+    grid-row: 2;
+    top: calc(env(safe-area-inset-top) + 14px);
+  }
+
+  .orderPage .orderMenuList{
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .orderPage .orderCategoryChips{
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    position: sticky;
+    top: calc(env(safe-area-inset-top) + 18px);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    align-self: start;
+    max-height: calc(100vh - env(safe-area-inset-top) - 36px);
+    overflow: auto;
+    padding: 8px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(15, 23, 42, .1);
+    background: rgba(255,255,255,.96);
+    box-shadow: 0 18px 34px rgba(15, 23, 42, .09);
+  }
+
+  .orderPage .orderCategoryChip{
+    min-height: 52px;
+    border: 0;
+    border-bottom: 1px solid rgba(15, 23, 42, .1);
+    border-radius: 0;
+    background: transparent;
+    color: #334155;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 720;
+  }
+
+  .orderPage .orderCategoryChip:last-child{
+    border-bottom: 0;
+  }
+
+  .orderPage .orderCategoryChip.isActive{
+    border-radius: 10px;
+    border-bottom-color: transparent;
+    background: rgba(222, 82, 102, .13);
+    color: #0f172a;
+  }
+
+  .orderPage .orderBasketColumn{
+    grid-column: 3;
+    grid-row: 1 / span 4;
+    position: sticky;
+    top: calc(env(safe-area-inset-top) + 18px);
+    align-self: start;
+    max-height: calc(100vh - env(safe-area-inset-top) - 36px);
+    overflow: hidden;
+  }
+
+  .orderPage .orderBasketPanel{
+    max-height: calc(100vh - env(safe-area-inset-top) - 178px);
+    overflow: auto;
+  }
+
+  .orderPage .orderBasketClose{
+    display: none;
+  }
+
+  .orderPage .stickyCheckoutBar{
+    position: static;
+    inset: auto;
+    width: 100%;
+    transform: none;
+    z-index: auto;
+  }
+
+  .orderPage .stickyCheckoutBar.isVisible{
+    transform: none;
+  }
+}
+
 /* Compact delivery contact/address block */
 .bookingFormDelivery .bookingGrid{
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -4960,6 +5432,9 @@ h1{
 .orderBasketPanel[hidden],
 .orderCartList[hidden],
 .orderCartEmpty[hidden],
+.orderCheckoutField[hidden],
+.orderItemsField[hidden],
+.orderReviewRow[hidden],
 .bookingResult[hidden],
 .bookingError[hidden]{
   display: none !important;

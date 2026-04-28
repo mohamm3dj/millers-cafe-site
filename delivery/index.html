@@ -10,9 +10,9 @@
   <meta name="description" content="Order delivery from Millers Café online and pay securely with Stripe.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/delivery/">
-  <link rel="stylesheet" href="../styles.css?v=20260427a">
+  <link rel="stylesheet" href="../styles.css?v=20260428a">
 </head>
-<body>
+<body class="orderBody">
   <main class="orderPage">
     <div class="header">
       <a href="../" class="tile backBtn">← Back</a>
@@ -113,36 +113,42 @@
           <div class="bookingField bookingFieldWide orderItemsField">
             <span class="bookingLabel">Order items</span>
             <div class="orderHub">
-              <label class="orderSearchWrap">
-                <span>Search dishes</span>
-                <input id="menuSearch" type="search" maxlength="80" placeholder="Search by dish name..." autocomplete="off">
-              </label>
+              <div class="orderSearchWrap">
+                <label for="menuSearch">Search dishes</label>
+                <div class="orderSearchControl">
+                  <input id="menuSearch" type="search" maxlength="80" placeholder="Search your food" autocomplete="off">
+                  <button id="menuSearchSubmit" class="orderSearchButton" type="button">Search</button>
+                </div>
+              </div>
 
               <div id="menuCategoryChips" class="orderCategoryChips" role="tablist" aria-label="Menu categories"></div>
               <p id="orderActiveCategoryPill" class="orderActiveCategoryPill" aria-live="polite"></p>
               <div id="menuItemsList" class="orderMenuList" aria-live="polite"></div>
 
-              <button id="orderBasketToggle" class="orderBasketToggle" type="button" aria-expanded="false" aria-controls="orderBasketPanel">
-                <span id="orderBasketCount">0 items</span>
-                <strong id="orderBasketTotalInline">£0.00</strong>
-              </button>
+              <div class="orderBasketColumn">
+                <button id="orderBasketToggle" class="orderBasketToggle" type="button" aria-expanded="false" aria-controls="orderBasketPanel">
+                  <span id="orderBasketCount">0 items</span>
+                  <strong id="orderBasketTotalInline">£0.00</strong>
+                </button>
 
-              <div id="orderBasketPanel" class="orderBasketPanel" hidden>
-                <div class="orderBasketHead">
-                  <strong>Basket</strong>
-                  <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
+                <div id="orderBasketPanel" class="orderBasketPanel" hidden>
+                  <div class="orderBasketHead">
+                    <strong>Basket</strong>
+                    <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
+                  </div>
+
+                  <div id="orderCartEmpty" class="orderCartEmpty">No dishes added yet.</div>
+                  <ul id="orderCartList" class="orderCartList" hidden></ul>
+
+                  <div class="orderCartTotal">
+                    <span>Total</span>
+                    <strong id="orderTotal">£0.00</strong>
+                  </div>
+
+                  <button id="orderBasketCheckout" class="orderBasketCheckout" type="button">Checkout</button>
+                  <p id="orderSummaryPreview" class="bookingMeta">Add dishes to begin.</p>
+                  <input id="orderItems" name="itemsSummary" type="hidden">
                 </div>
-
-                <div id="orderCartEmpty" class="orderCartEmpty">No dishes added yet.</div>
-                <ul id="orderCartList" class="orderCartList" hidden></ul>
-
-                <div class="orderCartTotal">
-                  <span>Total</span>
-                  <strong id="orderTotal">£0.00</strong>
-                </div>
-
-                <p id="orderSummaryPreview" class="bookingMeta">Add dishes to begin.</p>
-                <input id="orderItems" name="itemsSummary" type="hidden">
               </div>
 
               <div id="orderModifierPanel" class="orderModifierPanel" hidden>
@@ -198,7 +204,7 @@
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
     </div>
   </main>
-  <script src="../client-tools.js?v=20260427a"></script>
-  <script type="module" src="../orders/order-form.js?v=20260427a"></script>
+  <script src="../client-tools.js?v=20260428a"></script>
+  <script type="module" src="../orders/order-form.js?v=20260428a"></script>
 </body>
 </html>
