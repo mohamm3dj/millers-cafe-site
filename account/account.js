@@ -331,12 +331,14 @@ function resetHistory() {
 }
 
 function renderProfile(account, profile) {
-  accountProfile = profile && typeof profile === "object" ? profile : null;
+  const signedIn = Boolean(normalizeEmail(account?.email || authenticatedEmail));
+  accountProfile = signedIn && profile && typeof profile === "object" ? profile : {};
 
-  if (profileForm) profileForm.hidden = !accountProfile;
-  if (profileEmptyState) profileEmptyState.hidden = Boolean(accountProfile);
+  if (profileForm) profileForm.hidden = !signedIn;
+  if (profileEmptyState) profileEmptyState.hidden = signedIn;
 
-  if (!accountProfile) {
+  if (!signedIn) {
+    accountProfile = null;
     if (profileForm instanceof HTMLFormElement) profileForm.reset();
     if (preferredOrderLink instanceof HTMLAnchorElement) {
       preferredOrderLink.href = "../collection/";
@@ -522,7 +524,10 @@ async function fetchJson(url, options = {}) {
   const body = await readJsonResponse(response);
 
   if (!response.ok) {
-    throw new Error(String(body.error || "Request failed."));
+    const fallbackMessage = response.status === 404
+      ? "Account service is unavailable."
+      : "Request failed.";
+    throw new Error(String(body.error || fallbackMessage));
   }
 
   return body;
@@ -606,12 +611,16 @@ async function loadAccountState() {
     renderSummary(authenticatedAccount || {});
     renderProfile(authenticatedAccount || {}, accountProfile);
     showSignedInState(authenticatedAccount || {});
-    await loadAuthenticatedHistory();
+    try {
+      await loadAuthenticatedHistory();
+    } catch (error) {
+      setFeedback(feedbackEl, "Signed in, but your history could not be loaded right now.", true);
+    }
   } catch (error) {
     authenticatedEmail = "";
     authenticatedAccount = null;
     showRequestState();
-    setFeedback(feedbackEl, error instanceof Error && error.message ? error.message : "Account could not be loaded.", true);
+    setFeedback(feedbackEl, "");
   }
 }
 
