@@ -1,7 +1,6 @@
 "use strict";
 
 (function menuPage() {
-  const MENU_CATALOG_API_BASE = "/api/menu-catalog";
   const knownCodes = new Set(["LC", "V", "VE", "VG", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
   const jumpLabelOverrides = new Map([
     ["Biryani Dishes", "Biryani"],
@@ -27,7 +26,6 @@
   const menuJumpWrap = document.getElementById("menuJumpWrap");
   const jumpMenuToggle = document.getElementById("jumpMenuToggle");
   const legendSection = document.querySelector(".menuLegend");
-  const footer = document.querySelector(".footer");
   const main = document.querySelector("main");
 
   let prefersReducedMotion = false;
@@ -35,15 +33,6 @@
     prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch (error) {
     prefersReducedMotion = false;
-  }
-
-  function formatGBP(value) {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(Number(value || 0));
   }
 
   function trackClientEvent(eventName, details = {}) {
@@ -99,81 +88,6 @@
       });
       el.appendChild(wrap);
     });
-  }
-
-  function createMenuItem(item) {
-    const row = document.createElement("div");
-    row.className = "menuItem";
-
-    const left = document.createElement("div");
-    left.className = "menuLeft";
-
-    const name = document.createElement("div");
-    name.className = "menuName";
-
-    const codes = Array.isArray(item.codes) ? item.codes.filter(Boolean) : [];
-    name.textContent = codes.length > 0 ? `${item.name} (${codes.join(", ")})` : item.name;
-    left.appendChild(name);
-
-    if (item.description) {
-      const description = document.createElement("div");
-      description.className = "menuDesc";
-      description.textContent = item.description;
-      left.appendChild(description);
-    }
-
-    const price = document.createElement("div");
-    price.className = "menuPrice";
-    price.textContent = item.publicPriceLabel || formatGBP(item.basePrice);
-
-    row.appendChild(left);
-    row.appendChild(price);
-    return row;
-  }
-
-  function createMenuSection(category) {
-    const section = document.createElement("section");
-    section.className = "tile menuSection menuGroup";
-    section.dataset.menu = "all";
-
-    const title = document.createElement("h2");
-    title.className = "tileTitle";
-    title.textContent = category.name;
-    section.appendChild(title);
-
-    if (category.description) {
-      const description = document.createElement("div");
-      description.className = "menuDesc menuNote";
-      description.textContent = category.description;
-      section.appendChild(description);
-    }
-
-    (category.items || []).forEach((item) => {
-      section.appendChild(createMenuItem(item));
-    });
-
-    return section;
-  }
-
-  async function renderLiveMenu() {
-    try {
-      const response = await fetch(MENU_CATALOG_API_BASE, {
-        headers: { Accept: "application/json" }
-      });
-      if (!response.ok) return false;
-      const body = await response.json();
-      const catalog = Array.isArray(body?.menu) ? body.menu : [];
-      if (!catalog.length || !main || !footer) return false;
-
-      main.querySelectorAll(".menuSection.menuGroup:not(.menuLegend)").forEach((section) => section.remove());
-      catalog.forEach((category) => {
-        const section = createMenuSection(category);
-        main.insertBefore(section, footer);
-      });
-      return true;
-    } catch (error) {
-      return false;
-    }
   }
 
   function allSections() {
@@ -532,8 +446,7 @@
     });
   }
 
-  async function initialize() {
-    await renderLiveMenu();
+  function initialize() {
     decorateLabels(main || document.body);
     ensureSectionIds();
     setupAccordions();
@@ -556,5 +469,5 @@
     }
   }
 
-  void initialize();
+  initialize();
 }());
