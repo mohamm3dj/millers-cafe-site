@@ -3,6 +3,7 @@
 import { MILLERS_ORDER_MENU } from "../../orders/menu-catalog.js";
 
 const MAX_ITEM_QUANTITY = 20;
+const COLLECTION_DISCOUNT_RATE = 0.10;
 const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
   style: "currency",
   currency: "GBP",
@@ -50,6 +51,10 @@ function formatGBP(value) {
 
 function toMinorUnits(value) {
   return Math.round(roundMoney(value) * 100);
+}
+
+function collectionDiscountForSubtotal(orderType, subtotal) {
+  return orderType === "collection" ? roundMoney(subtotal * COLLECTION_DISCOUNT_RATE) : 0;
 }
 
 function normalizedOrderType(value) {
@@ -344,9 +349,39 @@ export function priceOrderCart(rawCartItems, options = {}) {
   }
 
   const subtotal = roundMoney(pricedItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
-  const total = roundMoney(subtotal + deliveryFeeGBP);
+  const collectionDiscount = collectionDiscountForSubtotal(orderType, subtotal);
+  const total = roundMoney(Math.max(0, subtotal - collectionDiscount + deliveryFeeGBP));
+  const totalMinor = toMinorUnits(total);
+
+  if (collectionDiscount > 0) {
+    let remainingMinor = totalMinor;
+    pricedItems.forEach((item, index) => {
+      const isLast = index === pricedItems.length - 1;
+      const discountedLineMinor = isLast
+        ? remainingMinor
+        : Math.max(0, Math.round(toMinorUnits(item.linePrice) * (1 - COLLECTION_DISCOUNT_RATE)));
+      remainingMinor -= discountedLineMinor;
+      item.checkoutQuantity = 1;
+      item.checkoutUnitAmountMinor = discountedLineMinor;
+      item.stripeName = item.quantity > 1 ? `${item.quantity}x ${item.itemName}` : item.itemName;
+      item.stripeDescription = [
+        item.stripeDescription,
+        "10% collection discount applied"
+      ].filter(Boolean).join(" | ");
+    });
+  } else {
+    pricedItems.forEach((item) => {
+      item.checkoutQuantity = item.quantity;
+      item.checkoutUnitAmountMinor = toMinorUnits(item.unitPrice);
+    });
+  }
+
   const lines = pricedItems.map(cartLineSummary);
 
+  if (collectionDiscount > 0) {
+    lines.push(`Subtotal = ${formatGBP(subtotal)}`);
+    lines.push(`Collection discount (10%) = -${formatGBP(collectionDiscount)}`);
+  }
   if (deliveryFeeGBP > 0) {
     lines.push(`Delivery fee = ${formatGBP(deliveryFeeGBP)}`);
   }
@@ -359,10 +394,12 @@ export function priceOrderCart(rawCartItems, options = {}) {
     itemsSummary: lines.join("\n"),
     subtotal,
     subtotalMinor: toMinorUnits(subtotal),
+    collectionDiscount,
+    collectionDiscountMinor: toMinorUnits(collectionDiscount),
     deliveryFee: deliveryFeeGBP,
     deliveryFeeMinor: toMinorUnits(deliveryFeeGBP),
     total,
-    totalMinor: toMinorUnits(total),
+    totalMinor,
     totalQuantity: pricedItems.reduce((sum, item) => sum + item.quantity, 0),
     currency: "gbp"
   };

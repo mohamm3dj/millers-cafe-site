@@ -143,9 +143,9 @@ function buildCheckoutForm(draft, requestUrl) {
   form.set("payment_intent_data[metadata][order_type]", draft.orderType);
 
   pricedCart.items.forEach((item, index) => {
-    form.set(`line_items[${index}][quantity]`, String(item.quantity));
+    form.set(`line_items[${index}][quantity]`, String(item.checkoutQuantity ?? item.quantity));
     form.set(`line_items[${index}][price_data][currency]`, pricedCart.currency);
-    form.set(`line_items[${index}][price_data][unit_amount]`, String(Math.round(item.unitPrice * 100)));
+    form.set(`line_items[${index}][price_data][unit_amount]`, String(item.checkoutUnitAmountMinor ?? Math.round(item.unitPrice * 100)));
     form.set(`line_items[${index}][price_data][product_data][name]`, item.stripeName);
     if (item.stripeDescription) {
       form.set(`line_items[${index}][price_data][product_data][description]`, item.stripeDescription);

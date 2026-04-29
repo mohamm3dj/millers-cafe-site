@@ -75,6 +75,28 @@ test("priceOrderCart rebuilds the basket total and delivery fee from the catalog
   assert.match(priced.itemsSummary, /Total = £20\.00/);
 });
 
+test("priceOrderCart applies a 10 percent collection discount", () => {
+  const priced = priceOrderCart([
+    {
+      itemName: "Papadom",
+      quantity: 2,
+      modifierSelections: []
+    }
+  ], {
+    orderType: "collection"
+  });
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.subtotal, 2);
+  assert.equal(priced.collectionDiscount, 0.2);
+  assert.equal(priced.total, 1.8);
+  assert.equal(priced.totalMinor, 180);
+  assert.equal(priced.items[0].checkoutQuantity, 1);
+  assert.equal(priced.items[0].checkoutUnitAmountMinor, 180);
+  assert.match(priced.itemsSummary, /Collection discount \(10%\) = -£0\.20/);
+  assert.match(priced.itemsSummary, /Total = £1\.80/);
+});
+
 test("priceOrderCart preserves POS menu ids from the live catalog", () => {
   const menuCatalog = [
     {
@@ -202,8 +224,8 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
       const form = new URLSearchParams(String(options.body || ""));
       capturedDraftId = String(form.get("client_reference_id") || "");
 
-      assert.equal(form.get("line_items[0][price_data][unit_amount]"), "100");
-      assert.equal(form.get("line_items[0][quantity]"), "2");
+      assert.equal(form.get("line_items[0][price_data][unit_amount]"), "180");
+      assert.equal(form.get("line_items[0][quantity]"), "1");
       assert.equal(form.get("customer_email"), "mo@example.com");
       assert.equal(form.has("payment_method_types[0]"), false);
       assert.ok(capturedDraftId.length > 0);
@@ -222,7 +244,7 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
         payment_status: "paid",
         status: "complete",
         payment_intent: "pi_test_123",
-        amount_total: 200,
+        amount_total: 180,
         currency: "gbp"
       });
     }
@@ -239,7 +261,7 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
 
   assert.equal(created.ok, true);
   assert.equal(created.sessionId, "cs_test_123");
-  assert.equal(created.amountTotal, 200);
+  assert.equal(created.amountTotal, 180);
 
   const status = await getCheckoutSessionStatus(env, created.sessionId);
 
@@ -253,7 +275,7 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
   assert.equal(stored[0].paymentStatus, "paid");
   assert.equal(stored[0].paymentSessionId, "cs_test_123");
   assert.equal(stored[0].paymentIntentId, "pi_test_123");
-  assert.equal(stored[0].paymentAmountTotal, 200);
+  assert.equal(stored[0].paymentAmountTotal, 180);
   assert.equal(stored[0].paymentCurrency, "gbp");
 });
 
@@ -298,7 +320,7 @@ test("handleStripeWebhook verifies the signature and finalizes the order from ch
         client_reference_id: capturedDraftId,
         payment_status: "paid",
         payment_intent: "pi_test_webhook",
-        amount_total: 100,
+        amount_total: 90,
         currency: "gbp"
       }
     }

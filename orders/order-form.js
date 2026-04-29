@@ -23,6 +23,7 @@ let DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
 let MAX_ORDER_LOOKAHEAD_DAYS = 90;
 let OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat (Mon closed)
 const MAX_ITEM_QUANTITY = 20;
+const COLLECTION_DISCOUNT_RATE = 0.10;
 const UK_POSTCODE_REGEX = /^([A-Z]{1,2}\d[A-Z\d]?)\s(\d[A-Z]{2})$/;
 let DELIVERY_OUTWARD_PREFIXES = new Set([
   "DN31",
@@ -189,6 +190,20 @@ function summarySafeText(value) {
 
 function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function cartPricingTotals() {
+  const subtotal = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
+  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const collectionDiscount = currentOrderType() === "collection"
+    ? roundMoney(subtotal * COLLECTION_DISCOUNT_RATE)
+    : 0;
+  return {
+    subtotal,
+    collectionDiscount,
+    total: roundMoney(Math.max(0, subtotal - collectionDiscount)),
+    totalQuantity
+  };
 }
 
 function normalizeKey(value) {
@@ -707,15 +722,15 @@ function clearInlineValidation() {
 function updateOrderReviewRow() {
   if (!orderReviewText) return;
   const orderType = String(orderTypeField?.value || "collection").toLowerCase();
-  const totalPrice = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
-  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-  const dishLabel = totalQuantity === 1 ? "dish" : "dishes";
+  const totals = cartPricingTotals();
+  const dishLabel = totals.totalQuantity === 1 ? "dish" : "dishes";
   const dateLabel = dateSelect?.value
     ? (dateSelect.value === ukTodayISODate() ? "Today" : displayDateLabel(dateSelect.value))
     : "No date";
   const timeLabel = timeSelect?.value ? formatOrderSlotTime(timeSelect.value) : "No time";
   const typeLabel = orderType === "delivery" ? "Delivery" : "Collection";
-  orderReviewText.textContent = `${typeLabel} · ${totalQuantity} ${dishLabel} · ${formatGBP(totalPrice)} · ${dateLabel} at ${timeLabel}`;
+  const discountLabel = totals.collectionDiscount > 0 ? " · 10% discount" : "";
+  orderReviewText.textContent = `${typeLabel} · ${totals.totalQuantity} ${dishLabel} · ${formatGBP(totals.total)}${discountLabel} · ${dateLabel} at ${timeLabel}`;
 }
 
 function updateOrderFlowStepLabels() {
@@ -992,9 +1007,8 @@ function renderOrderSlotCards(rows) {
 function updateStickyCheckoutBar() {
   if (!stickyCheckoutBar) return;
 
-  const totalPrice = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
-  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-  const hasItems = totalQuantity > 0;
+  const totals = cartPricingTotals();
+  const hasItems = totals.totalQuantity > 0;
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
 
   const selectedDate = String(dateSelect?.value || "");
@@ -1004,22 +1018,23 @@ function updateStickyCheckoutBar() {
 
   if (stickyCheckoutDateTime) {
     stickyCheckoutDateTime.textContent = isMobileMenu
-      ? `${totalQuantity} item${totalQuantity === 1 ? "" : "s"} in cart`
+      ? `${totals.totalQuantity} item${totals.totalQuantity === 1 ? "" : "s"} in cart`
       : `${dateLabel} · ${timeLabel}`;
   }
   if (stickyCheckoutOrder) {
+    const discountText = totals.collectionDiscount > 0 ? " after 10% off" : "";
     stickyCheckoutOrder.textContent = isMobileMenu
-      ? formatGBP(totalPrice)
-      : `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totalPrice)}`;
+      ? `${formatGBP(totals.total)}${discountText}`
+      : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${discountText}`;
   }
   if (stickyCheckoutBtn) {
     stickyCheckoutBtn.textContent = isMobileMenu ? "Cart" : "Continue";
     stickyCheckoutBtn.disabled = isMobileMenu
       ? isSubmitting
-      : isSubmitting || !hasSelectableTime || totalQuantity === 0;
+      : isSubmitting || !hasSelectableTime || totals.totalQuantity === 0;
   }
   if (basketCheckoutBtn) {
-    basketCheckoutBtn.disabled = isSubmitting || !hasSelectableTime || totalQuantity === 0;
+    basketCheckoutBtn.disabled = isSubmitting || !hasSelectableTime || totals.totalQuantity === 0;
     basketCheckoutBtn.textContent = isSubmitting ? "Redirecting..." : "Checkout";
   }
 
@@ -2536,13 +2551,17 @@ function syncItemsSummary() {
   }
 
   const lines = cartItems.map(lineSummary);
-  const total = roundMoney(cartItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
-  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-  lines.push(`Total = ${formatGBP(total)}`);
+  const totals = cartPricingTotals();
+  if (totals.collectionDiscount > 0) {
+    lines.push(`Subtotal = ${formatGBP(totals.subtotal)}`);
+    lines.push(`Collection discount (10%) = -${formatGBP(totals.collectionDiscount)}`);
+  }
+  lines.push(`Total = ${formatGBP(totals.total)}`);
 
   itemsInput.value = lines.join("\n");
   if (orderSummaryPreview) {
-    orderSummaryPreview.textContent = `${totalQuantity} ${totalQuantity === 1 ? "dish" : "dishes"} · Total ${formatGBP(total)}.`;
+    const discountText = totals.collectionDiscount > 0 ? " · 10% collection discount applied" : "";
+    orderSummaryPreview.textContent = `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · Total ${formatGBP(totals.total)}${discountText}.`;
   }
 }
 
@@ -2706,13 +2725,7 @@ function renderCart() {
   cartItems.forEach(recalculateCartItem);
 
   cartList.innerHTML = "";
-  let totalPrice = 0;
-  let totalQuantity = 0;
-
   cartItems.forEach((item) => {
-    totalPrice += Number(item.linePrice || 0);
-    totalQuantity += Number(item.quantity || 0);
-
     const li = document.createElement("li");
     li.className = "orderCartItem";
     li.dataset.cartId = String(item.id);
@@ -2763,14 +2776,14 @@ function renderCart() {
     cartList.appendChild(li);
   });
 
-  const roundedTotal = roundMoney(totalPrice);
+  const totals = cartPricingTotals();
   const hasItems = cartItems.length > 0;
 
   cartEmpty.hidden = hasItems;
   cartList.hidden = !hasItems;
-  orderTotalEl.textContent = formatGBP(roundedTotal);
+  orderTotalEl.textContent = formatGBP(totals.total);
 
-  updateBasketSummary(roundedTotal, totalQuantity);
+  updateBasketSummary(totals.total, totals.totalQuantity);
   if (isDesktopBasketLayout()) {
     setBasketOpen(true);
   } else if (!hasItems) {
