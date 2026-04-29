@@ -3,6 +3,15 @@
 (function menuPage() {
   const knownCodes = new Set(["LC", "V", "VE", "VG", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
   const jumpLabelOverrides = new Map([
+    ["Shakes and Chillers", "Shakes"],
+    ["Desserts and Cakes", "Desserts"],
+    ["Starters - Mixed", "Mixed Starters"],
+    ["Starters - Lamb", "Lamb Starters"],
+    ["Starters - Seafood", "Seafood Starters"],
+    ["Starters - Vegetarian", "Veg Starters"],
+    ["Starters - Chicken", "Chicken Starters"],
+    ["Mumbai Sizzle Burgers", "Burgers"],
+    ["Vegetarian Mains", "Veg Mains"],
     ["Biryani Dishes", "Biryani"],
     ["Tandoori Dishes", "Tandoori"],
     ["Vegetarian Specialities", "Vegetarian"],

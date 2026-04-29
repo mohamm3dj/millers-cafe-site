@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Millers Cafe Logo</title>
-  <desc id="desc">White oval logo with gold outline and clear Millers Cafe text.</desc>
+  <title id="title">Millers Café Logo</title>
+  <desc id="desc">White oval logo with gold outline and clear Millers Café text.</desc>
   <defs>
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#f2dd9f" />

@@ -28,10 +28,10 @@ export async function sendAccountSignInEmail(env, email, code, options = {}) {
     from: fromAddress,
     to: singleRecipient(email),
     reply_to: replyTo,
-    subject: `Your Millers Cafe sign-in code: ${code}`,
+    subject: `Your Millers Café sign-in code: ${code}`,
     html: [
       "<div style=\"font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;\">",
-      "<h2 style=\"margin: 0 0 12px;\">Sign in to your Millers Cafe account</h2>",
+      "<h2 style=\"margin: 0 0 12px;\">Sign in to your Millers Café account</h2>",
       "<p style=\"margin: 0 0 12px;\">Use this one-time code to view your bookings and order history.</p>",
       `<p style="margin: 0 0 14px; font-size: 28px; font-weight: 700; letter-spacing: 0.18em;">${htmlEscape(code)}</p>`,
       `<p style="margin: 0 0 12px;">This code expires in ${htmlEscape(expiresInMinutes)} minute${expiresInMinutes === 1 ? "" : "s"}.</p>`,
@@ -39,7 +39,7 @@ export async function sendAccountSignInEmail(env, email, code, options = {}) {
       "</div>"
     ].join(""),
     text: [
-      "Sign in to your Millers Cafe account.",
+      "Sign in to your Millers Café account.",
       "",
       `Your one-time code is: ${code}`,
       `This code expires in ${expiresInMinutes} minute${expiresInMinutes === 1 ? "" : "s"}.`,

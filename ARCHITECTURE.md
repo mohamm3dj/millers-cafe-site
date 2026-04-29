@@ -1,4 +1,4 @@
-# Millers Cafe Site Backend Architecture
+# Millers Café Site Backend Architecture
 
 This project keeps the existing frontend and visual design, but the Pages Functions backend is now organized in layered modules:
 

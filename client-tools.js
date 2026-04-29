@@ -91,8 +91,21 @@
     };
   }
 
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (global.location && global.location.protocol === "file:") return;
+
+    global.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // The site still works normally if offline support is unavailable.
+      });
+    }, { once: true });
+  }
+
   global.MillersClient = {
     trackEvent,
     mountTurnstile
   };
+
+  registerServiceWorker();
 }(window));

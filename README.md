@@ -1,4 +1,4 @@
-# Millers Cafè Site
+# Millers Café Site
 
 Static frontend pages plus Cloudflare Pages Functions for bookings, orders, and order-status flows.
 

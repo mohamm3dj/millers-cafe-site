@@ -943,8 +943,8 @@ async function handleSubmit(event) {
     showResult(`${successMessage} ${emailNote}`, reference);
     setNotice(
       emailStatus === "sent"
-        ? "Booking request sent to Millers Cafe for review."
-        : "Booking request sent to Millers Cafe for review. Email is delayed.",
+        ? "Booking request sent to Millers Café for review."
+        : "Booking request sent to Millers Café for review. Email is delayed.",
       emailStatus !== "sent"
     );
 

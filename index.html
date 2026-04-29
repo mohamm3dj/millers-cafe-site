@@ -32,7 +32,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
 
-  <link rel="stylesheet" href="styles.css?v=20260428b">
+  <link rel="stylesheet" href="styles.css?v=20260429c">
   <script type="application/ld+json" id="restaurantSchema">
     {
       "@context": "https://schema.org",
@@ -69,10 +69,10 @@
         <div class="introSaucer"></div>
       </div>
       <div class="introLogoWrap">
-        <img class="introLogo" src="./assets/millers-logo.png" alt="">
+        <img class="introLogo" src="./assets/millers-logo.webp" alt="">
       </div>
     </div>
-    <div class="introWordmark">Millers Cafe</div>
+    <div class="introWordmark">Millers Café</div>
   </div>
 
   <main>
@@ -83,8 +83,9 @@
         <span class="logoSteam logoSteam1" aria-hidden="true"></span>
         <span class="logoSteam logoSteam2" aria-hidden="true"></span>
         <span class="logoSteam logoSteam3" aria-hidden="true"></span>
-        <img class="logoImg" src="./assets/millers-logo.png" alt="Millers Cafe logo">
+        <img class="logoImg" src="./assets/millers-logo.webp" alt="Millers Café logo">
       </div>
+      <h1 class="visuallyHidden">Millers Café</h1>
       <div id="heroStatus" class="heroStatus isClosed" role="status" aria-live="polite">
         <span class="statusDot" aria-hidden="true"></span>
         <span id="heroStatusText">Checking opening status...</span>
@@ -159,16 +160,16 @@
         <div class="tileCta">Open Account</div>
       </a>
 
-      <div
-        id="locationFlipTile"
-        class="tile homeTile homeTileLocation homeFlipTile"
-        role="button"
-        tabindex="0"
-        aria-label="Find Us card. Activate to show directions and copy address."
-        aria-expanded="false"
-      >
+      <div id="locationFlipTile" class="tile homeTile homeTileLocation homeFlipTile">
         <div class="homeFlipInner">
-          <div class="homeFlipFace homeFlipFront">
+          <button
+            id="locationFlipTrigger"
+            class="homeFlipFace homeFlipFront homeFlipTrigger"
+            type="button"
+            aria-label="Find Us card. Activate to show directions and copy address."
+            aria-expanded="false"
+            aria-controls="locationFlipBack"
+          >
             <div class="homeTileIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 20.5s-5-4.6-5-8.7a5 5 0 1 1 10 0c0 4.1-5 8.7-5 8.7Z"></path>
@@ -178,9 +179,9 @@
             <div class="tileTitle">Find Us</div>
             <div class="tileSub">Tap to reveal directions and address options</div>
             <div class="tileCta">Show Options</div>
-          </div>
+          </button>
 
-          <div class="homeFlipFace homeFlipBack">
+          <div class="homeFlipFace homeFlipBack" id="locationFlipBack" aria-hidden="true" inert>
             <div class="tileTitle">Find Us</div>
             <a
               class="flipLink flipNoToggle"
@@ -195,16 +196,16 @@
         </div>
       </div>
 
-      <div
-        id="contactFlipTile"
-        class="tile homeTile homeTileContact homeFlipTile"
-        role="button"
-        tabindex="0"
-        aria-label="Contact Us card. Activate to show contact details."
-        aria-expanded="false"
-      >
+      <div id="contactFlipTile" class="tile homeTile homeTileContact homeFlipTile">
         <div class="homeFlipInner">
-          <div class="homeFlipFace homeFlipFront">
+          <button
+            id="contactFlipTrigger"
+            class="homeFlipFace homeFlipFront homeFlipTrigger"
+            type="button"
+            aria-label="Contact Us card. Activate to show contact details."
+            aria-expanded="false"
+            aria-controls="contactFlipBack"
+          >
             <div class="homeTileIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M6.2 5.8h3.1l1.1 3.1-2.1 1.5a12 12 0 0 0 5.2 5.2l1.5-2.1 3.1 1.1v3.1c0 .8-.7 1.4-1.5 1.4-6.4 0-11.7-5.2-11.7-11.7 0-.8.6-1.5 1.3-1.5Z"></path>
@@ -213,9 +214,9 @@
             <div class="tileTitle">Contact Us</div>
             <div class="tileSub">Tap to reveal phone and email</div>
             <div class="tileCta">Show Details</div>
-          </div>
+          </button>
 
-          <div class="homeFlipFace homeFlipBack" id="contactFlipBack">
+          <div class="homeFlipFace homeFlipBack" id="contactFlipBack" aria-hidden="true" inert>
             <div class="tileTitle">Contact Us</div>
             <a class="flipLink flipNoToggle" href="tel:+441472828600">01472 828600 / 823030</a>
             <a class="flipLink flipNoToggle" href="mailto:help@millers.cafe">help@millers.cafe</a>
@@ -235,8 +236,8 @@
 
   </main>
 
-  <script src="./client-tools.js?v=20260428a"></script>
-  <script src="./home.js?v=20260428a"></script>
+  <script src="./client-tools.js?v=20260429c"></script>
+  <script src="./home.js?v=20260429c"></script>
 
 </body>
 </html>

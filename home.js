@@ -262,10 +262,53 @@ function setupRippleEffects() {
 function setupFlipTile(tile) {
   if (!tile) return;
 
-  const setFlipped = (flipped) => {
-    tile.classList.toggle("isFlipped", flipped);
-    tile.setAttribute("aria-expanded", flipped ? "true" : "false");
+  const trigger = tile.querySelector(".homeFlipTrigger");
+  const front = tile.querySelector(".homeFlipFront");
+  const back = tile.querySelector(".homeFlipBack");
+  if (!(trigger instanceof HTMLButtonElement) || !(front instanceof HTMLElement) || !(back instanceof HTMLElement)) {
+    return;
+  }
+
+  const setFaceAvailable = (face, available) => {
+    face.toggleAttribute("inert", !available);
+    face.setAttribute("aria-hidden", available ? "false" : "true");
+    const tabStopCandidates = [
+      face,
+      ...face.querySelectorAll("a, button, input, select, textarea, [tabindex]")
+    ];
+    tabStopCandidates.forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      if (available) {
+        const priorTabIndex = el.dataset.priorTabIndex;
+        if (priorTabIndex === "none") {
+          el.removeAttribute("tabindex");
+        } else if (typeof priorTabIndex === "string") {
+          el.setAttribute("tabindex", priorTabIndex);
+        }
+        delete el.dataset.priorTabIndex;
+        return;
+      }
+
+      if (!("priorTabIndex" in el.dataset)) {
+        el.dataset.priorTabIndex = el.hasAttribute("tabindex") ? el.getAttribute("tabindex") || "" : "none";
+      }
+      el.setAttribute("tabindex", "-1");
+    });
   };
+
+  const setFlipped = (flipped, options = {}) => {
+    tile.classList.toggle("isFlipped", flipped);
+    trigger.setAttribute("aria-expanded", flipped ? "true" : "false");
+    setFaceAvailable(front, !flipped);
+    setFaceAvailable(back, flipped);
+    if (!flipped && options.restoreFocus) {
+      trigger.focus({ preventScroll: true });
+    }
+  };
+
+  trigger.addEventListener("click", () => {
+    setFlipped(!tile.classList.contains("isFlipped"));
+  });
 
   tile.addEventListener("click", (event) => {
     const target = event.target;
@@ -275,18 +318,12 @@ function setupFlipTile(tile) {
 
     if (target.closest(".flipBackBtn")) {
       event.preventDefault();
-      setFlipped(false);
-      return;
+      setFlipped(false, { restoreFocus: true });
     }
-
-    setFlipped(!tile.classList.contains("isFlipped"));
   });
 
   tile.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setFlipped(!tile.classList.contains("isFlipped"));
-    } else if (event.key === "Escape") {
+    if (event.key === "Escape") {
       setFlipped(false);
     }
   });
@@ -295,6 +332,8 @@ function setupFlipTile(tile) {
     if (!(event.target instanceof Element)) return;
     if (!tile.contains(event.target)) setFlipped(false);
   });
+
+  setFlipped(false);
 }
 
 setupFlipTile(document.getElementById("locationFlipTile"));

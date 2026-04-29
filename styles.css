@@ -20,6 +20,19 @@
   display: none !important;
 }
 
+.visuallyHidden{
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -991,7 +1004,7 @@ h1{
 
 .homeFlipTile{
   padding: 0;
-  cursor: pointer;
+  cursor: default;
   min-height: 176px;
   perspective: 1200px;
 }
@@ -1042,6 +1055,22 @@ h1{
   border-radius: inherit;
   transition: transform 420ms cubic-bezier(.2,.82,.24,1), opacity 280ms ease;
   transform-origin: center center;
+}
+
+.homeFlipTrigger{
+  appearance: none;
+  border: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.homeFlipTrigger:focus-visible{
+  outline: 3px solid rgba(15, 118, 110, .42);
+  outline-offset: -8px;
 }
 
 .homeFlipFront{

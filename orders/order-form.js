@@ -584,7 +584,7 @@ function updateDeliveryAreaHint() {
         ? "This postcode is outside our online delivery area."
         : "This postcode may be outside our normal delivery area.",
       outsideAreaMode === "reject"
-        ? "Please call Millers Cafè before placing a delivery order."
+        ? "Please call Millers Café before placing a delivery order."
         : "Estimated fee and ETA will be confirmed after checkout.",
       "warning"
     );
@@ -782,7 +782,11 @@ function setOrderStep(step, options = {}) {
     hideModifierPanel();
     updateOrderReviewRow();
     setNotice("Review your details, then place the order.", false);
-    orderReviewRow?.scrollIntoView({ behavior: options.instant ? "auto" : "smooth", block: "nearest" });
+    const checkoutScrollTarget = nameInput?.closest(".bookingGrid") || nameInput || orderReviewRow;
+    checkoutScrollTarget?.scrollIntoView({
+      behavior: "auto",
+      block: "start"
+    });
   } else if (!options.silent) {
     const orderType = String(orderTypeField?.value || "collection").toLowerCase();
     const label = orderType === "delivery" ? "Delivery" : "Collection";
@@ -1271,7 +1275,7 @@ function finishCheckoutSuccess(body, orderType, preservedPostcode = "") {
   setNotice(
     body.emailStatus === "pending"
       ? `${orderLabel} order submitted and paid. Confirmation email is delayed right now.`
-      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Cafè.`,
+      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Café.`,
     false
   );
 
@@ -1323,7 +1327,7 @@ async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcod
       return;
     }
 
-    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Cafè now.");
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café now.");
     setNotice("Secure payment received. Finalizing your order now.", false);
 
     if (attempt >= maxAttempts) {
@@ -1338,7 +1342,7 @@ async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcod
   } catch (error) {
     stopCheckoutFinalizePolling();
     showError(error.message || "Could not confirm your paid order right now.");
-    setNotice("We couldn't confirm the Stripe checkout result right now. If you've been charged, please call Millers Cafè.", true);
+    setNotice("We couldn't confirm the Stripe checkout result right now. If you've been charged, please call Millers Café.", true);
   }
 }
 
@@ -1471,7 +1475,7 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
           type: "accepted",
           message: `Order accepted. ${etaMessage}`
         });
-        setNotice("Order accepted by Millers Cafè.", false);
+        setNotice("Order accepted by Millers Café.", false);
         stopStatusPolling();
         return;
       }
@@ -1479,9 +1483,9 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
       if (status === "rejected" || status === "declined" || status === "cancelled") {
         renderOrderStatusTracker({
           type: "rejected",
-          message: "Order rejected. Please call Millers Cafè on 01472 828600 if you need help."
+          message: "Order rejected. Please call Millers Café on 01472 828600 if you need help."
         });
-        setNotice("Order was rejected by Millers Cafè.", true);
+        setNotice("Order was rejected by Millers Café.", true);
         stopStatusPolling();
         return;
       }
@@ -2959,7 +2963,7 @@ async function handleSubmit(event) {
   if (payload.orderType === "delivery" && payload.postcode && !isLikelyDeliveryPostcode(payload.postcode)) {
     const outsideAreaMode = String(siteConfigState?.delivery?.outsideAreaMode || "review").trim().toLowerCase();
     if (outsideAreaMode === "reject") {
-      showError("This postcode is outside our online delivery area. Please call Millers Cafè before placing a delivery order.");
+      showError("This postcode is outside our online delivery area. Please call Millers Café before placing a delivery order.");
       return;
     }
 
@@ -3224,7 +3228,7 @@ function handleCheckoutReturnState() {
     });
     clearFeedback();
     setOrderStep(2, { instant: true, silent: true });
-    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Cafè.");
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café.");
     setNotice("Secure payment received. Finalizing your order now.", false);
     finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcode);
     return true;

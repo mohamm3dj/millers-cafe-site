@@ -158,7 +158,7 @@ function buildCheckoutForm(draft, requestUrl) {
     form.set(`line_items[${deliveryIndex}][price_data][currency]`, pricedCart.currency);
     form.set(`line_items[${deliveryIndex}][price_data][unit_amount]`, String(pricedCart.deliveryFeeMinor));
     form.set(`line_items[${deliveryIndex}][price_data][product_data][name]`, "Delivery fee");
-    form.set(`line_items[${deliveryIndex}][price_data][product_data][description]`, "Millers Cafe delivery charge");
+    form.set(`line_items[${deliveryIndex}][price_data][product_data][description]`, "Millers Café delivery charge");
   }
 
   return form;
