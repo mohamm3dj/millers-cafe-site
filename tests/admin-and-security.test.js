@@ -238,6 +238,67 @@ test("venue bridge menu endpoint imports POS menu ids into the public catalog", 
   assert.equal(bridgeReadResponse.status, 200);
 });
 
+test("menu catalog endpoint pulls a configured POS menu source and falls back to cached catalog", async () => {
+  const originalFetch = globalThis.fetch;
+  const env = {
+    POS_MENU_URL: "https://pos.example.test/menu",
+    POS_MENU_BEARER_TOKEN: "pos-secret"
+  };
+
+  let fetchCount = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCount += 1;
+    assert.equal(String(url), "https://pos.example.test/menu");
+    assert.equal(options.headers.Authorization, "Bearer pos-secret");
+
+    return new Response(JSON.stringify({
+      categories: [
+        {
+          categoryId: "cat-desserts",
+          name: "Desserts",
+          products: [
+            {
+              itemId: "pos-brownie",
+              name: "Brownie",
+              price: "4.50",
+              categoryId: "cat-desserts"
+            }
+          ]
+        }
+      ]
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      }
+    });
+  };
+
+  try {
+    const response = await getPublicMenu({
+      env,
+      request: new Request("https://example.com/api/menu-catalog")
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.menu[0].name, "Desserts");
+    assert.equal(body.menu[0].items[0].posItemId, "pos-brownie");
+    assert.equal(body.menu[0].items[0].basePrice, 4.5);
+    assert.equal(fetchCount, 1);
+
+    globalThis.fetch = async () => new Response("Unavailable", { status: 503 });
+    const cachedResponse = await getPublicMenu({
+      env,
+      request: new Request("https://example.com/api/menu-catalog")
+    });
+    assert.equal(cachedResponse.status, 200);
+    const cachedBody = await cachedResponse.json();
+    assert.equal(cachedBody.menu[0].items[0].posItemId, "pos-brownie");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("venue bridge order endpoint is token protected and updates order decisions", async () => {
   const env = {
     VENUE_BRIDGE_TOKEN: "bridge-secret",

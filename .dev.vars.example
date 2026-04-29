@@ -9,3 +9,7 @@ ORDERS_REPLY_TO=help@millers.cafe
 ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>
 ACCOUNT_REPLY_TO=help@millers.cafe
 VENUE_BRIDGE_TOKEN=replace-with-long-random-venue-bridge-secret
+POS_MENU_URL=https://pos.example.com/api/menu
+POS_MENU_BEARER_TOKEN=replace-with-pos-menu-token
+POS_MENU_API_KEY=
+POS_MENU_TIMEOUT_MS=5000

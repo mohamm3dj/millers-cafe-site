@@ -1,4 +1,4 @@
-# Millers Cafe Site
+# Millers Cafè Site
 
 Static frontend pages plus Cloudflare Pages Functions for bookings, orders, and order-status flows.
 
@@ -65,6 +65,21 @@ This integration does not use Stripe Connect or OAuth. To link the website to yo
 - Frontend design is intentionally preserved while backend structure is being strengthened.
 - More detail on the current backend layout is in `ARCHITECTURE.md`.
 
+## POS menu source
+
+The public menu, collection order page, delivery order page, and checkout pricing render from the bundled website menu so stale POS/KV data cannot replace the customer-facing menus.
+
+The `/api/menu-catalog` endpoint is still available for admin/POS bridge integrations. To pull that catalog directly from a POS system, configure these Cloudflare Pages variables:
+
+- `POS_MENU_URL`: HTTPS JSON endpoint for the POS menu.
+- `POS_MENU_BEARER_TOKEN`: optional bearer token for the POS menu endpoint.
+- `POS_MENU_API_KEY`: optional API key sent as `X-API-Key`.
+- `POS_MENU_TIMEOUT_MS`: optional timeout, default `5000`.
+
+The POS response can be a category array, `{ "menu": [...] }`, `{ "categories": [...] }`, or a flat item/product list with category fields. If the POS source is unavailable, the endpoint falls back to the last saved catalog in KV, then the bundled catalog.
+
 ## POS bridge
 
 Bookings now enter the site as pending requests. The venue POS bridge should use a Cloudflare Pages secret named `VENUE_BRIDGE_TOKEN`, then read pending bookings from `GET /api/bridge/bookings?status=pending` and post decisions to `POST /api/bridge/bookings`.
+
+The POS can still push a menu into the site with `PUT /api/bridge/menu`; that saved menu becomes the fallback cache for the direct POS pull.

@@ -16,7 +16,6 @@ import { onRequestPut as saveAccountProfileRoute } from "../functions/api/accoun
 import { onRequestPost as requestAccountCode } from "../functions/api/account/request-code.js";
 import { onRequestPost as verifyAccountCode } from "../functions/api/account/verify-code.js";
 import {
-  addDaysISO,
   makeBookingPayload,
   makeOrderPayload,
   nextOpenDate,
@@ -287,6 +286,8 @@ test("signed-in customers can save a profile and it is reflected in the account 
 test("signed-in customers can cancel and reschedule their own bookings", async () => {
   const accountEmail = "bookings@example.com";
   const originalDate = nextOpenDate(3);
+  const secondDate = nextOpenDate(4);
+  const rescheduledDate = nextOpenDate(5);
   const upcomingBooking = await createBooking({}, makeBookingPayload({
     customerName: "Booking Owner",
     phoneNumber: "07123 456789",
@@ -299,7 +300,7 @@ test("signed-in customers can cancel and reschedule their own bookings", async (
     customerName: "Booking Owner",
     phoneNumber: "07123 456789",
     email: accountEmail,
-    date: addDaysISO(originalDate, 1),
+    date: secondDate,
     time: "12:15"
   }));
 
@@ -334,7 +335,7 @@ test("signed-in customers can cancel and reschedule their own bookings", async (
       body: JSON.stringify({
         bookingId: secondBooking.bookingId,
         booking: {
-          date: addDaysISO(originalDate, 2),
+          date: rescheduledDate,
           time: "13:30",
           partySize: 4,
           notes: "Window table please"
@@ -345,7 +346,7 @@ test("signed-in customers can cancel and reschedule their own bookings", async (
 
   assert.equal(rescheduleResponse.status, 200);
   const rescheduleBody = await rescheduleResponse.json();
-  assert.equal(rescheduleBody.booking.date, addDaysISO(originalDate, 2));
+  assert.equal(rescheduleBody.booking.date, rescheduledDate);
   assert.equal(rescheduleBody.booking.time, "13:30");
   assert.equal(rescheduleBody.booking.partySize, 4);
   assert.equal(rescheduleBody.booking.notes, "Window table please");

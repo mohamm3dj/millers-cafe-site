@@ -35,6 +35,13 @@ This repo is now ready for online bookings + app feed, but it must run on Cloudf
    - `BOOKINGS_FEED_TOKEN=<long-random-secret>`
 2. Use tokenized app feed URL:
    - `https://millers.cafe/bookings/feed.csv?token=<secret>`
+3. Optional POS menu catalog endpoint for admin/bridge integrations:
+   - `POS_MENU_URL=https://your-pos.example/api/menu`
+   - `POS_MENU_BEARER_TOKEN=<pos-menu-token>` if your POS uses bearer auth
+   - `POS_MENU_API_KEY=<pos-api-key>` if your POS uses an API key
+   - `POS_MENU_TIMEOUT_MS=5000`
+
+If `POS_MENU_URL` is configured, `/api/menu-catalog` pulls from that POS endpoint. The customer-facing public menu, collection page, delivery page, and checkout pricing stay on the bundled website menu so stale POS/KV data cannot replace the live site menu. If the POS endpoint is down, `/api/menu-catalog` falls back to the last saved menu in KV, then the bundled menu.
 
 ## Required for booking confirmations
 

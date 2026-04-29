@@ -9,7 +9,6 @@ const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
 const STATUS_API_BASE = "/api/order-status";
 const SITE_CONFIG_API_BASE = "/api/site-config";
-const MENU_CATALOG_API_BASE = "/api/menu-catalog";
 const BUSINESS_TIMEZONE = "Europe/London";
 let SERVICE_START_MINUTES = 12 * 60;
 let SERVICE_END_MINUTES = 17 * 60;
@@ -265,14 +264,9 @@ function applyLiveSiteConfig(config) {
 
 async function loadLiveOrderData() {
   try {
-    const [configResponse, menuResponse] = await Promise.all([
-      fetch(SITE_CONFIG_API_BASE, {
-        headers: { Accept: "application/json" }
-      }),
-      fetch(MENU_CATALOG_API_BASE, {
-        headers: { Accept: "application/json" }
-      })
-    ]);
+    const configResponse = await fetch(SITE_CONFIG_API_BASE, {
+      headers: { Accept: "application/json" }
+    });
 
     if (configResponse.ok) {
       const body = await configResponse.json();
@@ -280,15 +274,8 @@ async function loadLiveOrderData() {
         applyLiveSiteConfig(body.config);
       }
     }
-
-    if (menuResponse.ok) {
-      const body = await menuResponse.json();
-      if (Array.isArray(body?.menu) && body.menu.length > 0) {
-        normalizedMenu = normalizeMenuCatalog(body.menu);
-      }
-    }
   } catch (error) {
-    // Keep bundled defaults if the live config endpoints are unavailable.
+    // Keep bundled defaults if the live config endpoint is unavailable.
   }
 }
 
@@ -582,7 +569,7 @@ function updateDeliveryAreaHint() {
         ? "This postcode is outside our online delivery area."
         : "This postcode may be outside our normal delivery area.",
       outsideAreaMode === "reject"
-        ? "Please call Millers Café before placing a delivery order."
+        ? "Please call Millers Cafè before placing a delivery order."
         : "Estimated fee and ETA will be confirmed after checkout.",
       "warning"
     );
@@ -1269,7 +1256,7 @@ function finishCheckoutSuccess(body, orderType, preservedPostcode = "") {
   setNotice(
     body.emailStatus === "pending"
       ? `${orderLabel} order submitted and paid. Confirmation email is delayed right now.`
-      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Café.`,
+      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Cafè.`,
     false
   );
 
@@ -1321,7 +1308,7 @@ async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcod
       return;
     }
 
-    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café now.");
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Cafè now.");
     setNotice("Secure payment received. Finalizing your order now.", false);
 
     if (attempt >= maxAttempts) {
@@ -1336,7 +1323,7 @@ async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcod
   } catch (error) {
     stopCheckoutFinalizePolling();
     showError(error.message || "Could not confirm your paid order right now.");
-    setNotice("We couldn't confirm the Stripe checkout result right now. If you've been charged, please call Millers Café.", true);
+    setNotice("We couldn't confirm the Stripe checkout result right now. If you've been charged, please call Millers Cafè.", true);
   }
 }
 
@@ -1469,7 +1456,7 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
           type: "accepted",
           message: `Order accepted. ${etaMessage}`
         });
-        setNotice("Order accepted by Millers Café.", false);
+        setNotice("Order accepted by Millers Cafè.", false);
         stopStatusPolling();
         return;
       }
@@ -1477,9 +1464,9 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
       if (status === "rejected" || status === "declined" || status === "cancelled") {
         renderOrderStatusTracker({
           type: "rejected",
-          message: "Order rejected. Please call Millers Café on 01472 828600 if you need help."
+          message: "Order rejected. Please call Millers Cafè on 01472 828600 if you need help."
         });
-        setNotice("Order was rejected by Millers Café.", true);
+        setNotice("Order was rejected by Millers Cafè.", true);
         stopStatusPolling();
         return;
       }
@@ -2959,7 +2946,7 @@ async function handleSubmit(event) {
   if (payload.orderType === "delivery" && payload.postcode && !isLikelyDeliveryPostcode(payload.postcode)) {
     const outsideAreaMode = String(siteConfigState?.delivery?.outsideAreaMode || "review").trim().toLowerCase();
     if (outsideAreaMode === "reject") {
-      showError("This postcode is outside our online delivery area. Please call Millers Café before placing a delivery order.");
+      showError("This postcode is outside our online delivery area. Please call Millers Cafè before placing a delivery order.");
       return;
     }
 
@@ -3224,7 +3211,7 @@ function handleCheckoutReturnState() {
     });
     clearFeedback();
     setOrderStep(2, { instant: true, silent: true });
-    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Café.");
+    showCheckoutProcessing("Stripe payment succeeded. Finalizing your order with Millers Cafè.");
     setNotice("Secure payment received. Finalizing your order now.", false);
     finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcode);
     return true;

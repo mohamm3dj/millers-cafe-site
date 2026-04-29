@@ -12,7 +12,7 @@ import {
 import { ApiError } from "./errors.js";
 import { recordAnalyticsEvent } from "./analytics.js";
 import { priceOrderCart, resolveDeliveryFeeGBP } from "./order-menu.js";
-import { getMenuCatalog, getSiteConfig } from "./site-config.js";
+import { defaultMenuCatalog, getSiteConfig } from "./site-config.js";
 import {
   assertStripeWebhookSecret,
   createCheckoutSession,
@@ -289,10 +289,8 @@ function processingPayload(draft, session) {
 
 export async function createOrderCheckout(env, requestUrl, payload) {
   const orderType = String(payload?.orderType || "").trim().toLowerCase() === "delivery" ? "delivery" : "collection";
-  const [siteConfig, menuCatalog] = await Promise.all([
-    getSiteConfig(env),
-    getMenuCatalog(env)
-  ]);
+  const siteConfig = await getSiteConfig(env);
+  const menuCatalog = defaultMenuCatalog();
 
   if (orderType === "delivery") {
     const prefixes = Array.isArray(siteConfig.delivery?.allowedOutwardPrefixes)

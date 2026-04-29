@@ -1,4 +1,6 @@
 .DS_Store
 .tmp_menu_images/
+.tmp_logo_ideas/
+_backups/
 .autopush.pid
 .dev.vars

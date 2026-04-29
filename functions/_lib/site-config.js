@@ -4,6 +4,7 @@ import { MILLERS_ORDER_MENU } from "../../orders/menu-catalog.js";
 
 const SITE_CONFIG_STORAGE_KEY = "site_config_v1";
 const MENU_CATALOG_STORAGE_KEY = "menu_catalog_v1";
+const POS_MENU_DEFAULT_TIMEOUT_MS = 5000;
 
 const DEFAULT_DELIVERY_PREFIXES = [
   "DN31",
@@ -80,6 +81,53 @@ function getInMemoryStore() {
 
 function normalizeText(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeName(raw, ...fields) {
+  for (const field of fields) {
+    const value = normalizeText(raw?.[field]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function parseMoneyValue(value) {
+  if (value === null || value === undefined || value === "") return NaN;
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+
+  const cleaned = String(value)
+    .trim()
+    .replace(/[£$,\s]/g, "");
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+  return Number(cleaned);
+}
+
+function normalizeMoneyValue(values, fallback = NaN) {
+  for (const value of values) {
+    const parsed = parseMoneyValue(value);
+    if (Number.isFinite(parsed)) return Math.round(parsed * 100) / 100;
+  }
+  return fallback;
+}
+
+function normalizeMinorMoneyValue(values) {
+  for (const value of values) {
+    const parsed = parseMoneyValue(value);
+    if (Number.isFinite(parsed)) return Math.round(parsed) / 100;
+  }
+  return NaN;
+}
+
+function isExplicitlyUnavailable(raw) {
+  return raw?.available === false ||
+    raw?.isAvailable === false ||
+    raw?.active === false ||
+    raw?.isActive === false ||
+    raw?.enabled === false ||
+    raw?.hidden === true ||
+    raw?.isHidden === true ||
+    raw?.deleted === true ||
+    raw?.isDeleted === true;
 }
 
 function uniqueStrings(values, transform = (value) => value) {
@@ -160,14 +208,29 @@ function normalizeWeeklyHours(rawWeeklyHours, fallback) {
 }
 
 function normalizeModifierOption(rawOption) {
-  const name = normalizeText(rawOption?.name);
+  if (isExplicitlyUnavailable(rawOption)) return null;
+  const name = normalizeName(rawOption, "name", "displayName", "title", "label");
   if (!name) return null;
-  const id = normalizeText(rawOption?.id || rawOption?.posModifierOptionId || rawOption?.optionId);
+  const id = normalizeText(rawOption?.id || rawOption?.posModifierOptionId || rawOption?.optionId || rawOption?.posId || rawOption?.uuid || rawOption?.sku);
+  const priceAdjustment = normalizeMoneyValue([
+    rawOption?.priceAdjustment,
+    rawOption?.price,
+    rawOption?.amount,
+    rawOption?.deltaPrice
+  ], 0);
 
   const normalized = {
     name,
-    priceAdjustment: Math.round(Number(rawOption?.priceAdjustment || 0) * 100) / 100
+    priceAdjustment
   };
+  const minorAdjustment = normalizeMinorMoneyValue([
+    rawOption?.priceAdjustmentMinor,
+    rawOption?.priceAdjustmentPence,
+    rawOption?.priceMinor,
+    rawOption?.pricePence,
+    rawOption?.amountMinor
+  ]);
+  if (Number.isFinite(minorAdjustment)) normalized.priceAdjustment = minorAdjustment;
   if (id) {
     normalized.id = id;
     normalized.posModifierOptionId = normalizeText(rawOption?.posModifierOptionId || id);
@@ -176,15 +239,20 @@ function normalizeModifierOption(rawOption) {
 }
 
 function normalizeModifierGroup(rawGroup) {
-  const name = normalizeText(rawGroup?.name);
+  if (isExplicitlyUnavailable(rawGroup)) return null;
+  const name = normalizeName(rawGroup, "name", "displayName", "title", "label");
   if (!name) return null;
-  const id = normalizeText(rawGroup?.id || rawGroup?.posModifierGroupId || rawGroup?.groupId);
+  const id = normalizeText(rawGroup?.id || rawGroup?.posModifierGroupId || rawGroup?.groupId || rawGroup?.posId || rawGroup?.uuid);
 
-  const selectionType = normalizeText(rawGroup?.selectionType).toLowerCase() === "multiple"
+  const rawSelectionType = normalizeText(rawGroup?.selectionType || rawGroup?.type || rawGroup?.mode).toLowerCase();
+  const selectionType = rawSelectionType === "multiple" || rawSelectionType === "multi" || rawSelectionType === "checkbox"
     ? "multiple"
     : "single";
-  const options = Array.isArray(rawGroup?.options)
-    ? rawGroup.options.map(normalizeModifierOption).filter(Boolean)
+  const rawOptions = Array.isArray(rawGroup?.options)
+    ? rawGroup.options
+    : (Array.isArray(rawGroup?.choices) ? rawGroup.choices : rawGroup?.modifiers);
+  const options = Array.isArray(rawOptions)
+    ? rawOptions.map(normalizeModifierOption).filter(Boolean)
     : [];
   const maxSelections = selectionType === "multiple"
     ? Math.max(1, toFiniteNumber(rawGroup?.maxSelections, options.length || 1, { min: 1, max: 50 }))
@@ -209,20 +277,39 @@ function normalizeModifierGroup(rawGroup) {
 }
 
 function normalizeMenuItem(rawItem) {
-  const name = normalizeText(rawItem?.name);
-  const basePrice = Number(rawItem?.basePrice);
+  if (isExplicitlyUnavailable(rawItem)) return null;
+  const name = normalizeName(rawItem, "name", "displayName", "title", "label");
+  const minorPrice = normalizeMinorMoneyValue([
+    rawItem?.basePriceMinor,
+    rawItem?.basePricePence,
+    rawItem?.priceMinor,
+    rawItem?.pricePence,
+    rawItem?.amountMinor,
+    rawItem?.amountPence
+  ]);
+  const basePrice = Number.isFinite(minorPrice)
+    ? minorPrice
+    : normalizeMoneyValue([
+      rawItem?.basePrice,
+      rawItem?.price,
+      rawItem?.unitPrice,
+      rawItem?.amount
+    ]);
   if (!name || !Number.isFinite(basePrice) || basePrice < 0) return null;
-  const id = normalizeText(rawItem?.id || rawItem?.posItemId || rawItem?.itemId);
+  const id = normalizeText(rawItem?.id || rawItem?.posItemId || rawItem?.itemId || rawItem?.menuItemId || rawItem?.productId || rawItem?.posId || rawItem?.uuid || rawItem?.sku);
+  const rawModifierGroups = Array.isArray(rawItem?.modifierGroups)
+    ? rawItem.modifierGroups
+    : (Array.isArray(rawItem?.modifiers) ? rawItem.modifiers : rawItem?.optionGroups);
 
   const normalized = {
     name,
     basePrice: Math.round(basePrice * 100) / 100,
-    description: normalizeText(rawItem?.description),
-    publicPriceLabel: normalizeText(rawItem?.publicPriceLabel),
+    description: normalizeText(rawItem?.description || rawItem?.details),
+    publicPriceLabel: normalizeText(rawItem?.publicPriceLabel || rawItem?.priceLabel),
     codes: uniqueStrings(rawItem?.codes, (value) => value.toUpperCase()),
     tags: uniqueStrings(rawItem?.tags),
-    modifierGroups: Array.isArray(rawItem?.modifierGroups)
-      ? rawItem.modifierGroups.map(normalizeModifierGroup).filter(Boolean)
+    modifierGroups: Array.isArray(rawModifierGroups)
+      ? rawModifierGroups.map(normalizeModifierGroup).filter(Boolean)
       : []
   };
   if (id) {
@@ -241,12 +328,16 @@ function normalizeMenuItem(rawItem) {
 }
 
 function normalizeMenuCategory(rawCategory) {
-  const name = normalizeText(rawCategory?.name);
+  if (isExplicitlyUnavailable(rawCategory)) return null;
+  const name = normalizeName(rawCategory, "name", "displayName", "title", "label");
   if (!name) return null;
-  const id = normalizeText(rawCategory?.id || rawCategory?.posCategoryId || rawCategory?.categoryId);
+  const id = normalizeText(rawCategory?.id || rawCategory?.posCategoryId || rawCategory?.categoryId || rawCategory?.posId || rawCategory?.uuid);
 
-  const items = Array.isArray(rawCategory?.items)
-    ? rawCategory.items.map(normalizeMenuItem).filter(Boolean)
+  const rawItems = Array.isArray(rawCategory?.items)
+    ? rawCategory.items
+    : (Array.isArray(rawCategory?.products) ? rawCategory.products : rawCategory?.menuItems);
+  const items = Array.isArray(rawItems)
+    ? rawItems.map(normalizeMenuItem).filter(Boolean)
     : [];
   if (items.length === 0) return null;
 
@@ -266,12 +357,98 @@ function normalizeMenuCategory(rawCategory) {
   return normalized;
 }
 
-function normalizeMenuCatalog(rawMenu) {
-  const source = Array.isArray(rawMenu)
-    ? rawMenu
-    : (Array.isArray(rawMenu?.menu) ? rawMenu.menu : MILLERS_ORDER_MENU);
+function isFlatMenuItem(rawItem) {
+  if (!rawItem || typeof rawItem !== "object" || Array.isArray(rawItem)) return false;
+  if (Array.isArray(rawItem.items) || Array.isArray(rawItem.products) || Array.isArray(rawItem.menuItems)) return false;
+  const name = normalizeName(rawItem, "name", "displayName", "title", "label");
+  const price = normalizeMoneyValue([
+    rawItem?.basePrice,
+    rawItem?.price,
+    rawItem?.unitPrice,
+    rawItem?.amount
+  ]);
+  const minorPrice = normalizeMinorMoneyValue([
+    rawItem?.basePriceMinor,
+    rawItem?.basePricePence,
+    rawItem?.priceMinor,
+    rawItem?.pricePence,
+    rawItem?.amountMinor,
+    rawItem?.amountPence
+  ]);
+  return Boolean(name && (Number.isFinite(price) || Number.isFinite(minorPrice)));
+}
+
+function groupFlatMenuItems(rawItems) {
+  const grouped = new Map();
+  rawItems.forEach((rawItem) => {
+    const categoryName = normalizeText(
+      rawItem?.categoryName ||
+      rawItem?.category ||
+      rawItem?.sectionName ||
+      rawItem?.section ||
+      "Menu"
+    ) || "Menu";
+    const categoryId = normalizeText(rawItem?.posCategoryId || rawItem?.categoryId || rawItem?.sectionId);
+    const key = categoryId || categoryName.toLowerCase();
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        id: categoryId,
+        posCategoryId: categoryId,
+        name: categoryName,
+        items: []
+      });
+    }
+    grouped.get(key).items.push(rawItem);
+  });
+  return Array.from(grouped.values());
+}
+
+function extractMenuCatalogPayload(rawMenu, fallbackSource = MILLERS_ORDER_MENU) {
+  if (Array.isArray(rawMenu)) {
+    return rawMenu.some(isFlatMenuItem) ? groupFlatMenuItems(rawMenu) : rawMenu;
+  }
+  if (!rawMenu || typeof rawMenu !== "object") return fallbackSource;
+
+  const candidates = [
+    rawMenu.menu,
+    rawMenu.categories,
+    rawMenu.sections,
+    rawMenu.data?.menu,
+    rawMenu.data?.categories,
+    rawMenu.data?.sections,
+    rawMenu.payload?.menu,
+    rawMenu.payload?.categories
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate.some(isFlatMenuItem) ? groupFlatMenuItems(candidate) : candidate;
+  }
+
+  const itemCandidates = [
+    rawMenu.items,
+    rawMenu.products,
+    rawMenu.menuItems,
+    rawMenu.data?.items,
+    rawMenu.data?.products,
+    rawMenu.payload?.items,
+    rawMenu.payload?.products
+  ];
+  for (const candidate of itemCandidates) {
+    if (Array.isArray(candidate)) return groupFlatMenuItems(candidate);
+  }
+
+  return fallbackSource;
+}
+
+function normalizeMenuCatalog(rawMenu, options = {}) {
+  const fallbackSource = options.fallback === false ? [] : MILLERS_ORDER_MENU;
+  const source = extractMenuCatalogPayload(rawMenu, fallbackSource);
   const categories = source.map(normalizeMenuCategory).filter(Boolean);
-  return categories.length > 0 ? categories : MILLERS_ORDER_MENU.map(normalizeMenuCategory).filter(Boolean);
+  if (categories.length > 0) return categories;
+  return options.fallback === false
+    ? []
+    : MILLERS_ORDER_MENU.map(normalizeMenuCategory).filter(Boolean);
 }
 
 function normalizeSiteConfig(rawConfig) {
@@ -428,6 +605,78 @@ async function writeStoredJson(env, key, value) {
   getInMemoryStore()[key] = value;
 }
 
+function resolvePosMenuUrl(env) {
+  return normalizeText(env?.POS_MENU_URL || env?.POS_MENU_SOURCE_URL || env?.POS_MENU_ENDPOINT);
+}
+
+function posMenuHeaders(env) {
+  const bearerToken = normalizeText(env?.POS_MENU_BEARER_TOKEN || env?.POS_MENU_TOKEN);
+  const apiKey = normalizeText(env?.POS_MENU_API_KEY);
+  const headers = {
+    Accept: "application/json"
+  };
+
+  if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
+  if (apiKey) headers["X-API-Key"] = apiKey;
+
+  const rawHeaders = normalizeText(env?.POS_MENU_HEADERS_JSON);
+  if (rawHeaders) {
+    try {
+      const parsed = JSON.parse(rawHeaders);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        Object.entries(parsed).forEach(([key, value]) => {
+          const headerName = normalizeText(key);
+          const headerValue = normalizeText(value);
+          if (headerName && headerValue) headers[headerName] = headerValue;
+        });
+      }
+    } catch (error) {
+      // Ignore invalid optional header JSON.
+    }
+  }
+
+  return headers;
+}
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = POS_MENU_DEFAULT_TIMEOUT_MS) {
+  const timeout = toFiniteNumber(timeoutMs, POS_MENU_DEFAULT_TIMEOUT_MS, { min: 500, max: 30000 });
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), timeout)
+    : null;
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller?.signal
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+async function fetchAndCachePosMenuCatalog(env) {
+  const url = resolvePosMenuUrl(env);
+  if (!url || typeof fetch !== "function") return null;
+
+  try {
+    const rawMenu = await fetchJsonWithTimeout(url, {
+      headers: posMenuHeaders(env)
+    }, env?.POS_MENU_TIMEOUT_MS);
+    if (!rawMenu) return null;
+
+    const normalized = normalizeMenuCatalog(rawMenu, { fallback: false });
+    if (normalized.length === 0) return null;
+
+    await writeStoredJson(env || {}, MENU_CATALOG_STORAGE_KEY, normalized);
+    return normalized;
+  } catch (error) {
+    return null;
+  }
+}
+
 export function defaultSiteConfig() {
   return normalizeSiteConfig(DEFAULT_SITE_CONFIG);
 }
@@ -448,7 +697,10 @@ export async function saveSiteConfig(env, rawConfig) {
 }
 
 export async function getMenuCatalog(env) {
-  const stored = await readStoredJson(env, MENU_CATALOG_STORAGE_KEY);
+  const posMenu = await fetchAndCachePosMenuCatalog(env || {});
+  if (posMenu) return posMenu;
+
+  const stored = await readStoredJson(env || {}, MENU_CATALOG_STORAGE_KEY);
   return normalizeMenuCatalog(stored);
 }
 

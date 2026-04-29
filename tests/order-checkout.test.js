@@ -134,6 +134,59 @@ test("priceOrderCart preserves POS menu ids from the live catalog", () => {
   assert.equal(priced.items[0].modifierSelections[0].posModifierOptionId, "option-hot");
 });
 
+test("createOrderCheckout prices delivery from the bundled website menu", async () => {
+  const env = {
+    STRIPE_SECRET_KEY: "sk_test_123",
+    POS_MENU_URL: "https://pos.example.test/menu",
+    POS_MENU_API_KEY: "pos-api-key",
+    ORDER_DELIVERY_FEE_GBP: "2"
+  };
+
+  globalThis.fetch = async (url, options = {}) => {
+    const requestUrl = String(url);
+
+    if (requestUrl === "https://pos.example.test/menu") {
+      throw new Error("Checkout should not fetch the POS menu for customer-facing website orders.");
+    }
+
+    if (requestUrl === "https://api.stripe.com/v1/checkout/sessions" && options.method === "POST") {
+      const form = new URLSearchParams(String(options.body || ""));
+
+      assert.equal(form.get("line_items[0][price_data][unit_amount]"), "400");
+      assert.equal(form.get("line_items[0][quantity]"), "1");
+      assert.equal(form.get("line_items[1][price_data][unit_amount]"), "200");
+      assert.equal(form.get("metadata[order_type]"), "delivery");
+
+      return jsonResponse({
+        id: "cs_test_pos_menu",
+        url: "https://checkout.stripe.com/c/pay/cs_test_pos_menu"
+      });
+    }
+
+    throw new Error(`Unexpected fetch: ${requestUrl}`);
+  };
+
+  const created = await createOrderCheckout(env, "https://millers.cafe/api/orders/checkout", {
+    ...makeOrderPayload({
+      orderType: "delivery",
+      addressLine1: "55 Brigsley Road",
+      townCity: "Grimsby",
+      postcode: "DN37 0JZ"
+    }),
+    cartItems: [
+      {
+        itemName: "Iced Lychee Lemonade",
+        quantity: 1,
+        modifierSelections: []
+      }
+    ]
+  });
+
+  assert.equal(created.ok, true);
+  assert.equal(created.sessionId, "cs_test_pos_menu");
+  assert.equal(created.amountTotal, 600);
+});
+
 test("createOrderCheckout creates a hosted Stripe session and getCheckoutSessionStatus finalizes the paid order", async () => {
   const env = {
     STRIPE_SECRET_KEY: "sk_test_123",
