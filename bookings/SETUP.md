@@ -43,11 +43,15 @@ To email both customer + staff receipts on each booking, add these env vars in C
 - `ORDERS_REPLY_TO=help@millers.cafe`
 - `ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
 - `ACCOUNT_REPLY_TO=help@millers.cafe`
+- `SITE_ORIGIN=https://millers.cafe`
+- `EMAIL_ACTION_SECRET=<long-random-secret>` *(optional if `VENUE_BRIDGE_TOKEN` is already set)*
+- `EMAIL_ACTION_DEFAULT_ETA_MINUTES=35`
 
 Notes:
 
 - The sender domain, `millers.cafe`, must be verified in Resend.
 - If email vars are missing or delivery fails, bookings are still saved with `emailStatus: "pending"` so staff can follow up.
+- Staff booking/order notification emails include signed accept/decline links. Links open a confirmation page first, then update the same Cloudflare KV records used by the app/POS feeds and email the customer.
 
 ## 5. App feed URL
 

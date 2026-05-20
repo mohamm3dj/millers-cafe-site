@@ -55,8 +55,13 @@ Add email confirmation variables:
    - `ORDERS_REPLY_TO=help@millers.cafe`
    - `ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
    - `ACCOUNT_REPLY_TO=help@millers.cafe`
+   - `SITE_ORIGIN=https://millers.cafe`
+   - `EMAIL_ACTION_SECRET=<long-random-secret>` *(optional if `VENUE_BRIDGE_TOKEN` is already set)*
+   - `EMAIL_ACTION_DEFAULT_ETA_MINUTES=35`
 
 The `millers.cafe` domain must be verified in Resend with the DNS records Resend gives you. If email configuration is missing or Resend rejects delivery, the site returns `emailStatus: "pending"` for bookings and Stripe-paid orders so the booking/order is still saved, while unpaid direct order creation is rejected.
+
+Staff booking/order notification emails include signed accept/decline links. Links open a confirmation page first, then update the same Cloudflare KV records used by the app/POS feeds and email the customer. Order accept links use `EMAIL_ACTION_DEFAULT_ETA_MINUTES` as the starting ETA, which staff can adjust on the confirmation page.
 
 ## Final app setting
 

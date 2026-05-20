@@ -1,5 +1,6 @@
 "use strict";
 
+import { emailActionUrl } from "./_lib/email-actions.js";
 import { recipientList, sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
@@ -48,6 +49,33 @@ function tableLabel(booking) {
   return tables.length > 0 ? tables.join(", ") : "To be confirmed";
 }
 
+function actionButton(label, url, background) {
+  if (!url) return "";
+  return `<a href="${htmlEscape(url)}" style="display: inline-block; margin: 0 8px 8px 0; padding: 10px 14px; border-radius: 6px; color: #ffffff; background: ${background}; text-decoration: none; font-weight: 700;">${htmlEscape(label)}</a>`;
+}
+
+function actionPanelHtml(acceptUrl, rejectUrl) {
+  if (!acceptUrl || !rejectUrl) return "";
+  return [
+    "<div style=\"margin: 16px 0; padding: 14px; border: 1px solid #d8dee9; border-radius: 8px; background: #f8fafc;\">",
+    "<p style=\"margin: 0 0 10px;\"><strong>Review from this email</strong></p>",
+    actionButton("Accept booking", acceptUrl, "#166534"),
+    actionButton("Decline booking", rejectUrl, "#991b1b"),
+    "<p style=\"margin: 4px 0 0; color: #475467; font-size: 13px;\">Each link opens a confirmation page before anything changes.</p>",
+    "</div>"
+  ].join("");
+}
+
+function actionPanelText(acceptUrl, rejectUrl) {
+  if (!acceptUrl || !rejectUrl) return [];
+  return [
+    "",
+    "Review from this email. Each link opens a confirmation page before anything changes.",
+    `Accept booking: ${acceptUrl}`,
+    `Decline booking: ${rejectUrl}`
+  ];
+}
+
 function customerRequestEmailPayload(fromAddress, replyTo, booking, reference) {
   const details = bookingDetailsLines(booking, reference);
   const listHtml = details
@@ -78,11 +106,13 @@ function customerRequestEmailPayload(fromAddress, replyTo, booking, reference) {
   };
 }
 
-function ownerRequestEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference) {
+async function ownerRequestEmailPayload(env, fromAddress, replyTo, ownerEmails, booking, reference) {
   const details = bookingDetailsLines(booking, reference);
   const listHtml = details
     .map(([label, value]) => `<li><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</li>`)
     .join("");
+  const acceptUrl = await emailActionUrl(env, { kind: "booking", reference, status: "accepted" });
+  const rejectUrl = await emailActionUrl(env, { kind: "booking", reference, status: "rejected" });
 
   return {
     from: fromAddress,
@@ -93,12 +123,14 @@ function ownerRequestEmailPayload(fromAddress, replyTo, ownerEmails, booking, re
       "<div style=\"font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;\">",
       "<h2 style=\"margin: 0 0 12px;\">New website booking request</h2>",
       `<ul style="margin: 0; padding-left: 18px;">${listHtml}</ul>`,
+      actionPanelHtml(acceptUrl, rejectUrl),
       "</div>"
     ].join(""),
     text: [
       "New website booking request received.",
       "",
-      ...details.map(([label, value]) => `${label}: ${value}`)
+      ...details.map(([label, value]) => `${label}: ${value}`),
+      ...actionPanelText(acceptUrl, rejectUrl)
     ].join("\n")
   };
 }
@@ -243,9 +275,10 @@ export async function sendBookingRequestEmails(env, booking, reference) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
   }
 
+  const ownerPayload = await ownerRequestEmailPayload(env, fromAddress, replyTo, ownerEmails, booking, reference);
   return sendBookingEmailJobs(env, [
     customerRequestEmailPayload(fromAddress, replyTo, booking, reference),
-    ownerRequestEmailPayload(fromAddress, replyTo, ownerEmails, booking, reference)
+    ownerPayload
   ]);
 }
 

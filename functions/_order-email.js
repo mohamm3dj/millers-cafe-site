@@ -1,5 +1,6 @@
 "use strict";
 
+import { defaultOrderEtaMinutes, emailActionUrl } from "./_lib/email-actions.js";
 import { recipientList, sendResendEmail, singleRecipient } from "./_lib/resend.js";
 
 function htmlEscape(value) {
@@ -36,6 +37,33 @@ function formatDateForEmail(isoDate) {
     month: "long",
     year: "numeric"
   }).format(date);
+}
+
+function actionButton(label, url, background) {
+  if (!url) return "";
+  return `<a href="${htmlEscape(url)}" style="display: inline-block; margin: 0 8px 8px 0; padding: 10px 14px; border-radius: 6px; color: #ffffff; background: ${background}; text-decoration: none; font-weight: 700;">${htmlEscape(label)}</a>`;
+}
+
+function actionPanelHtml(acceptUrl, rejectUrl, etaMinutes) {
+  if (!acceptUrl || !rejectUrl) return "";
+  return [
+    "<div style=\"margin: 16px 0; padding: 14px; border: 1px solid #d8dee9; border-radius: 8px; background: #f8fafc;\">",
+    "<p style=\"margin: 0 0 10px;\"><strong>Review from this email</strong></p>",
+    actionButton(`Accept order (${etaMinutes} min ETA)`, acceptUrl, "#166534"),
+    actionButton("Reject order", rejectUrl, "#991b1b"),
+    "<p style=\"margin: 4px 0 0; color: #475467; font-size: 13px;\">Each link opens a confirmation page before anything changes. You can adjust the ETA before confirming.</p>",
+    "</div>"
+  ].join("");
+}
+
+function actionPanelText(acceptUrl, rejectUrl, etaMinutes) {
+  if (!acceptUrl || !rejectUrl) return [];
+  return [
+    "",
+    "Review from this email. Each link opens a confirmation page before anything changes.",
+    `Accept order (${etaMinutes} min ETA): ${acceptUrl}`,
+    `Reject order: ${rejectUrl}`
+  ];
 }
 
 function fullAddress(order) {
@@ -104,11 +132,14 @@ function customerEmailPayload(fromAddress, replyTo, order, reference) {
   };
 }
 
-function ownerEmailPayload(fromAddress, replyTo, ownerEmails, order, reference) {
+async function ownerEmailPayload(env, fromAddress, replyTo, ownerEmails, order, reference) {
   const details = orderDetailsLines(order, reference);
   const listHtml = details
     .map(([label, value]) => `<li><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</li>`)
     .join("");
+  const etaMinutes = defaultOrderEtaMinutes(env);
+  const acceptUrl = await emailActionUrl(env, { kind: "order", reference, status: "accepted", etaMinutes });
+  const rejectUrl = await emailActionUrl(env, { kind: "order", reference, status: "rejected" });
 
   return {
     from: fromAddress,
@@ -119,12 +150,14 @@ function ownerEmailPayload(fromAddress, replyTo, ownerEmails, order, reference) 
       "<div style=\"font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;\">",
       `<h2 style=\"margin: 0 0 12px;\">New ${htmlEscape(typeLabel(order.orderType).toLowerCase())} order</h2>`,
       `<ul style=\"margin: 0; padding-left: 18px;\">${listHtml}</ul>`,
+      actionPanelHtml(acceptUrl, rejectUrl, etaMinutes),
       "</div>"
     ].join(""),
     text: [
       `New ${typeLabel(order.orderType).toLowerCase()} order received.`,
       "",
-      ...details.map(([label, value]) => `${label}: ${value}`)
+      ...details.map(([label, value]) => `${label}: ${value}`),
+      ...actionPanelText(acceptUrl, rejectUrl, etaMinutes)
     ].join("\n")
   };
 }
@@ -262,9 +295,10 @@ export async function sendOrderEmails(env, order, reference) {
     return { enabled: false, sentAll: false, delivered: 0, total: 0, errors: ["Email provider not configured."] };
   }
 
+  const ownerPayload = await ownerEmailPayload(env, fromAddress, replyTo, ownerEmails, order, reference);
   const jobs = [
     customerEmailPayload(fromAddress, replyTo, order, reference),
-    ownerEmailPayload(fromAddress, replyTo, ownerEmails, order, reference)
+    ownerPayload
   ];
 
   let delivered = 0;
