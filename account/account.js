@@ -58,6 +58,7 @@ const rescheduleDateInput = document.getElementById("accountRescheduleDate");
 const rescheduleTimeInput = document.getElementById("accountRescheduleTime");
 const reschedulePartySizeInput = document.getElementById("accountReschedulePartySize");
 const rescheduleNotesInput = document.getElementById("accountRescheduleNotes");
+const rescheduleSensitiveInfoConsentInput = document.getElementById("accountSensitiveInfoConsent");
 const rescheduleCloseBtn = document.getElementById("accountRescheduleCloseBtn");
 const rescheduleCancelBtn = document.getElementById("accountRescheduleCancelBtn");
 const rescheduleSaveBtn = document.getElementById("accountRescheduleSaveBtn");
@@ -74,15 +75,18 @@ let accountTurnstileToken = "";
 let accountTurnstileWidget = null;
 let activeRescheduleBooking = null;
 let activeAvailabilityRequestId = 0;
+let rescheduleReturnFocus = null;
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
 function normalizePhone(value) {
-  const digits = String(value || "").replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)} ${digits.slice(5)}`;
+  return String(value || "")
+    .replace(/[^\d+()\s.\-]/g, "")
+    .replace(/(?!^)[+]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .slice(0, 30);
 }
 
 function normalizePostcode(value) {
@@ -214,6 +218,9 @@ function trackClientEvent(eventName, details = {}) {
 }
 
 function showRequestState() {
+  if (turnstileContainer && requestBtn?.parentElement === requestForm) {
+    requestBtn.before(turnstileContainer);
+  }
   if (requestForm) requestForm.hidden = false;
   if (verifyForm) verifyForm.hidden = true;
   if (signedInActions) signedInActions.hidden = true;
@@ -228,6 +235,10 @@ function showRequestState() {
 
 function showVerifyState(email) {
   pendingEmail = normalizeEmail(email);
+  const verifyActions = verifyBtn?.closest(".accountActionRow");
+  if (turnstileContainer && verifyActions?.parentElement === verifyForm) {
+    verifyActions.before(turnstileContainer);
+  }
   if (requestForm) requestForm.hidden = true;
   if (verifyForm) verifyForm.hidden = false;
   if (signedInActions) signedInActions.hidden = true;
@@ -471,13 +482,52 @@ function closeReschedulePanel() {
     reschedulePanel.hidden = true;
     reschedulePanel.setAttribute("aria-hidden", "true");
   }
+  document.querySelectorAll("main > [inert]").forEach((element) => element.removeAttribute("inert"));
+  if (rescheduleReturnFocus instanceof HTMLElement && rescheduleReturnFocus.isConnected) {
+    rescheduleReturnFocus.focus({ preventScroll: true });
+  }
+  rescheduleReturnFocus = null;
   setFeedback(rescheduleFeedbackEl, "");
 }
 
 function openReschedulePanel() {
   if (!reschedulePanel) return;
+  rescheduleReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  document.querySelectorAll("main > :not(#accountReschedulePanel)").forEach((element) => element.setAttribute("inert", ""));
   reschedulePanel.hidden = false;
   reschedulePanel.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => rescheduleDateInput?.focus({ preventScroll: true }));
+}
+
+function handleReschedulePanelKeydown(event) {
+  if (!reschedulePanel || reschedulePanel.hidden) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeReschedulePanel();
+    return;
+  }
+
+  if (event.key !== "Tab") return;
+
+  const focusableElements = [...reschedulePanel.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+  )].filter((element) => element instanceof HTMLElement && !element.hidden && element.getClientRects().length > 0);
+
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusableElements[0];
+  const last = focusableElements[focusableElements.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function readProfilePayload() {
@@ -683,15 +733,18 @@ async function handleVerifySubmit(event) {
       },
       body: JSON.stringify({
         email: pendingEmail,
-        code
+        code,
+        turnstileToken: accountTurnstileToken
       })
     });
 
     setFeedback(feedbackEl, "Signed in successfully.", false);
     await loadAccountState();
+    signedInBanner?.focus({ preventScroll: true });
   } catch (error) {
     setFeedback(feedbackEl, error instanceof Error && error.message ? error.message : "Code could not be verified.", true);
   } finally {
+    resetAccountTurnstile();
     setButtonBusy(verifyBtn, false);
   }
 }
@@ -945,6 +998,7 @@ async function openBookingReschedule(bookingId) {
   renderReschedulePartySizeOptions(Number(booking.partySize || 2));
   renderRescheduleDateOptions(String(booking.date || ""));
   if (rescheduleNotesInput) rescheduleNotesInput.value = String(booking.notes || "").trim();
+  if (rescheduleSensitiveInfoConsentInput) rescheduleSensitiveInfoConsentInput.checked = false;
   openReschedulePanel();
   await loadRescheduleTimeOptions(String(booking.date || ""), Number(booking.partySize || 2), String(booking.time || ""));
 }
@@ -988,11 +1042,17 @@ async function handleRescheduleSubmit(event) {
     partySize: Number(reschedulePartySizeInput?.value || activeRescheduleBooking.partySize || 2),
     durationMinutes: Number(activeRescheduleBooking.durationMinutes || bookingRules().defaultDurationMinutes),
     specialOccasion: String(activeRescheduleBooking.specialOccasion || "None").trim() || "None",
-    notes: String(rescheduleNotesInput?.value || "").trim()
+    notes: String(rescheduleNotesInput?.value || "").trim(),
+    sensitiveInfoConsent: Boolean(rescheduleSensitiveInfoConsentInput?.checked)
   };
 
   if (!payload.date || !payload.time) {
     setFeedback(rescheduleFeedbackEl, "Choose a valid date and time.", true);
+    return;
+  }
+  if (payload.notes && !payload.sensitiveInfoConsent) {
+    setFeedback(rescheduleFeedbackEl, "Consent is required when optional notes are provided.", true);
+    rescheduleSensitiveInfoConsentInput?.focus();
     return;
   }
 
@@ -1028,6 +1088,14 @@ async function handleProfileSubmit(event) {
   }
 
   const payload = readProfilePayload();
+  const phoneDigits = payload.phoneNumber.replace(/\D/g, "");
+  if (payload.phoneNumber && (phoneDigits.length < 7 || phoneDigits.length > 15)) {
+    profilePhoneInput?.setAttribute("aria-invalid", "true");
+    setFeedback(profileFeedbackEl, "Enter a valid UK or international phone number, or leave it blank.", true);
+    profilePhoneInput?.focus();
+    return;
+  }
+  profilePhoneInput?.removeAttribute("aria-invalid");
   setButtonBusy(profileSaveBtn, true, "Saving...");
   try {
     const body = await fetchJson(ACCOUNT_PROFILE_API, {
@@ -1124,6 +1192,7 @@ function initialize() {
   profilePhoneInput?.addEventListener("input", () => {
     if (!(profilePhoneInput instanceof HTMLInputElement)) return;
     profilePhoneInput.value = normalizePhone(profilePhoneInput.value);
+    profilePhoneInput.removeAttribute("aria-invalid");
   });
   preferredOrderTypeSelect?.addEventListener("change", syncPreferredOrderLink);
   postcodeInput?.addEventListener("input", () => {
@@ -1143,6 +1212,7 @@ function initialize() {
       closeReschedulePanel();
     }
   });
+  reschedulePanel?.addEventListener("keydown", handleReschedulePanelKeydown);
   rescheduleDateInput?.addEventListener("change", () => {
     void loadRescheduleTimeOptions(
       String(rescheduleDateInput.value || ""),

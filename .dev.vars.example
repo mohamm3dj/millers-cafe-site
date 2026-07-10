@@ -1,4 +1,14 @@
-BOOKINGS_FEED_TOKEN=replace-with-long-random-secret
+REQUIRE_TURNSTILE=false
+REQUIRE_DISTRIBUTED_RATE_LIMIT=false
+MAINTENANCE_MODE=false
+ONLINE_ORDERING_ENABLED=true
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+TURNSTILE_TIMEOUT_MS=8000
+BOOKINGS_FEED_TOKEN=replace-with-long-random-bookings-feed-secret
+ORDERS_FEED_TOKEN=replace-with-long-random-orders-feed-secret
+ORDERS_ADMIN_TOKEN=replace-with-long-random-orders-admin-secret
+ADMIN_API_TOKENS=replace-with-long-random-admin-secret
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 BOOKINGS_EMAIL_FROM=Millers Cafe <help@millers.cafe>
 BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe

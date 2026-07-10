@@ -18,6 +18,29 @@ function getInMemoryStore() {
   return globalThis.__millersCafeAccountStore;
 }
 
+function getAccountCodeLockStore() {
+  if (!(globalThis.__millersCafeAccountCodeLocks instanceof Map)) {
+    globalThis.__millersCafeAccountCodeLocks = new Map();
+  }
+  return globalThis.__millersCafeAccountCodeLocks;
+}
+
+async function withAccountCodeLock(email, work) {
+  const key = normalizeEmail(email);
+  const locks = getAccountCodeLockStore();
+  const previous = locks.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(work);
+  locks.set(key, current);
+
+  try {
+    return await current;
+  } finally {
+    if (locks.get(key) === current) {
+      locks.delete(key);
+    }
+  }
+}
+
 function nowISO() {
   return new Date().toISOString();
 }
@@ -174,6 +197,18 @@ async function hashEmailCode(email, code) {
   return sha256Hex(`${normalizeEmail(email)}:${normalizeCode(code)}`);
 }
 
+function safeStringEqual(left, right) {
+  const a = String(left || "");
+  const b = String(right || "");
+  if (a.length !== b.length) return false;
+
+  let mismatch = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 function parseCookieHeader(request) {
   const header = String(request.headers.get("cookie") || "");
   const map = new Map();
@@ -295,48 +330,50 @@ export async function verifyAccountSignInCode(env, email, code) {
     throw new ApiError("Enter the 6-digit code from your email.", 400);
   }
 
-  const key = codeKey(normalizedEmail);
-  const record = await readStoreRecord(env, key, accountCodeRecord);
-  if (!record || record.email !== normalizedEmail || parseISOToMillis(record.expiresAt) <= nowMillis()) {
-    if (record) {
-      await deleteStoreRecord(env, key);
-    }
-    throw new ApiError("That sign-in code is invalid or has expired.", 401);
-  }
-
-  const expectedHash = await hashEmailCode(normalizedEmail, normalizedCode);
-  if (record.codeHash !== expectedHash) {
-    const failedAttempts = record.failedAttempts + 1;
-    if (failedAttempts >= ACCOUNT_MAX_FAILED_ATTEMPTS) {
-      await deleteStoreRecord(env, key);
-      throw new ApiError("That sign-in code has expired. Please request a new code.", 401);
+  return withAccountCodeLock(normalizedEmail, async () => {
+    const key = codeKey(normalizedEmail);
+    const record = await readStoreRecord(env, key, accountCodeRecord);
+    if (!record || record.email !== normalizedEmail || parseISOToMillis(record.expiresAt) <= nowMillis()) {
+      if (record) {
+        await deleteStoreRecord(env, key);
+      }
+      throw new ApiError("That sign-in code is invalid or has expired.", 401);
     }
 
-    await writeStoreRecord(env, key, {
-      ...record,
-      failedAttempts
-    }, secondsUntil(record.expiresAt));
+    const expectedHash = await hashEmailCode(normalizedEmail, normalizedCode);
+    if (!safeStringEqual(record.codeHash, expectedHash)) {
+      const failedAttempts = record.failedAttempts + 1;
+      if (failedAttempts >= ACCOUNT_MAX_FAILED_ATTEMPTS) {
+        await deleteStoreRecord(env, key);
+        throw new ApiError("That sign-in code has expired. Please request a new code.", 401);
+      }
 
-    throw new ApiError("That sign-in code is incorrect.", 401);
-  }
+      await writeStoreRecord(env, key, {
+        ...record,
+        failedAttempts
+      }, secondsUntil(record.expiresAt));
 
-  await deleteStoreRecord(env, key);
+      throw new ApiError("That sign-in code is incorrect.", 401);
+    }
 
-  const sessionToken = randomToken(24);
-  const expiresAt = new Date(nowMillis() + (ACCOUNT_SESSION_TTL_SECONDS * 1000)).toISOString();
-  await writeStoreRecord(env, sessionKey(sessionToken), {
-    email: normalizedEmail,
-    createdAt: nowISO(),
-    expiresAt
-  }, ACCOUNT_SESSION_TTL_SECONDS);
+    await deleteStoreRecord(env, key);
 
-  return {
-    ok: true,
-    authenticated: true,
-    email: normalizedEmail,
-    expiresAt,
-    sessionToken
-  };
+    const sessionToken = randomToken(24);
+    const expiresAt = new Date(nowMillis() + (ACCOUNT_SESSION_TTL_SECONDS * 1000)).toISOString();
+    await writeStoreRecord(env, sessionKey(sessionToken), {
+      email: normalizedEmail,
+      createdAt: nowISO(),
+      expiresAt
+    }, ACCOUNT_SESSION_TTL_SECONDS);
+
+    return {
+      ok: true,
+      authenticated: true,
+      email: normalizedEmail,
+      expiresAt,
+      sessionToken
+    };
+  });
 }
 
 export async function getOptionalAccountSession(env, request) {

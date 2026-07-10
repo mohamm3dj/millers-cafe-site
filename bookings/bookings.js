@@ -35,6 +35,7 @@ const timeSelect = document.getElementById("bookingTime");
 const partySizeInput = document.getElementById("bookingPartySize");
 const occasionSelect = document.getElementById("bookingOccasion");
 const notesInput = document.getElementById("bookingNotes");
+const sensitiveInfoConsentInput = document.getElementById("bookingSensitiveInfoConsent");
 const calendarMonthLabel = document.getElementById("calendarMonthLabel");
 const calendarPrevBtn = document.getElementById("calendarPrevBtn");
 const calendarNextBtn = document.getElementById("calendarNextBtn");
@@ -49,6 +50,7 @@ const bookingsInfoSlots = document.getElementById("bookingsInfoSlots");
 let bookingSuccessFxStageTimer = null;
 let bookingSuccessFxCloseTimer = null;
 let bookingSuccessFxResolver = null;
+let bookingSuccessReturnFocus = null;
 let availableBookingDates = [];
 let availableBookingDateSet = new Set();
 let calendarViewMonthUTC = null;
@@ -57,6 +59,7 @@ let activeAvailabilityRequestId = 0;
 let bookingTurnstileToken = "";
 let bookingTurnstileWidget = null;
 let siteConfigState = null;
+let currentSlotRows = [];
 
 function trackClientEvent(eventName, details = {}) {
   if (!window.MillersClient || typeof window.MillersClient.trackEvent !== "function") {
@@ -88,7 +91,7 @@ function refreshBookingCopy() {
   );
 
   if (bookingsInfoHours) {
-    bookingsInfoHours.textContent = `We are open ${bookingOpenDaySummary()}, ${bookingHoursSummary()}.`;
+    bookingsInfoHours.textContent = `Booking requests are available ${bookingOpenDaySummary()}, ${bookingHoursSummary()}. Café opening hours may be later.`;
   }
   if (bookingsInfoSlots) {
     bookingsInfoSlots.textContent = `Bookings are seated in ${bookingIntervalSummary()}.`;
@@ -160,6 +163,13 @@ async function setupBookingTurnstile() {
   }
 }
 
+function resetBookingTurnstile() {
+  bookingTurnstileToken = "";
+  if (bookingTurnstileWidget && typeof bookingTurnstileWidget.reset === "function") {
+    bookingTurnstileWidget.reset();
+  }
+}
+
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -176,6 +186,7 @@ function clockToMinutes(clock) {
   const hours = Number(parts[0]);
   const mins = Number(parts[1]);
   if (!Number.isInteger(hours) || !Number.isInteger(mins)) return NaN;
+  if (hours < 0 || hours > 23 || mins < 0 || mins > 59) return NaN;
   return (hours * 60) + mins;
 }
 
@@ -200,7 +211,9 @@ function ukTodayISODate() {
 function dayIndexForISODate(isoDate) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
   const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date.getUTCDay();
 }
 
 function isBookableDay(isoDate) {
@@ -224,7 +237,9 @@ function displayDateLabel(isoDate) {
 function parseISODateUTC(isoDate) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
   const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
 }
 
 function toISODateUTC(date) {
@@ -258,6 +273,31 @@ function setCalendarOpen(open) {
   bookingCalendarWrap.hidden = !isCalendarOpen;
   bookingDateToggle.setAttribute("aria-expanded", isCalendarOpen ? "true" : "false");
   bookingDateToggle.textContent = isCalendarOpen ? "Hide calendar" : "Change date";
+  if (isCalendarOpen) {
+    window.requestAnimationFrame(() => {
+      const selected = bookingCalendarGrid?.querySelector('button[aria-pressed="true"]');
+      const firstAvailable = bookingCalendarGrid?.querySelector("button:not(:disabled)");
+      (selected || firstAvailable)?.focus({ preventScroll: true });
+    });
+  }
+}
+
+function handleCalendarKeydown(event) {
+  const buttons = [...(bookingCalendarGrid?.querySelectorAll("button:not(:disabled)") || [])];
+  const currentIndex = buttons.indexOf(event.currentTarget);
+  if (currentIndex < 0) return;
+
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowLeft") nextIndex -= 1;
+  else if (event.key === "ArrowRight") nextIndex += 1;
+  else if (event.key === "ArrowUp") nextIndex -= 7;
+  else if (event.key === "ArrowDown") nextIndex += 7;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = buttons.length - 1;
+  else return;
+
+  event.preventDefault();
+  buttons[Math.max(0, Math.min(buttons.length - 1, nextIndex))]?.focus();
 }
 
 function buildBookableDateList(startISODate, maxDays) {
@@ -342,6 +382,10 @@ function renderCalendar() {
   const monthStartDayIndex = (monthStart.getUTCDay() + 6) % 7;
   const gridStart = new Date(monthStart);
   gridStart.setUTCDate(monthStart.getUTCDate() - monthStartDayIndex);
+  const selectedInView = selectedDate
+    && selectedDate.getUTCFullYear() === monthStart.getUTCFullYear()
+    && selectedDate.getUTCMonth() === monthStart.getUTCMonth();
+  let assignedCalendarTabStop = false;
 
   bookingCalendarGrid.innerHTML = "";
 
@@ -364,16 +408,22 @@ function renderCalendar() {
 
     btn.textContent = String(cellDate.getUTCDate());
     btn.disabled = !inCurrentMonth || !isBookable;
-    btn.setAttribute("role", "gridcell");
     btn.setAttribute("aria-label", displayDateLabel(iso));
+    btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    if (isToday) btn.setAttribute("aria-current", "date");
+    const isCalendarTabStop = isSelected || (!selectedInView && !assignedCalendarTabStop && !btn.disabled);
+    btn.tabIndex = isCalendarTabStop ? 0 : -1;
+    if (isCalendarTabStop) assignedCalendarTabStop = true;
 
     if (!btn.disabled) {
+      btn.addEventListener("keydown", handleCalendarKeydown);
       btn.addEventListener("click", () => {
         if (!dateInput) return;
         dateInput.value = iso;
         updateDateSummary();
         renderCalendar();
         setCalendarOpen(false);
+        bookingDateToggle?.focus({ preventScroll: true });
         void loadAvailability();
       });
     }
@@ -435,10 +485,11 @@ function renderPartySizeOptions() {
 
 function normalizePhoneField() {
   if (!phoneInput) return;
-  const digits = phoneInput.value.replace(/\D/g, "").slice(0, 11);
-  phoneInput.value = digits.length <= 5
-    ? digits
-    : `${digits.slice(0, 5)} ${digits.slice(5)}`;
+  phoneInput.value = phoneInput.value
+    .replace(/[^\d+()\s.\-]/g, "")
+    .replace(/(?!^)[+]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .slice(0, 30);
 }
 
 function setNotice(message, warning = false) {
@@ -456,12 +507,30 @@ function clearFeedback() {
     errorEl.hidden = true;
     errorEl.textContent = "";
   }
+  form?.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+    field.removeAttribute("aria-invalid");
+    const describedBy = String(field.getAttribute("aria-describedby") || "")
+      .split(/\s+/)
+      .filter((id) => id && id !== "bookingError");
+    if (describedBy.length > 0) field.setAttribute("aria-describedby", describedBy.join(" "));
+    else field.removeAttribute("aria-describedby");
+  });
 }
 
-function showError(message) {
+function showError(message, field = null) {
   if (!errorEl) return;
   errorEl.hidden = false;
   errorEl.textContent = message;
+  if (field instanceof HTMLElement) {
+    field.setAttribute("aria-invalid", "true");
+    const describedBy = new Set(String(field.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
+    describedBy.add("bookingError");
+    field.setAttribute("aria-describedby", Array.from(describedBy).join(" "));
+    field.focus({ preventScroll: false });
+  } else {
+    errorEl.setAttribute("tabindex", "-1");
+    errorEl.focus({ preventScroll: false });
+  }
 }
 
 async function preloadAccountProfile() {
@@ -518,7 +587,7 @@ function showResult(message, referenceText) {
 function setSubmitting(submitting) {
   if (!submitBtn) return;
   submitBtn.disabled = submitting;
-  submitBtn.textContent = submitting ? "Booking..." : "Book table";
+  submitBtn.textContent = submitting ? "Sending request..." : "Send booking request";
 }
 
 function ensureBookingSuccessFx() {
@@ -530,6 +599,10 @@ function ensureBookingSuccessFx() {
   host.className = "bookingSuccessFx";
   host.hidden = true;
   host.setAttribute("aria-hidden", "true");
+  host.setAttribute("role", "dialog");
+  host.setAttribute("aria-modal", "true");
+  host.setAttribute("aria-labelledby", "bookingSuccessConfirmTitle");
+  host.setAttribute("aria-describedby", "bookingSuccessConfirmDescription");
   host.innerHTML = [
     "<div class=\"bookingSuccessStage\" aria-hidden=\"true\">",
     "  <span class=\"bookingSuccessAura bookingSuccessAuraA\"></span>",
@@ -550,7 +623,8 @@ function ensureBookingSuccessFx() {
     "<div class=\"bookingSuccessConfirm\">",
     "  <div class=\"bookingSuccessConfirmCard\">",
     "    <div class=\"bookingSuccessConfirmCheck\" aria-hidden=\"true\">✓</div>",
-    "    <p class=\"bookingSuccessConfirmTitle\">Booking Request Sent</p>",
+    "    <p class=\"bookingSuccessConfirmTitle\" id=\"bookingSuccessConfirmTitle\">Booking request sent</p>",
+    "    <p class=\"bookingSuccessConfirmDescription\" id=\"bookingSuccessConfirmDescription\">Your table is not confirmed yet. We will email you when the venue accepts or declines the request.</p>",
     "    <p class=\"bookingSuccessConfirmRef\" id=\"bookingSuccessConfirmRef\">Reference pending</p>",
     "    <div class=\"bookingSuccessConfirmGrid\">",
     "      <div class=\"bookingSuccessConfirmRow\"><span>Date</span><strong id=\"bookingSuccessConfirmDate\">--</strong></div>",
@@ -572,7 +646,24 @@ function ensureBookingSuccessFx() {
 
   host.addEventListener("click", (event) => {
     if (!host.classList.contains("isConfirm")) return;
-    if (event.target === host) closeBookingSuccessFx(host);
+    if (event.target instanceof Element && event.target.classList.contains("bookingSuccessConfirm")) {
+      closeBookingSuccessFx(host);
+    }
+  });
+
+  host.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && host.classList.contains("isConfirm")) {
+      event.preventDefault();
+      closeBookingSuccessFx(host);
+      return;
+    }
+    if (event.key === "Tab" && host.classList.contains("isConfirm")) {
+      const doneButton = host.querySelector("#bookingSuccessDoneBtn");
+      if (doneButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        doneButton.focus({ preventScroll: true });
+      }
+    }
   });
 
   return host;
@@ -631,6 +722,13 @@ function closeBookingSuccessFx(host) {
   window.setTimeout(() => {
     overlay.classList.remove("isVisible", "isHiding", "isConfirm");
     overlay.hidden = true;
+    overlay.setAttribute("aria-hidden", "true");
+    const main = document.querySelector("main");
+    if (main instanceof HTMLElement) main.removeAttribute("inert");
+    if (bookingSuccessReturnFocus instanceof HTMLElement && bookingSuccessReturnFocus.isConnected) {
+      bookingSuccessReturnFocus.focus({ preventScroll: true });
+    }
+    bookingSuccessReturnFocus = null;
     if (bookingSuccessFxResolver) {
       const resolve = bookingSuccessFxResolver;
       bookingSuccessFxResolver = null;
@@ -652,24 +750,22 @@ function playBookingSuccessAnimation(details) {
     bookingSuccessFxCloseTimer = null;
   }
   bookingSuccessFxResolver = null;
+  bookingSuccessReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
+  const main = document.querySelector("main");
+  if (main instanceof HTMLElement) main.setAttribute("inert", "");
   host.hidden = false;
+  host.setAttribute("aria-hidden", "false");
   host.classList.remove("isVisible", "isHiding", "isConfirm");
   void host.offsetWidth;
-  host.classList.add("isVisible");
-
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const stageMs = reducedMotion ? 280 : 1700;
-  const confirmHoldMs = reducedMotion ? 1000 : 3200;
+  host.classList.add("isVisible", "isConfirm");
 
   return new Promise((resolve) => {
     bookingSuccessFxResolver = resolve;
-    bookingSuccessFxStageTimer = window.setTimeout(() => {
-      host.classList.add("isConfirm");
-      bookingSuccessFxCloseTimer = window.setTimeout(() => {
-        closeBookingSuccessFx(host);
-      }, confirmHoldMs);
-    }, stageMs);
+    window.requestAnimationFrame(() => {
+      const doneBtn = host.querySelector("#bookingSuccessDoneBtn");
+      if (doneBtn instanceof HTMLButtonElement) doneBtn.focus({ preventScroll: true });
+    });
   });
 }
 
@@ -686,8 +782,10 @@ function formatSlotCardTime(clock) {
 function renderSlotCards(rows) {
   if (!bookingSlotCards || !timeSelect) return;
 
+  currentSlotRows = Array.isArray(rows) ? rows.map((row) => ({ ...row })) : [];
   bookingSlotCards.innerHTML = "";
   const selectedTime = timeSelect.value;
+  const firstAvailableTime = rows.find((row) => row.available)?.time || "";
 
   rows.forEach((row) => {
     const card = document.createElement("button");
@@ -699,6 +797,7 @@ function renderSlotCards(rows) {
     card.disabled = !row.available;
     card.setAttribute("role", "radio");
     card.setAttribute("aria-checked", row.time === selectedTime && row.available ? "true" : "false");
+    card.tabIndex = row.available && (row.time === selectedTime || (!selectedTime && row.time === firstAvailableTime)) ? 0 : -1;
 
     const title = document.createElement("span");
     title.className = "bookingSlotTime";
@@ -713,11 +812,37 @@ function renderSlotCards(rows) {
       card.addEventListener("click", () => {
         timeSelect.value = row.time;
         renderSlotCards(rows);
+        const selectedCard = [...bookingSlotCards.querySelectorAll("button[data-time]")]
+          .find((button) => button.dataset.time === row.time);
+        selectedCard?.focus({ preventScroll: true });
       });
     }
 
     bookingSlotCards.appendChild(card);
   });
+}
+
+function handleSlotCardKeydown(event) {
+  if (!bookingSlotCards || !timeSelect) return;
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+
+  const cards = [...bookingSlotCards.querySelectorAll("button[data-time]:not(:disabled)")];
+  if (cards.length === 0) return;
+  const currentIndex = Math.max(0, cards.indexOf(document.activeElement));
+  let nextIndex = currentIndex;
+  if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = cards.length - 1;
+  else if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = (currentIndex - 1 + cards.length) % cards.length;
+  else nextIndex = (currentIndex + 1) % cards.length;
+
+  event.preventDefault();
+  const nextTime = String(cards[nextIndex]?.dataset.time || "");
+  if (!nextTime) return;
+  timeSelect.value = nextTime;
+  renderSlotCards(currentSlotRows);
+  const nextCard = [...bookingSlotCards.querySelectorAll("button[data-time]")]
+    .find((button) => button.dataset.time === nextTime);
+  nextCard?.focus({ preventScroll: true });
 }
 
 function renderTimeOptions(slotRows) {
@@ -827,50 +952,55 @@ async function loadAvailability() {
 }
 
 function validateClientPayload(payload) {
-  if (!payload.customerName || payload.customerName.length < 2) {
-    return "Please enter a valid name.";
+  const invalid = (message, field) => ({ message, field });
+  if (!parseISODateUTC(payload.date)) {
+    return invalid("Please choose a valid date.", bookingDateToggle);
   }
-
-  if (!/^\d{5}\s\d{6}$/.test(payload.phoneNumber)) {
-    return "Phone number must be in format XXXXX XXXXXX.";
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
-    return "Please choose a valid date.";
-  }
-
-  if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
-    return "Please enter a valid email address.";
-  }
-
   if (!isBookableDay(payload.date)) {
-    return `Bookings are available on ${bookingOpenDaySummary()} only.`;
+    return invalid(`Booking requests are available on ${bookingOpenDaySummary()} only.`, bookingDateToggle);
   }
 
   if (!/^\d{2}:\d{2}$/.test(payload.time)) {
-    return "Please choose a valid time.";
+    return invalid("Please choose an available time.", bookingSlotCards?.querySelector("button:not(:disabled)") || bookingDateToggle);
   }
   const minutes = clockToMinutes(payload.time);
   if (!Number.isFinite(minutes)) {
-    return "Please choose a valid time.";
+    return invalid("Please choose an available time.", bookingSlotCards?.querySelector("button:not(:disabled)") || bookingDateToggle);
   }
   if (minutes < SERVICE_START_MINUTES || minutes > SERVICE_END_MINUTES) {
-    return `Bookings must be between ${minutesToClock(SERVICE_START_MINUTES)} and ${minutesToClock(SERVICE_END_MINUTES)}.`;
+    return invalid(`Booking requests must be between ${minutesToClock(SERVICE_START_MINUTES)} and ${minutesToClock(SERVICE_END_MINUTES)}.`, bookingDateToggle);
   }
   if (minutes % SLOT_STEP_MINUTES !== 0) {
-    return `Bookings must be in ${bookingIntervalSummary()}.`;
+    return invalid(`Booking requests must be in ${bookingIntervalSummary()}.`, bookingDateToggle);
   }
 
   if (!Number.isInteger(payload.partySize) || payload.partySize < 1 || payload.partySize > 40) {
-    return "Party size must be between 1 and 40.";
-  }
-
-  if (!Number.isInteger(payload.durationMinutes) || payload.durationMinutes < 15 || payload.durationMinutes > 240) {
-    return "Duration must be between 15 and 240 minutes.";
+    return invalid("Party size must be between 1 and 40.", partySizeInput);
   }
 
   if (!VALID_OCCASIONS.has(payload.specialOccasion)) {
-    return "Please choose a valid occasion.";
+    return invalid("Please choose a valid occasion.", occasionSelect);
+  }
+
+  if (!payload.customerName || payload.customerName.length < 2) {
+    return invalid("Please enter a valid name.", nameInput);
+  }
+
+  const phoneDigits = payload.phoneNumber.replace(/\D/g, "");
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    return invalid("Please enter a valid UK or international phone number.", phoneInput);
+  }
+
+  if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return invalid("Please enter a valid email address.", emailInput);
+  }
+
+  if (!Number.isInteger(payload.durationMinutes) || payload.durationMinutes < 15 || payload.durationMinutes > 240) {
+    return invalid("Booking duration is invalid. Please refresh and try again.", bookingDateToggle);
+  }
+
+  if (payload.notes && payload.sensitiveInfoConsent !== true) {
+    return invalid("Consent is required when optional notes are provided.", sensitiveInfoConsentInput);
   }
 
   return null;
@@ -889,12 +1019,13 @@ async function handleSubmit(event) {
     partySize: Number(partySizeInput?.value || "0"),
     specialOccasion: (occasionSelect?.value || "None").trim(),
     durationMinutes: DEFAULT_DURATION_MINUTES,
-    notes: (notesInput?.value || "").trim()
+    notes: (notesInput?.value || "").trim(),
+    sensitiveInfoConsent: Boolean(sensitiveInfoConsentInput?.checked)
   };
 
   const validationError = validateClientPayload(payload);
   if (validationError) {
-    showError(validationError);
+    showError(validationError.message, validationError.field);
     return;
   }
 
@@ -966,6 +1097,7 @@ async function handleSubmit(event) {
   } catch (error) {
     showError("Booking service is currently unavailable. Please try again shortly.");
   } finally {
+    resetBookingTurnstile();
     setSubmitting(false);
   }
 }
@@ -991,6 +1123,7 @@ async function initialize() {
   bookingDateToggle?.addEventListener("click", () => {
     setCalendarOpen(!isCalendarOpen);
   });
+  bookingSlotCards?.addEventListener("keydown", handleSlotCardKeydown);
   calendarPrevBtn?.addEventListener("click", () => moveCalendarMonth(-1));
   calendarNextBtn?.addEventListener("click", () => moveCalendarMonth(1));
   partySizeInput?.addEventListener("change", () => {

@@ -8,7 +8,11 @@ import { json, methodNotAllowed } from "../_lib/json.js";
 
 export async function onRequestGet(context) {
   try {
-    if (!isTokenAuthorized(context.request, resolveFeedTokens(context.env, "bookings"))) {
+    const tokens = resolveFeedTokens(context.env, "bookings");
+    if (tokens.length === 0) {
+      throw new ApiError("Bookings feed is not configured.", 503);
+    }
+    if (!isTokenAuthorized(context.request, tokens)) {
       throw new ApiError("Unauthorized feed token.", 401);
     }
     const includePast = queryFlag(urlOf(context.request), "includePast");

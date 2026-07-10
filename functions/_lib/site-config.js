@@ -170,6 +170,7 @@ function parseClockToMinutes(clock) {
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return NaN;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return NaN;
   return (hours * 60) + minutes;
 }
 
@@ -221,7 +222,9 @@ function normalizeModifierOption(rawOption) {
 
   const normalized = {
     name,
-    priceAdjustment
+    priceAdjustment,
+    allergenCodes: uniqueStrings(rawOption?.allergenCodes, (value) => value.toUpperCase()),
+    removesAllergenCodes: uniqueStrings(rawOption?.removesAllergenCodes, (value) => value.toUpperCase())
   };
   const minorAdjustment = normalizeMinorMoneyValue([
     rawOption?.priceAdjustmentMinor,
@@ -567,6 +570,28 @@ function normalizeSiteConfig(rawConfig) {
     delivery.allowedOutwardPrefixes = DEFAULT_DELIVERY_PREFIXES.slice();
   }
 
+  if (orders.serviceEndMinutes <= orders.serviceStartMinutes) {
+    orders.serviceStartMinutes = DEFAULT_SITE_CONFIG.orders.serviceStartMinutes;
+    orders.serviceEndMinutes = DEFAULT_SITE_CONFIG.orders.serviceEndMinutes;
+  }
+  orders.collectionEarliestScheduledMinutes = Math.min(
+    orders.serviceEndMinutes,
+    Math.max(orders.serviceStartMinutes, orders.collectionEarliestScheduledMinutes)
+  );
+  orders.deliveryEarliestScheduledMinutes = Math.min(
+    orders.serviceEndMinutes,
+    Math.max(orders.serviceStartMinutes, orders.deliveryEarliestScheduledMinutes)
+  );
+
+  if (bookings.serviceEndMinutes <= bookings.serviceStartMinutes) {
+    bookings.serviceStartMinutes = DEFAULT_SITE_CONFIG.bookings.serviceStartMinutes;
+    bookings.serviceEndMinutes = DEFAULT_SITE_CONFIG.bookings.serviceEndMinutes;
+  }
+
+  if (delivery.etaMaxMinutes < delivery.etaMinMinutes) {
+    delivery.etaMaxMinutes = delivery.etaMinMinutes;
+  }
+
   return {
     version: 1,
     business: {
@@ -712,30 +737,40 @@ export async function saveMenuCatalog(env, rawMenu) {
 
 export function buildOpeningSummary(weeklyHours) {
   const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const openDays = [];
+  const entries = [];
 
   for (let dayIndex = 0; dayIndex <= 6; dayIndex += 1) {
     const windows = Array.isArray(weeklyHours?.[dayIndex]) ? weeklyHours[dayIndex] : [];
-    if (windows.length === 0) continue;
-    const first = windows[0];
-    const start = first?.[0] || "";
-    const end = first?.[1] || "";
-    if (start && end) {
-      openDays.push({ dayIndex, label: labels[dayIndex], text: `${start}-${end}` });
+    const text = windows
+      .filter((windowValue) => Array.isArray(windowValue) && windowValue.length >= 2)
+      .map((windowValue) => `${windowValue[0]}-${windowValue[1]}`)
+      .join(" / ");
+    entries.push({ dayIndex, label: labels[dayIndex], text });
+  }
+
+  const openDays = entries.filter((entry) => entry.text);
+  if (openDays.length === 0) return "Hours unavailable";
+
+  const groups = [];
+  for (const entry of entries) {
+    const previous = groups[groups.length - 1];
+    if (entry.text && previous && previous.text === entry.text && previous.end === entry.dayIndex - 1) {
+      previous.end = entry.dayIndex;
+      continue;
+    }
+    if (entry.text) {
+      groups.push({ start: entry.dayIndex, end: entry.dayIndex, text: entry.text });
     }
   }
 
-  if (openDays.length === 0) return "Hours unavailable";
-  if (openDays.length === 1) return `${openDays[0].label}: ${openDays[0].text}`;
-
-  const first = openDays[0];
-  const last = openDays[openDays.length - 1];
-  const allSameText = openDays.every((entry) => entry.text === first.text);
-  if (allSameText) {
-    return `${first.label}-${last.label}: ${first.text}`;
-  }
-
-  return openDays
-    .map((entry) => `${entry.label}: ${entry.text}`)
+  // Sunday and the following Tuesday-Saturday are not a continuous range.
+  // Keep week-boundary groups separate so a closed Monday is never implied.
+  return groups
+    .map((group) => {
+      const dayLabel = group.start === group.end
+        ? labels[group.start]
+        : `${labels[group.start]}-${labels[group.end]}`;
+      return `${dayLabel}: ${group.text}`;
+    })
     .join(" • ");
 }

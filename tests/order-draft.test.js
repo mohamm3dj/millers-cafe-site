@@ -23,7 +23,7 @@ const SAMPLE_MENU = [
             maxSelections: 1,
             options: [
               { name: "Chicken Tikka", priceAdjustment: 0 },
-              { name: "Mixed Tikka", priceAdjustment: 1 }
+              { name: "Mixed Tikka", priceAdjustment: 1, allergenCodes: ["D", "unknown"], removesAllergenCodes: ["N"] }
             ]
           },
           {
@@ -78,6 +78,8 @@ test("reconcileOrderDraftState reprices restored items against the live menu and
   assert.equal(draft.cartItems[0].basePrice, 8);
   assert.equal(draft.cartItems[0].unitPrice, 9);
   assert.equal(draft.cartItems[0].linePrice, 18);
+  assert.deepEqual(draft.cartItems[0].modifierSelections[0].allergenCodes, ["D"]);
+  assert.deepEqual(draft.cartItems[0].modifierSelections[0].removesAllergenCodes, ["N"]);
   assert.equal(meta.updatedItems, 1);
   assert.equal(meta.removedItems, 1);
   assert.equal(meta.hadChanges, true);

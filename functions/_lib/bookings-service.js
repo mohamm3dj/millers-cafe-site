@@ -10,10 +10,13 @@ import {
   feedRows,
   loadBookings,
   makeReference,
-  saveBookings,
+  saveBookingEntity,
+  saveBookingsAfterEntity,
   suggestTableAssignment,
   slotAvailability,
-  toCSV
+  toCSV,
+  validateTableAssignment,
+  withBookingsMutationLock
 } from "../_booking-core.js";
 import { ApiError } from "./errors.js";
 import { getSiteConfig } from "./site-config.js";
@@ -28,17 +31,21 @@ export async function listBookingFeed(env, includePast = false, format = "csv") 
 }
 
 export async function createBooking(env, payload) {
-  const bookings = await loadBookings(env);
   const siteConfig = await getSiteConfig(env);
-  const creation = createBookingRecord(bookings, payload, {
-    rules: siteConfig.bookings
-  });
-  if (!creation.ok) {
-    throw new ApiError(creation.error || "Invalid booking request.", creation.status || 400);
-  }
+  const creation = await withBookingsMutationLock(async () => {
+    const bookings = await loadBookings(env);
+    const result = createBookingRecord(bookings, payload, {
+      rules: siteConfig.bookings
+    });
+    if (!result.ok) {
+      throw new ApiError(result.error || "Invalid booking request.", result.status || 400);
+    }
 
-  bookings.push(creation.record);
-  await saveBookings(env, bookings);
+    bookings.push(result.record);
+    await saveBookingEntity(env, result.record);
+    await saveBookingsAfterEntity(env, bookings);
+    return result;
+  });
 
   let emailResult = null;
   try {
@@ -147,48 +154,73 @@ export async function updateBookingDecision(env, payload = {}) {
   const bookingId = String(payload.bookingId || "").trim();
   const nextStatus = validDecisionStatus(payload.status);
   if (!reference && !bookingId) throw new ApiError("reference or bookingId is required.", 400);
+  if (reference.length > 64 || bookingId.length > 100) throw new ApiError("Booking identifier is invalid.", 400);
   if (!nextStatus) throw new ApiError("status must be accepted or rejected.", 400);
-
-  const bookings = await loadBookings(env);
-  const index = reference
-    ? findBookingIndexByReference(bookings, reference)
-    : bookings.findIndex((booking) => String(booking.id || "") === bookingId);
-  if (index < 0) {
-    throw new ApiError("Booking not found.", 404);
+  const decisionReason = String(payload.reason || "").trim();
+  if (decisionReason.length > 400) throw new ApiError("Decision reason must be 400 characters or fewer.", 400);
+  if (payload.assignedTables !== undefined && !Array.isArray(payload.assignedTables)) {
+    throw new ApiError("assignedTables must be an array.", 400);
+  }
+  if (Array.isArray(payload.assignedTables) &&
+      (payload.assignedTables.length > 19 || payload.assignedTables.some((table) =>
+        !Number.isInteger(Number(table)) || Number(table) <= 0
+      ))) {
+    throw new ApiError("assignedTables contains an invalid table number.", 400);
   }
 
-  const existing = bookings[index];
-  const previousStatus = normalizedStatus(existing.status || "pending");
-  const next = {
-    ...existing,
-    status: nextStatus,
-    statusUpdatedAt: new Date().toISOString(),
-    decisionReason: String(payload.reason || "").trim()
-  };
-
-  if (nextStatus === "accepted") {
-    const explicitTables = normalizeAssignedTables(payload.assignedTables);
-    const assignedTables = explicitTables.length > 0
-      ? explicitTables
-      : suggestTableAssignment(
-        bookings.filter((booking, bookingIndex) => bookingIndex !== index),
-        existing.date,
-        existing.time,
-        existing.partySize,
-        existing.durationMinutes,
-        existing.id
-      );
-
-    if (!assignedTables || assignedTables.length === 0) {
-      throw new ApiError("No available table assignment for that booking.", 409);
+  const mutation = await withBookingsMutationLock(async () => {
+    const bookings = await loadBookings(env);
+    const index = reference
+      ? findBookingIndexByReference(bookings, reference)
+      : bookings.findIndex((booking) => String(booking.id || "") === bookingId);
+    if (index < 0) {
+      throw new ApiError("Booking not found.", 404);
     }
-    next.assignedTables = assignedTables;
-  } else {
-    next.assignedTables = [];
-  }
 
-  bookings[index] = next;
-  await saveBookings(env, bookings);
+    const existing = bookings[index];
+    const previousStatus = normalizedStatus(existing.status || "pending");
+    const next = {
+      ...existing,
+      status: nextStatus,
+      statusUpdatedAt: new Date().toISOString(),
+      decisionReason
+    };
+
+    if (nextStatus === "accepted") {
+      const explicitTables = normalizeAssignedTables(payload.assignedTables);
+      let assignedTables = null;
+      if (explicitTables.length > 0) {
+        const assignmentCheck = validateTableAssignment(bookings, existing, explicitTables);
+        if (!assignmentCheck.ok) {
+          throw new ApiError(assignmentCheck.error, assignmentCheck.status);
+        }
+        assignedTables = assignmentCheck.tables;
+      } else {
+        assignedTables = suggestTableAssignment(
+          bookings.filter((booking, bookingIndex) => bookingIndex !== index),
+          existing.date,
+          existing.time,
+          existing.partySize,
+          existing.durationMinutes,
+          existing.id
+        );
+      }
+
+      if (!assignedTables || assignedTables.length === 0) {
+        throw new ApiError("No available table assignment for that booking.", 409);
+      }
+      next.assignedTables = assignedTables;
+    } else {
+      next.assignedTables = [];
+    }
+
+    bookings[index] = next;
+    await saveBookingEntity(env, next);
+    await saveBookingsAfterEntity(env, bookings);
+    return { next, previousStatus };
+  });
+
+  const { next, previousStatus } = mutation;
 
   const shouldNotify = payload.notify !== false && previousStatus !== nextStatus;
   let email = null;
@@ -223,8 +255,22 @@ export async function getBookingAvailability(env, options) {
   const partySize = Number(options?.partySize || 2);
   const durationMinutes = Number(options?.durationMinutes || 90);
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const parsedDate = dateMatch
+    ? new Date(Date.UTC(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3])))
+    : null;
+  const validDate = Boolean(parsedDate &&
+    parsedDate.getUTCFullYear() === Number(dateMatch[1]) &&
+    parsedDate.getUTCMonth() === Number(dateMatch[2]) - 1 &&
+    parsedDate.getUTCDate() === Number(dateMatch[3]));
+  if (!validDate) {
     throw new ApiError("Date is required in yyyy-MM-dd format.", 400);
+  }
+  if (!Number.isInteger(partySize) || partySize < 1 || partySize > 40) {
+    throw new ApiError("Party size must be between 1 and 40.", 400);
+  }
+  if (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 240) {
+    throw new ApiError("Duration must be between 15 and 240 minutes.", 400);
   }
 
   const siteConfig = await getSiteConfig(env);

@@ -8,7 +8,11 @@ import { listOrderFeed } from "../_lib/orders-service.js";
 
 export async function onRequestGet(context) {
   try {
-    if (!isTokenAuthorized(context.request, resolveFeedTokens(context.env, "orders"))) {
+    const tokens = resolveFeedTokens(context.env, "orders");
+    if (tokens.length === 0) {
+      throw new ApiError("Orders feed is not configured.", 503);
+    }
+    if (!isTokenAuthorized(context.request, tokens)) {
       throw new ApiError("Unauthorized feed token.", 401);
     }
     const includePast = queryFlag(urlOf(context.request), "includePast");

@@ -1,5 +1,245 @@
 "use strict";
 
+const DIETARY_TAG_KEYS = new Set(["vegan", "vegetarian", "veg"]);
+
+function freezeAllergenDefinition(definition) {
+  return Object.freeze({
+    ...definition,
+    tagKeys: Object.freeze(definition.tagKeys.slice())
+  });
+}
+
+// These are the 14 allergen categories regulated in the UK. Codes only create
+// a public claim when they are explicitly present in an item's `codes` array;
+// names, descriptions, tags and ingredients are never used to infer a claim.
+// D and N retain the site's existing public labels for backwards compatibility.
+export const UK_REGULATED_ALLERGENS = Object.freeze([
+  freezeAllergenDefinition({ code: "CE", key: "celery", regulatedName: "Celery", label: "Celery", tagKeys: ["celery"] }),
+  freezeAllergenDefinition({ code: "G", key: "cereals-containing-gluten", regulatedName: "Cereals containing gluten", label: "Cereals containing gluten", tagKeys: ["gluten", "cereals containing gluten"] }),
+  freezeAllergenDefinition({ code: "CR", key: "crustaceans", regulatedName: "Crustaceans", label: "Crustaceans", tagKeys: ["crustacean", "crustaceans"] }),
+  freezeAllergenDefinition({ code: "E", key: "eggs", regulatedName: "Eggs", label: "Eggs", tagKeys: ["egg", "eggs"] }),
+  freezeAllergenDefinition({ code: "F", key: "fish", regulatedName: "Fish", label: "Fish", tagKeys: ["fish"] }),
+  freezeAllergenDefinition({ code: "L", key: "lupin", regulatedName: "Lupin", label: "Lupin", tagKeys: ["lupin"] }),
+  freezeAllergenDefinition({ code: "D", key: "milk", regulatedName: "Milk", label: "Dairy", tagKeys: ["dairy", "milk"] }),
+  freezeAllergenDefinition({ code: "MO", key: "molluscs", regulatedName: "Molluscs", label: "Molluscs", tagKeys: ["mollusc", "molluscs"] }),
+  freezeAllergenDefinition({ code: "MU", key: "mustard", regulatedName: "Mustard", label: "Mustard", tagKeys: ["mustard"] }),
+  freezeAllergenDefinition({ code: "P", key: "peanuts", regulatedName: "Peanuts", label: "Peanuts", tagKeys: ["peanut", "peanuts"] }),
+  freezeAllergenDefinition({ code: "SE", key: "sesame", regulatedName: "Sesame", label: "Sesame", tagKeys: ["sesame", "sesame seeds"] }),
+  freezeAllergenDefinition({ code: "SO", key: "soybeans", regulatedName: "Soybeans", label: "Soya", tagKeys: ["soy", "soya", "soybean", "soybeans"] }),
+  freezeAllergenDefinition({ code: "SU", key: "sulphites", regulatedName: "Sulphur dioxide and sulphites", label: "Sulphur dioxide and sulphites", tagKeys: ["sulphites", "sulfites", "sulphur dioxide", "sulfur dioxide"] }),
+  freezeAllergenDefinition({ code: "N", key: "tree-nuts", regulatedName: "Tree nuts", label: "Nuts", tagKeys: ["nut", "nuts", "tree nut", "tree nuts"] })
+]);
+
+export const ALLERGEN_CODE_LABELS = Object.freeze(Object.fromEntries(
+  UK_REGULATED_ALLERGENS.map(({ code, label }) => [code, label])
+));
+
+const ALLERGEN_CODES = new Set(Object.keys(ALLERGEN_CODE_LABELS));
+const ALLERGEN_TAG_KEYS = new Set(
+  UK_REGULATED_ALLERGENS.flatMap(({ tagKeys }) => tagKeys)
+);
+const DIETARY_CODE_KINDS = Object.freeze({
+  VG: "vegan",
+  VE: "vegan",
+  V: "vegetarian"
+});
+const VEGAN_SAFE_OPTION_KEYS = new Set([
+  "chapati",
+  "sriracha",
+  "tamarind",
+  "mango chutney",
+  "ketchup",
+  "standard biryani",
+  "vegetables"
+]);
+const VEGETARIAN_ONLY_OPTION_KEYS = new Set([
+  "add cheese",
+  "algerian sauce",
+  "curry mayo",
+  "mayonnaise",
+  "mint sauce",
+  "naan"
+]);
+
+function normalizedCatalogKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function uniqueUpperCodes(values) {
+  return Array.from(new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => String(value || "").trim().toUpperCase())
+      .filter(Boolean)
+  ));
+}
+
+function dietaryKindFromCodes(codes) {
+  for (const code of uniqueUpperCodes(codes)) {
+    if (DIETARY_CODE_KINDS[code]) return DIETARY_CODE_KINDS[code];
+  }
+  return "";
+}
+
+function optionDietaryEffect(groupName, optionName) {
+  const groupKey = normalizedCatalogKey(groupName);
+  const optionKey = normalizedCatalogKey(optionName);
+
+  if (groupKey === "protein") {
+    return optionKey === "vegetables" ? "inherit" : "not-suitable";
+  }
+  if (VEGETARIAN_ONLY_OPTION_KEYS.has(optionKey)) return "vegetarian";
+  if (VEGAN_SAFE_OPTION_KEYS.has(optionKey)) return "inherit";
+  return "unknown";
+}
+
+function dietaryRank(kind) {
+  if (kind === "vegan") return 2;
+  if (kind === "vegetarian") return 1;
+  return 0;
+}
+
+function lowerDietaryKind(kind, ceiling) {
+  return dietaryRank(ceiling) < dietaryRank(kind) ? ceiling : kind;
+}
+
+function displayDietaryKind(kind) {
+  if (kind === "vegan") return "Vegan";
+  if (kind === "vegetarian") return "Vegetarian";
+  return "";
+}
+
+function selectionForGroup(selections, group) {
+  const groupKey = normalizedCatalogKey(group?.name);
+  return (Array.isArray(selections) ? selections : []).filter((selection) =>
+    normalizedCatalogKey(selection?.groupName) === groupKey
+  );
+}
+
+function optionForSelection(group, selection) {
+  const optionKey = normalizedCatalogKey(selection?.optionName);
+  return (Array.isArray(group?.options) ? group.options : []).find((option) =>
+    normalizedCatalogKey(option?.name) === optionKey
+  ) || null;
+}
+
+export function normalizeMenuItemAllergenCodes(item) {
+  return uniqueUpperCodes(item?.codes).filter((code) => ALLERGEN_CODES.has(code));
+}
+
+export function getMenuItemAllergenCodes(item, modifierSelections = []) {
+  const result = normalizeMenuItemAllergenCodes(item);
+  const groups = Array.isArray(item?.modifierGroups) ? item.modifierGroups : [];
+
+  for (const group of groups) {
+    for (const selection of selectionForGroup(modifierSelections, group)) {
+      const option = optionForSelection(group, selection);
+      if (!option) continue;
+
+      const removals = new Set(normalizeMenuItemAllergenCodes({ codes: option.removesAllergenCodes }));
+      if (removals.size > 0) {
+        for (let index = result.length - 1; index >= 0; index -= 1) {
+          if (removals.has(result[index])) result.splice(index, 1);
+        }
+      }
+
+      for (const code of normalizeMenuItemAllergenCodes({ codes: option.allergenCodes })) {
+        if (!result.includes(code)) result.push(code);
+      }
+    }
+  }
+
+  return result;
+}
+
+export function getMenuItemAllergenLabels(item, modifierSelections = []) {
+  return getMenuItemAllergenCodes(item, modifierSelections)
+    .map((code) => ALLERGEN_CODE_LABELS[code]);
+}
+
+export function getMenuItemDietaryDisplay(item, modifierSelections = []) {
+  const dietaryKind = String(item?.dietarySuitability || dietaryKindFromCodes(item?.codes)).trim().toLowerCase();
+  if (!displayDietaryKind(dietaryKind)) return null;
+
+  const groups = Array.isArray(item?.modifierGroups) ? item.modifierGroups : [];
+  const affectingGroups = groups.filter((group) => Boolean(group?.affectsDietarySuitability));
+  if (affectingGroups.length === 0) {
+    return {
+      kind: dietaryKind,
+      label: displayDietaryKind(dietaryKind),
+      confirmed: true
+    };
+  }
+
+  let finalKind = dietaryKind;
+  let allRequiredChoicesMade = true;
+
+  for (const group of affectingGroups) {
+    const selected = selectionForGroup(modifierSelections, group);
+    if (group.isRequired && selected.length === 0) {
+      allRequiredChoicesMade = false;
+      continue;
+    }
+
+    for (const selection of selected) {
+      const option = optionForSelection(group, selection);
+      const effect = String(option?.dietaryEffect || "unknown").trim().toLowerCase();
+      if (effect === "not-suitable" || effect === "unknown") return null;
+      if (effect === "vegetarian") {
+        finalKind = lowerDietaryKind(finalKind, "vegetarian");
+      }
+    }
+  }
+
+  if (!allRequiredChoicesMade) {
+    return {
+      kind: dietaryKind,
+      label: `${displayDietaryKind(dietaryKind)} option`,
+      confirmed: false
+    };
+  }
+
+  return {
+    kind: finalKind,
+    label: displayDietaryKind(finalKind),
+    confirmed: true
+  };
+}
+
+export function getPreferredModifierOptionIndex(item, group) {
+  const options = Array.isArray(group?.options) ? group.options : [];
+  if (!item?.dietarySuitability || !group?.affectsDietarySuitability) return 0;
+
+  const safeIndex = options.findIndex((option) => String(option?.dietaryEffect || "") === "inherit");
+  return safeIndex >= 0 ? safeIndex : -1;
+}
+
+function remediateMenuCatalog(catalog) {
+  (Array.isArray(catalog) ? catalog : []).forEach((category) => {
+    (Array.isArray(category?.items) ? category.items : []).forEach((item) => {
+      item.codes = uniqueUpperCodes(item.codes);
+      item.dietarySuitability = dietaryKindFromCodes(item.codes);
+      item.allergens = getMenuItemAllergenLabels(item);
+      item.tags = Array.from(new Set(
+        (Array.isArray(item.tags) ? item.tags : [])
+          .map((tag) => String(tag || "").trim().toLowerCase())
+          .filter((tag) => tag && !DIETARY_TAG_KEYS.has(tag) && !ALLERGEN_TAG_KEYS.has(tag))
+      ));
+
+      (Array.isArray(item.modifierGroups) ? item.modifierGroups : []).forEach((group) => {
+        let affectsDietarySuitability = false;
+        (Array.isArray(group?.options) ? group.options : []).forEach((option) => {
+          option.allergenCodes = normalizeMenuItemAllergenCodes({ codes: option.allergenCodes });
+          option.removesAllergenCodes = normalizeMenuItemAllergenCodes({ codes: option.removesAllergenCodes });
+          option.dietaryEffect = optionDietaryEffect(group.name, option.name);
+          if (option.dietaryEffect !== "inherit") affectsDietarySuitability = true;
+        });
+        group.affectsDietarySuitability = Boolean(item.dietarySuitability && affectsDietarySuitability);
+      });
+    });
+  });
+  return catalog;
+}
+
 export const MILLERS_ORDER_MENU = [
   {
     "name": "Shakes and Chillers",
@@ -687,10 +927,11 @@ export const MILLERS_ORDER_MENU = [
         "description": "Bhaji, samosa and paneer pakora.",
         "publicPriceLabel": "",
         "codes": [
-          "VG"
+          "V",
+          "D"
         ],
         "tags": [
-          "vegan"
+          "vegetarian"
         ],
         "modifierGroups": []
       }
@@ -1763,10 +2004,11 @@ export const MILLERS_ORDER_MENU = [
         "description": "Onion bhaji, paneer and spinach with tamarind sauce.",
         "publicPriceLabel": "",
         "codes": [
-          "VG"
+          "V",
+          "D"
         ],
         "tags": [
-          "vegan"
+          "vegetarian"
         ],
         "modifierGroups": []
       },
@@ -4851,6 +5093,8 @@ export const MILLERS_ORDER_MENU = [
     ]
   }
 ];
+
+remediateMenuCatalog(MILLERS_ORDER_MENU);
 
 if (typeof window !== "undefined") {
   window.MILLERS_ORDER_MENU = MILLERS_ORDER_MENU;

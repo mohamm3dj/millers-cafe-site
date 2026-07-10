@@ -1,7 +1,10 @@
 "use strict";
 
 (function menuPage() {
-  const knownCodes = new Set(["LC", "V", "VE", "VG", "M", "ME", "MS", "HT", "VH", "G", "D", "N"]);
+  const knownCodes = new Set([
+    "LC", "V", "VE", "VG", "M", "ME", "MS", "HT", "VH",
+    "CE", "G", "CR", "E", "F", "L", "D", "MO", "MU", "P", "SE", "SO", "SU", "N"
+  ]);
   const jumpLabelOverrides = new Map([
     ["Shakes and Chillers", "Shakes"],
     ["Desserts and Cakes", "Desserts"],
@@ -163,11 +166,18 @@
   function setCollapsed(section, collapsed, options = {}) {
     section.classList.toggle("collapsed", collapsed);
 
-    const title = section.querySelector(":scope > .tileTitle");
-    if (title) title.setAttribute("aria-expanded", String(!collapsed));
+    const toggle = section.querySelector(":scope > .tileTitle > .menuAccordionToggle");
+    if (toggle) toggle.setAttribute("aria-expanded", String(!collapsed));
 
     const body = getAccordionBody(section);
     if (!body) return;
+
+    body.setAttribute("aria-hidden", String(collapsed));
+    if (collapsed) {
+      body.setAttribute("inert", "");
+    } else {
+      body.removeAttribute("inert");
+    }
 
     const immediate = Boolean(options.immediate);
 
@@ -204,23 +214,23 @@
         section.appendChild(body);
       }
 
+      const titleText = normalizeText(title.textContent);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "menuAccordionToggle";
+      toggle.textContent = titleText;
+      body.id = `${section.id}-content`;
+      toggle.setAttribute("aria-controls", body.id);
+      title.replaceChildren(toggle);
+
       body.addEventListener("transitionend", (event) => {
         if (event.propertyName === "max-height" && !section.classList.contains("collapsed")) {
           body.style.maxHeight = "none";
         }
       });
 
-      title.setAttribute("role", "button");
-      title.setAttribute("tabindex", "0");
-
       const toggleSection = () => setCollapsed(section, !section.classList.contains("collapsed"));
-      title.addEventListener("click", toggleSection);
-      title.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          toggleSection();
-        }
-      });
+      toggle.addEventListener("click", toggleSection);
 
       setCollapsed(section, true, { immediate: true });
     });
@@ -247,7 +257,7 @@
     const top = section.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({
       top: Math.max(0, top),
-      behavior: "smooth"
+      behavior: prefersReducedMotion ? "auto" : "smooth"
     });
   }
 

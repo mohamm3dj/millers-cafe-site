@@ -1,5 +1,7 @@
 "use strict";
 
+import { normalizeMenuItemAllergenCodes } from "./menu-catalog.js";
+
 const DEFAULT_MAX_ITEM_QUANTITY = 20;
 const DEFAULT_ORDER_DRAFT_VERSION = 2;
 const DEFAULT_ASAP_VALUE = "ASAP";
@@ -21,6 +23,50 @@ function normalizeKey(value) {
 
 function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
+}
+
+export function calculateOrderPricing(cartItems, options = {}) {
+  const orderType = String(options.orderType || "collection").trim().toLowerCase() === "delivery"
+    ? "delivery"
+    : "collection";
+  const collectionDiscountRate = Math.max(0, Math.min(1, Number(options.collectionDiscountRate ?? 0.10)));
+  const subtotal = roundMoney(
+    (Array.isArray(cartItems) ? cartItems : [])
+      .reduce((sum, item) => sum + Number(item?.linePrice || 0), 0)
+  );
+  const totalQuantity = (Array.isArray(cartItems) ? cartItems : [])
+    .reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0)), 0);
+  const collectionDiscount = orderType === "collection"
+    ? roundMoney(subtotal * collectionDiscountRate)
+    : 0;
+  const deliveryFee = orderType === "delivery" && totalQuantity > 0
+    ? roundMoney(Math.max(0, Number(options.deliveryFeeGBP || 0)))
+    : 0;
+
+  return {
+    subtotal,
+    collectionDiscount,
+    deliveryFee,
+    total: roundMoney(Math.max(0, subtotal - collectionDiscount + deliveryFee)),
+    totalQuantity
+  };
+}
+
+export function canAdvanceToCheckoutDetails(totalQuantity, isSubmitting = false) {
+  return !isSubmitting && Number(totalQuantity || 0) > 0;
+}
+
+export function cartQuantityActionLabel(action, itemName, quantity) {
+  const name = normalizeText(itemName) || "item";
+  const count = Math.max(1, Math.round(Number(quantity || 1)));
+  if (action === "increase") return `Increase ${name} quantity. Currently ${count}.`;
+  if (action === "decrease") return `Decrease ${name} quantity. Currently ${count}.`;
+  if (action === "remove") return `Remove ${name} from basket.`;
+  return `${name} basket action.`;
+}
+
+export function scrollBehaviorForPreference(prefersReducedMotion) {
+  return prefersReducedMotion ? "auto" : "smooth";
 }
 
 function cartLineTotals(basePrice, selections, quantity) {
@@ -210,6 +256,8 @@ function reconcileStoredModifierSelections(rawSelections, liveItem) {
       groupName: group.name,
       optionName: option.name,
       priceAdjustment: roundMoney(option.priceAdjustment),
+      allergenCodes: normalizeMenuItemAllergenCodes({ codes: option.allergenCodes }),
+      removesAllergenCodes: normalizeMenuItemAllergenCodes({ codes: option.removesAllergenCodes }),
       isTextInput: false
     });
 

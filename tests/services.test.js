@@ -13,6 +13,8 @@ import {
 } from "../functions/_lib/bookings-service.js";
 import { updateOrderStatus, readOrderStatus } from "../functions/_lib/order-status-service.js";
 import { createOrder } from "../functions/_lib/orders-service.js";
+import { saveAccountProfile } from "../functions/_lib/account-service.js";
+import { onRequestPost as createBookingRoute } from "../functions/api/bookings.js";
 import {
   makeBookingPayload,
   makeOrderPayload,
@@ -38,6 +40,20 @@ test("createBooking persists the booking even when email is not configured", asy
   assert.equal(stored[0].customerName, "Mo Khan");
   assert.equal(stored[0].status, "pending");
   assert.deepEqual(stored[0].assignedTables, []);
+});
+
+test("account profiles accept an empty or commonly formatted phone and reject letters", async () => {
+  const empty = await saveAccountProfile({}, "profile@example.com", { phoneNumber: "" });
+  const formatted = await saveAccountProfile({}, "profile@example.com", {
+    phoneNumber: "+44 (0)1472-828600"
+  });
+
+  assert.equal(empty.phoneNumber, "");
+  assert.equal(formatted.phoneNumber, "+44 (0)1472-828600");
+  await assert.rejects(
+    () => saveAccountProfile({}, "profile@example.com", { phoneNumber: "01472 CALL-ME" }),
+    (error) => error instanceof ApiError && error.status === 400 && /7 and 15 digits/i.test(error.message)
+  );
 });
 
 test("booking review feed exposes pending requests and decisions accept or reject bookings", async () => {
@@ -80,6 +96,81 @@ test("booking review feed exposes pending requests and decisions accept or rejec
   });
   assert.equal(rejected.booking.status, "rejected");
   assert.equal(rejected.booking.decisionReason, "Unable to verify details.");
+});
+
+test("booking decisions reject an explicit table that overlaps another accepted booking", async () => {
+  const first = await createBooking({}, makeBookingPayload({ partySize: 4 }));
+  const second = await createBooking({}, makeBookingPayload({
+    customerName: "Other Guest",
+    phoneNumber: "01234 567891",
+    email: "other@example.com",
+    partySize: 2
+  }));
+
+  await updateBookingDecision({}, {
+    reference: first.reference,
+    status: "accepted",
+    assignedTables: [1],
+    notify: false
+  });
+
+  await assert.rejects(
+    () => updateBookingDecision({}, {
+      reference: second.reference,
+      status: "accepted",
+      assignedTables: [1],
+      notify: false
+    }),
+    (error) => error instanceof ApiError && error.status === 409 && /already in use/i.test(error.message)
+  );
+});
+
+test("booking creation succeeds when best-effort analytics storage fails", async () => {
+  const values = new Map();
+  const kv = {
+    async get(key, type) {
+      const stored = values.get(String(key));
+      if (stored === undefined) return null;
+      return type === "json" ? JSON.parse(stored) : stored;
+    },
+    async put(key, value) {
+      if (String(key).startsWith("analytics_day:")) {
+        throw new Error("analytics unavailable");
+      }
+      values.set(String(key), String(value));
+    },
+    async delete(key) {
+      values.delete(String(key));
+    }
+  };
+
+  const response = await createBookingRoute({
+    env: { BOOKINGS_KV: kv },
+    request: new Request("https://millers.cafe/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeBookingPayload())
+    })
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal((await response.json()).ok, true);
+  assert.equal((await loadBookings({ BOOKINGS_KV: kv })).length, 1);
+  assert.equal(globalThis.__millersCafeAnalyticsLocks?.size || 0, 0);
+});
+
+test("booking route rejects an oversized chunked-style JSON body before creating a record", async () => {
+  const response = await createBookingRoute({
+    env: {},
+    request: new Request("https://millers.cafe/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: `${" ".repeat((32 * 1024) + 1)}${JSON.stringify(makeBookingPayload())}`
+    })
+  });
+
+  assert.equal(response.status, 413);
+  assert.equal((await loadBookings({})).length, 0);
 });
 
 test("createBooking sends customer and owner emails through Resend", async () => {
@@ -146,19 +237,14 @@ test("createBooking reports Resend rejection details when delivery fails", async
   assert.match(result.emailErrors[0], /to customer@example\.com/);
 });
 
-test("createOrder rolls back when confirmation emails are unavailable", async () => {
-  await assert.rejects(
-    () => createOrder({}, makeOrderPayload()),
-    (error) => {
-      assert.ok(error instanceof ApiError);
-      assert.equal(error.status, 503);
-      assert.match(error.message, /not configured yet/i);
-      return true;
-    }
-  );
+test("createOrder remains durable when confirmation emails are unavailable", async () => {
+  const result = await createOrder({}, makeOrderPayload());
 
+  assert.equal(result.ok, true);
+  assert.equal(result.emailStatus, "pending");
   const stored = await loadOrders({});
-  assert.deepEqual(stored, []);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].id, result.orderId);
 });
 
 test("createOrder sends customer and owner emails through Resend", async () => {
@@ -262,6 +348,8 @@ test("updateOrderStatus refunds rejected Stripe-paid orders", async () => {
   globalThis.fetch = async (url, options = {}) => {
     assert.equal(String(url), "https://api.stripe.com/v1/refunds");
     assert.equal(options.method, "POST");
+    assert.equal(options.headers["Stripe-Version"], "2026-02-25.clover");
+    assert.match(String(options.headers["Idempotency-Key"] || ""), /^order-refund:/);
     const body = new URLSearchParams(String(options.body || ""));
     assert.equal(body.get("payment_intent"), "pi_test_refund");
 
@@ -295,4 +383,69 @@ test("updateOrderStatus refunds rejected Stripe-paid orders", async () => {
   assert.equal(stored[0].refundStatus, "succeeded");
   assert.equal(stored[0].refundId, "re_test_refund");
   assert.equal(stored[0].refundAmountTotal, 2500);
+});
+
+test("failed Stripe refunds persist retry state and reuse the same idempotency key", async () => {
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "stripe",
+    paymentStatus: "paid",
+    paymentSessionId: "cs_test_refund_retry",
+    paymentIntentId: "pi_test_refund_retry",
+    paymentAmountTotal: 1750,
+    paymentCurrency: "gbp",
+    skipDuplicateCheck: true
+  });
+  assert.equal(created.ok, true);
+  await saveOrders({}, [created.record]);
+
+  const idempotencyKeys = [];
+  let attempt = 0;
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(String(url), "https://api.stripe.com/v1/refunds");
+    idempotencyKeys.push(String(options.headers["Idempotency-Key"] || ""));
+    attempt += 1;
+    if (attempt === 1) {
+      return new Response(JSON.stringify({
+        error: { message: "Temporary refund failure." }
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json; charset=utf-8" }
+      });
+    }
+    return new Response(JSON.stringify({
+      id: "re_test_refund_retry",
+      status: "succeeded",
+      amount: 1750,
+      created: 1_716_000_100
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8" }
+    });
+  };
+
+  const env = { STRIPE_SECRET_KEY: "sk_test_123" };
+  const failed = await updateOrderStatus(env, {
+    reference: created.reference,
+    status: "rejected",
+    notify: false
+  });
+  assert.equal(failed.refund.status, "failed");
+  assert.equal(failed.refund.attempts, 1);
+  assert.match(failed.refund.lastError, /Temporary refund failure/i);
+
+  const retried = await updateOrderStatus(env, {
+    reference: created.reference,
+    status: "rejected",
+    notify: false
+  });
+  assert.equal(retried.refund.status, "succeeded");
+  assert.equal(retried.refund.attempts, 2);
+  assert.equal(retried.refund.refundId, "re_test_refund_retry");
+  assert.equal(idempotencyKeys.length, 2);
+  assert.equal(idempotencyKeys[0], idempotencyKeys[1]);
+
+  const stored = await loadOrders({});
+  assert.equal(stored[0].refundStatus, "succeeded");
+  assert.equal(stored[0].refundAttempts, 2);
+  assert.equal(stored[0].refundLastError, "");
 });

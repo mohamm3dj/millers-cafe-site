@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +10,7 @@
   <meta name="description" content="Sign in to your Millers Café account to view bookings, orders, saved details and manage future visits.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/account/">
-  <link rel="stylesheet" href="../styles.css?v=20260429c">
+  <link rel="stylesheet" href="../styles.css?v=20260710f">
 </head>
 <body>
   <main class="accountPage">
@@ -64,6 +64,7 @@
               <button id="accountRequestBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">
                 Email my sign-in code
               </button>
+              <p class="policyConsentNote">We use your email to provide account access. See the <a href="../privacy/">privacy notice</a>.</p>
             </form>
 
             <form id="accountVerifyForm" class="accountForm" hidden novalidate>
@@ -96,7 +97,7 @@
             </form>
 
             <div id="accountSignedInActions" class="accountSignedInActions" hidden>
-              <div id="accountSignedInBanner" class="accountSignedInBanner"></div>
+              <div id="accountSignedInBanner" class="accountSignedInBanner" tabindex="-1"></div>
               <div class="accountActionRow">
                 <a id="accountPreferredOrderLink" class="accountSecondaryBtn" href="../collection/">Start a collection order</a>
                 <button id="accountLogoutBtn" class="accountSecondaryBtn" type="button">Sign out</button>
@@ -162,7 +163,8 @@
 
                 <label class="bookingField">
                   <span class="bookingLabel">Phone</span>
-                  <input id="accountProfilePhone" type="tel" maxlength="12" autocomplete="tel" inputmode="numeric" placeholder="07123 456789">
+                  <input id="accountProfilePhone" type="tel" maxlength="30" autocomplete="tel" inputmode="tel" aria-describedby="accountProfilePhoneHint" placeholder="07123 456789 or +44…">
+                  <span id="accountProfilePhoneHint" class="bookingFieldHint">UK and international numbers are accepted.</span>
                 </label>
 
                 <label class="bookingField">
@@ -250,7 +252,7 @@
       </section>
     </section>
 
-    <section id="accountReschedulePanel" class="accountModalShell" hidden aria-hidden="true">
+    <section id="accountReschedulePanel" class="accountModalShell" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="accountRescheduleTitle" aria-describedby="accountRescheduleMeta">
       <div class="accountModalBackdrop" data-close-reschedule="true"></div>
       <section class="tile simplePanel accountModalCard" aria-labelledby="accountRescheduleTitle">
         <div class="accountHistoryHead">
@@ -280,10 +282,15 @@
               <select id="accountReschedulePartySize" required></select>
             </label>
 
-            <label class="bookingField bookingFieldWide">
-              <span class="bookingLabel">Requests</span>
-              <textarea id="accountRescheduleNotes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
-            </label>
+            <div class="bookingField bookingFieldWide">
+              <label class="bookingLabel" for="accountRescheduleNotes">Requests</label>
+              <textarea id="accountRescheduleNotes" rows="3" maxlength="300" aria-describedby="accountSensitiveInfoHint" placeholder="Allergies, access requests, highchair, etc."></textarea>
+              <span id="accountSensitiveInfoHint" class="bookingFieldHint">Optional notes may include allergy, health or access information only if you give the separate consent below.</span>
+              <label class="sensitiveInfoConsent">
+                <input id="accountSensitiveInfoConsent" type="checkbox">
+                <span>I explicitly consent to Millers Café using these optional notes to handle this booking safely. I can leave the notes blank instead.</span>
+              </label>
+            </div>
           </div>
 
           <div class="accountActionRow">
@@ -295,11 +302,16 @@
       </section>
     </section>
 
-    <div class="footer">
+    <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
-    </div>
+      <nav class="footerPolicies" aria-label="Policies">
+        <a href="../privacy/" class="footerLink">Privacy</a>
+        <a href="../terms/" class="footerLink">Terms</a>
+        <a href="../refunds/" class="footerLink">Cancellations &amp; refunds</a>
+      </nav>
+    </footer>
   </main>
-  <script src="../client-tools.js?v=20260429c"></script>
-  <script type="module" src="./account.js?v=20260429c"></script>
+  <script src="../client-tools.js?v=20260710b"></script>
+  <script type="module" src="./account.js?v=20260710b"></script>
 </body>
 </html>

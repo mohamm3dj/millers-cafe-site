@@ -6,9 +6,9 @@ import { ApiError, errorResponse } from "../../_lib/errors.js";
 import { queryFlag, queryLower, urlOf } from "../../_lib/http.js";
 import { json, methodNotAllowed, readJsonBody } from "../../_lib/json.js";
 
-function assertBridgeAuthorized(context, bodyToken = "") {
+function assertBridgeAuthorized(context) {
   const tokens = resolveVenueBridgeTokens(context.env);
-  if (tokens.length === 0 || !isTokenAuthorized(context.request, tokens, bodyToken)) {
+  if (tokens.length === 0 || !isTokenAuthorized(context.request, tokens)) {
     throw new ApiError("Unauthorized venue bridge token.", 401);
   }
 }
@@ -29,12 +29,12 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   try {
+    assertBridgeAuthorized(context);
     const payload = await readJsonBody(context.request);
     if (!payload || typeof payload !== "object") {
       throw new ApiError("Invalid JSON body.", 400);
     }
 
-    assertBridgeAuthorized(context, payload.token);
     const updated = await updateBookingDecision(context.env, payload);
     return json(updated);
   } catch (error) {

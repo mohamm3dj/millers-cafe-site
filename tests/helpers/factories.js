@@ -85,9 +85,14 @@ export function resetInMemoryStores() {
   delete globalThis.__millersCafeOrdersStore;
   delete globalThis.__millersCafeOrderCheckoutDraftStore;
   delete globalThis.__millersCafeAccountStore;
+  delete globalThis.__millersCafeAccountCodeLocks;
   delete globalThis.__millersCafeSiteConfigStore;
   delete globalThis.__millersCafeAccountProfileStore;
   delete globalThis.__millersCafeAnalyticsStore;
   delete globalThis.__millersCafeAnalyticsLocks;
+  delete globalThis.__millersCafeBookingMutationLocks;
+  delete globalThis.__millersCafeOrderMutationLocks;
+  delete globalThis.__millersCafeCheckoutFinalizeLocks;
   delete globalThis.__millersCafeRateLimitStore;
+  delete globalThis.__millersCafeRateLimitLocks;
 }

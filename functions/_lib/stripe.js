@@ -4,6 +4,8 @@ import { ApiError } from "./errors.js";
 
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 const DEFAULT_WEBHOOK_TOLERANCE_SECONDS = 300;
+const DEFAULT_STRIPE_API_VERSION = "2026-02-25.clover";
+const DEFAULT_STRIPE_TIMEOUT_MS = 10000;
 
 function stripeSecretKey(env) {
   return String(env?.STRIPE_SECRET_KEY || "").trim();
@@ -45,13 +47,37 @@ function buildStripeUrl(pathname, query) {
   return url;
 }
 
-function stripeHeaders(secretKey, hasBody = false) {
+function normalizedIdempotencyKey(value) {
+  const key = String(value || "").trim();
+  if (!key) return "";
+  if (key.length > 255) {
+    throw new ApiError("Stripe idempotency key must be 255 characters or fewer.", 400);
+  }
+  return key;
+}
+
+function stripeApiVersion(env) {
+  return String(env?.STRIPE_API_VERSION || DEFAULT_STRIPE_API_VERSION).trim() || DEFAULT_STRIPE_API_VERSION;
+}
+
+function stripeTimeoutMs(env) {
+  const parsed = Number(env?.STRIPE_TIMEOUT_MS);
+  if (!Number.isFinite(parsed)) return DEFAULT_STRIPE_TIMEOUT_MS;
+  return Math.max(1000, Math.min(30000, Math.round(parsed)));
+}
+
+function stripeHeaders(env, secretKey, hasBody = false, idempotencyKey = "") {
   const headers = {
     Authorization: `Bearer ${secretKey}`,
-    Accept: "application/json"
+    Accept: "application/json",
+    "Stripe-Version": stripeApiVersion(env)
   };
   if (hasBody) {
     headers["Content-Type"] = "application/x-www-form-urlencoded";
+  }
+  const normalizedKey = normalizedIdempotencyKey(idempotencyKey);
+  if (normalizedKey) {
+    headers["Idempotency-Key"] = normalizedKey;
   }
   return headers;
 }
@@ -60,14 +86,30 @@ export async function stripeRequest(env, method, pathname, options = {}) {
   const secretKey = assertStripeSecretKey(env);
   const url = buildStripeUrl(pathname, options.query);
   const hasBody = options.form instanceof URLSearchParams;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), stripeTimeoutMs(env))
+    : null;
 
-  const response = await fetch(url, {
-    method,
-    headers: stripeHeaders(secretKey, hasBody),
-    body: hasBody ? options.form.toString() : undefined
-  });
+  let response;
+  let text;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: stripeHeaders(env, secretKey, hasBody, options.idempotencyKey),
+      body: hasBody ? options.form.toString() : undefined,
+      signal: controller?.signal
+    });
+    text = await response.text();
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new ApiError("Stripe request timed out. Please try again.", 504);
+    }
+    throw new ApiError("Stripe is temporarily unavailable. Please try again.", 502);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 
-  const text = await response.text();
   let body = null;
   try {
     body = text ? JSON.parse(text) : null;
@@ -91,18 +133,24 @@ export async function stripeRequest(env, method, pathname, options = {}) {
   return body;
 }
 
-export async function createCheckoutSession(env, form) {
+export async function createCheckoutSession(env, form, options = {}) {
   if (!(form instanceof URLSearchParams)) {
     throw new ApiError("Stripe checkout session payload must be form encoded.", 500);
   }
-  return stripeRequest(env, "POST", "/checkout/sessions", { form });
+  return stripeRequest(env, "POST", "/checkout/sessions", {
+    form,
+    idempotencyKey: options.idempotencyKey
+  });
 }
 
-export async function createRefund(env, form) {
+export async function createRefund(env, form, options = {}) {
   if (!(form instanceof URLSearchParams)) {
     throw new ApiError("Stripe refund payload must be form encoded.", 500);
   }
-  return stripeRequest(env, "POST", "/refunds", { form });
+  return stripeRequest(env, "POST", "/refunds", {
+    form,
+    idempotencyKey: options.idempotencyKey
+  });
 }
 
 export async function retrieveCheckoutSession(env, sessionId) {

@@ -11,6 +11,9 @@ export async function onRequestGet(context) {
     if (!sessionId) {
       throw new ApiError("Checkout session id is required.", 400);
     }
+    if (sessionId.length > 255 || !/^cs_[a-zA-Z0-9_]+$/.test(sessionId)) {
+      throw new ApiError("Checkout session id is invalid.", 400);
+    }
 
     const status = await getCheckoutSessionStatus(context.env, sessionId);
     return json(status);

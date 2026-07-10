@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Only canonical, indexable customer-information pages belong here. -->
   <url>
     <loc>https://millers.cafe/</loc>
   </url>
@@ -8,5 +9,14 @@
   </url>
   <url>
     <loc>https://millers.cafe/bookings/</loc>
+  </url>
+  <url>
+    <loc>https://millers.cafe/privacy/</loc>
+  </url>
+  <url>
+    <loc>https://millers.cafe/terms/</loc>
+  </url>
+  <url>
+    <loc>https://millers.cafe/refunds/</loc>
   </url>
 </urlset>

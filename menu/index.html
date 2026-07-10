@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,28 +10,31 @@
   <meta name="description" content="Explore the Millers Café menu, from shakes and desserts to curries, wraps, grills and family favourites." />
   <link rel="canonical" href="https://millers.cafe/menu/" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Millers Café" />
+  <meta property="og:locale" content="en_GB" />
   <meta property="og:title" content="Millers Café Menu" />
   <meta property="og:description" content="Explore the Millers Café menu, from shakes and desserts to curries, wraps, grills and family favourites." />
   <meta property="og:url" content="https://millers.cafe/menu/" />
   <meta property="og:image" content="https://millers.cafe/assets/millers-logo.png" />
+  <meta property="og:image:alt" content="Millers Café logo" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Millers Café Menu" />
   <meta name="twitter:description" content="Explore the Millers Café menu, from shakes and desserts to curries, wraps, grills and family favourites." />
   <meta name="twitter:image" content="https://millers.cafe/assets/millers-logo.png" />
-  <link rel="stylesheet" href="../styles.css?v=20260429c" />
+  <meta name="twitter:image:alt" content="Millers Café logo" />
+  <link rel="stylesheet" href="../styles.css?v=20260710f" />
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Menu",
       "name": "Millers Café Menu",
       "url": "https://millers.cafe/menu/",
-      "hasMenuSection": [
-        { "@type": "MenuSection", "name": "Shakes and Chillers" },
-        { "@type": "MenuSection", "name": "Hot Drinks" },
-        { "@type": "MenuSection", "name": "Desserts and Cakes" },
-        { "@type": "MenuSection", "name": "Starters" },
-        { "@type": "MenuSection", "name": "Mains" }
-      ]
+      "inLanguage": "en-GB",
+      "provider": {
+        "@type": "Restaurant",
+        "name": "Millers Café",
+        "url": "https://millers.cafe/"
+      }
     }
   </script>
 </head>
@@ -49,12 +52,12 @@
         <label class="toggle">
           <input id="labelsToggle" type="checkbox" checked />
           <span class="toggleUi" aria-hidden="true"></span>
-          <span>Show dietary / spice symbols</span>
+          <span>Show dietary, allergen and spice symbols</span>
         </label>
         <label class="toggle">
           <input id="legendToggle" type="checkbox" checked />
           <span class="toggleUi" aria-hidden="true"></span>
-          <span>Show symbol legend</span>
+          <span>Show symbol key</span>
         </label>
       </div>
       <div class="menuSearchRow">
@@ -89,6 +92,7 @@
         <div><span class="label">D</span> Contains dairy</div>
         <div><span class="label">N</span> Contains nuts</div>
       </div>
+      <p class="menuAllergenNotice"><strong>Allergy notice:</strong> this menu currently tags only dairy (D) and nuts (N), and no symbol does not mean allergen-free. Symbols are a guide, not a guarantee. Recipes and shared preparation areas can change. Tell the team about every allergy before ordering so they can check the current ingredients and cross-contact risk.</p>
     </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
@@ -164,7 +168,7 @@
   <h2 class="tileTitle">Starters - Mixed</h2>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Hot Mix</div><div class="menuDesc">Chicken and lamb tikka with naga chilli.</div></div><div class="menuPrice">&pound;6</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Tandoori Mixed</div><div class="menuDesc">Chicken, lamb tikka and seekh kebab.</div></div><div class="menuPrice">&pound;6</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vegetarian Mix (VG)</div><div class="menuDesc">Bhaji, samosa and paneer pakora.</div></div><div class="menuPrice">&pound;6</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vegetarian Mix (V, D)</div><div class="menuDesc">Bhaji, samosa and paneer pakora.</div></div><div class="menuPrice">&pound;6</div></div>
 </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
@@ -216,7 +220,7 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Chicken Tikka Wrap</div></div><div class="menuPrice">&pound;12</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Lamb Tikka Wrap</div></div><div class="menuPrice">&pound;12</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Mixed Tikka Wrap</div></div><div class="menuPrice">&pound;12</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Onion Bhaji &amp; Veg Wrap (VG)</div></div><div class="menuPrice">&pound;10</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Onion Bhaji &amp; Veg Wrap</div><div class="menuDesc">Vegan option available; final suitability depends on the bread, sauce and extras selected.</div></div><div class="menuPrice">&pound;10</div></div>
 </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
@@ -254,7 +258,7 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">The Desi Stack</div><div class="menuDesc">Double patties, cheese, crushed papadom and Algerian sauce.</div></div><div class="menuPrice">&pound;12</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Naga Fire Burger</div><div class="menuDesc">Double patties with seekh kebab and naga chilli drizzle.</div></div><div class="menuPrice">&pound;13</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Meat Stacked Burger</div><div class="menuDesc">Chicken tikka, seekh kebab and 3 smash patties with curry mayo.</div></div><div class="menuPrice">&pound;15</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Bombay Veg Crush (VG)</div><div class="menuDesc">Onion bhaji, paneer and spinach with tamarind sauce.</div></div><div class="menuPrice">&pound;10</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Bombay Veg Crush (V, D)</div><div class="menuDesc">Onion bhaji, paneer and spinach with tamarind sauce.</div></div><div class="menuPrice">&pound;10</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Paneer Smash Double</div><div class="menuDesc">Double paneer with mango chutney and tamarind.</div></div><div class="menuPrice">&pound;13</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Loaded Fries</div><div class="menuDesc">Chicken tikka, lamb tikka, onions and peppers. Pick your spice level.</div></div><div class="menuPrice">&pound;12</div></div>
 </section>
@@ -287,7 +291,7 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Chicken Tikka Biryani</div></div><div class="menuPrice">&pound;15</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Lamb Tikka Biryani</div></div><div class="menuPrice">&pound;15</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">King Prawn Biryani</div></div><div class="menuPrice">&pound;18</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vegetable Biryani (VG)</div></div><div class="menuPrice">&pound;10</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vegetable Biryani</div><div class="menuDesc">The standard dish is the vegan option. The Parda upgrade includes garlic naan, cheese and sauce, so it is not vegan.</div></div><div class="menuPrice">&pound;10</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Miller's Biryani</div><div class="menuDesc">Chicken tikka, lamb tikka and king prawn.</div></div><div class="menuPrice">&pound;18</div></div>
 </section>
 
@@ -308,19 +312,19 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Kerala Special (D, N)</div><div class="menuDesc">Garlic, onions and peppers with melted cheese, with a separate masala sauce.</div></div><div class="menuPrice">&pound;7</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Coconut Mango Makhani (D)</div><div class="menuDesc">Creamy coconut curry with sweet mango.</div></div><div class="menuPrice">&pound;7</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Creamy Garlic (N)</div><div class="menuDesc">Creamy garlic with a hint of sweetness.</div></div><div class="menuPrice">&pound;8</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Dhansak (VG)</div><div class="menuDesc">Sweet and tangy lentil curry.</div></div><div class="menuPrice">&pound;6</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Dhansak</div><div class="menuDesc">Sweet and tangy lentil curry. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;6</div></div>
 </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
   <h2 class="tileTitle">Medium Curries</h2>
   <div class="menuDesc menuNote">Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.</div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Apna Special (VG)</div><div class="menuDesc">Home-style curry with ginger and garlic.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Saagwala (VG)</div><div class="menuDesc">Spinach curry with garlic.</div></div><div class="menuPrice">&pound;6</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Achari (VG)</div><div class="menuDesc">Tangy curry with pickled spices.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Balti (VG)</div><div class="menuDesc">Classic curry with onions and peppers.</div></div><div class="menuPrice">&pound;6</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Bhuna (VG)</div><div class="menuDesc">Thick curry with slow-cooked onions.</div></div><div class="menuPrice">&pound;5</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Laknavi (VG)</div><div class="menuDesc">Sweet chilli curry with onions and peppers.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Rogan Josh (VG)</div><div class="menuDesc">Traditional tomato-based curry.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Apna Special</div><div class="menuDesc">Home-style curry with ginger and garlic. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Saagwala</div><div class="menuDesc">Spinach curry with garlic. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;6</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Achari</div><div class="menuDesc">Tangy curry with pickled spices. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Balti</div><div class="menuDesc">Classic curry with onions and peppers. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;6</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Bhuna</div><div class="menuDesc">Thick curry with slow-cooked onions. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Laknavi</div><div class="menuDesc">Sweet chilli curry with onions and peppers. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Rogan Josh</div><div class="menuDesc">Traditional tomato-based curry. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Miller's Special (D)</div><div class="menuDesc">Creamy sweet chilli curry with heat.</div></div><div class="menuPrice">&pound;8</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Butter Chicken (D)</div><div class="menuDesc">Rich, creamy and full of flavour.</div></div><div class="menuPrice">&pound;7</div></div>
 </section>
@@ -328,23 +332,23 @@
 <section class="tile menuSection menuGroup" data-menu="all">
   <h2 class="tileTitle">Hot Curries</h2>
   <div class="menuDesc menuNote">Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.</div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Madras (VG)</div><div class="menuDesc">Classic hot curry.</div></div><div class="menuPrice">&pound;5</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Jalfrezi (VG)</div><div class="menuDesc">Cooked with fresh chillies, peppers and onions.</div></div><div class="menuPrice">&pound;5</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Chilli Garlic (VG)</div><div class="menuDesc">Spicy garlic curry with fresh chillies.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Shezane Murgh (VG)</div><div class="menuDesc">Sweet mango and tomato with heat.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Nawabh Chettinad (VG)</div><div class="menuDesc">Complex South Indian curry with bold spices.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Coconut Chana (VG)</div><div class="menuDesc">Chickpeas with coconut and chillies.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Pathia (VG)</div><div class="menuDesc">Hot, sweet and slightly sour curry.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Madras</div><div class="menuDesc">Classic hot curry. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Jalfrezi</div><div class="menuDesc">Cooked with fresh chillies, peppers and onions. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Chilli Garlic</div><div class="menuDesc">Spicy garlic curry with fresh chillies. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Shezane Murgh</div><div class="menuDesc">Sweet mango and tomato with heat. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Nawabh Chettinad</div><div class="menuDesc">Complex South Indian curry with bold spices. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Coconut Chana</div><div class="menuDesc">Chickpeas with coconut and chillies. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Pathia</div><div class="menuDesc">Hot, sweet and slightly sour curry. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
 </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
   <h2 class="tileTitle">Very Hot Curries</h2>
   <div class="menuDesc menuNote">Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.</div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Shiraz (VG)</div><div class="menuDesc">Fresh chillies, garlic and coriander.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Naga Balti (VG)</div><div class="menuDesc">Very hot curry with naga pickle.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Shiraz</div><div class="menuDesc">Fresh chillies, garlic and coriander. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Naga Balti</div><div class="menuDesc">Very hot curry with naga pickle. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Naga Butter (D)</div><div class="menuDesc">Creamy butter curry with intense heat.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Masala Revenge (VG)</div><div class="menuDesc">Triple chilli masala curry.</div></div><div class="menuPrice">&pound;7</div></div>
-  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vindaloo (VG)</div><div class="menuDesc">Very hot curry with potatoes.</div></div><div class="menuPrice">&pound;5</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Masala Revenge</div><div class="menuDesc">Triple chilli masala curry. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;7</div></div>
+  <div class="menuItem"><div class="menuLeft"><div class="menuName">Vindaloo</div><div class="menuDesc">Very hot curry with potatoes. Vegan base option with Vegetables; meat and fish protein choices are not vegan.</div></div><div class="menuPrice">&pound;5</div></div>
 </section>
 
 <section class="tile menuSection menuGroup" data-menu="all">
@@ -395,11 +399,16 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Masala Chips</div><div class="menuDesc">Chips tossed in masala sauce.</div></div><div class="menuPrice">&pound;5</div></div>
 </section>
 
-    <div class="footer">
+    <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
-    </div>
+      <nav class="footerPolicies" aria-label="Policies">
+        <a href="../privacy/">Privacy</a>
+        <a href="../terms/">Terms</a>
+        <a href="../refunds/">Cancellations &amp; refunds</a>
+      </nav>
+    </footer>
   </main>
-  <script src="../client-tools.js?v=20260429c"></script>
-  <script src="../menu/menu.js?v=20260429c"></script>
+  <script src="../client-tools.js?v=20260710b"></script>
+  <script src="../menu/menu.js?v=20260710c"></script>
 </body>
 </html>

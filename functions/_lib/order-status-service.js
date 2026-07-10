@@ -5,7 +5,9 @@ import {
   findOrderIndexByReference,
   loadOrders,
   makeReference,
-  saveOrders
+  saveOrderEntity,
+  saveOrdersAfterEntity,
+  withOrdersMutationLock
 } from "../_orders-core.js";
 import { ApiError } from "./errors.js";
 import { createRefund } from "./stripe.js";
@@ -24,20 +26,48 @@ function validDecisionStatus(value) {
 function parseEtaMinutes(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
-  return Math.max(0, Math.round(parsed));
+  const rounded = Math.round(parsed);
+  if (rounded < 0 || rounded > 24 * 60) return null;
+  return rounded;
+}
+
+function isRealISODate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+  if (!match) return false;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.getUTCFullYear() === Number(match[1]) &&
+    date.getUTCMonth() === Number(match[2]) - 1 &&
+    date.getUTCDate() === Number(match[3]);
+}
+
+function isRealClock(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "ASAP") return true;
+  const match = /^(\d{2}):(\d{2})$/.exec(normalized);
+  if (!match) return false;
+  return Number(match[1]) >= 0 && Number(match[1]) <= 23 &&
+    Number(match[2]) >= 0 && Number(match[2]) <= 59;
 }
 
 function refundPayload(order) {
+  const rawAmountTotal = order.refundAmountTotal;
+  const amountTotal = rawAmountTotal === null || rawAmountTotal === undefined || rawAmountTotal === ""
+    ? null
+    : Number(rawAmountTotal);
   return {
     status: String(order.refundStatus || "").trim().toLowerCase(),
     refundId: String(order.refundId || "").trim(),
-    amountTotal: Number(order.refundAmountTotal),
-    createdAt: String(order.refundCreatedAt || "").trim()
+    amountTotal: Number.isFinite(amountTotal) ? amountTotal : null,
+    createdAt: String(order.refundCreatedAt || "").trim(),
+    attempts: Math.max(0, Math.round(Number(order.refundAttempts || 0))),
+    lastError: String(order.refundLastError || "").trim(),
+    updatedAt: String(order.refundUpdatedAt || "").trim(),
+    idempotencyKey: String(order.refundIdempotencyKey || "").trim()
   };
 }
 
-async function maybeRefundRejectedStripeOrder(env, order, reference, previousStatus, nextStatus) {
-  if (nextStatus !== "rejected" || previousStatus === nextStatus) {
+async function maybeRefundRejectedStripeOrder(env, order, reference, nextStatus) {
+  if (nextStatus !== "rejected") {
     return {
       attempted: false,
       ...refundPayload(order)
@@ -51,7 +81,7 @@ async function maybeRefundRejectedStripeOrder(env, order, reference, previousSta
     };
   }
 
-  if (String(order.refundStatus || "").toLowerCase() === "succeeded" && String(order.refundId || "").trim()) {
+  if (String(order.refundStatus || "").toLowerCase() === "succeeded") {
     return {
       attempted: false,
       ...refundPayload(order)
@@ -62,32 +92,49 @@ async function maybeRefundRejectedStripeOrder(env, order, reference, previousSta
   form.set("payment_intent", String(order.paymentIntentId || "").trim());
   form.set("metadata[order_reference]", reference);
   form.set("metadata[order_id]", String(order.id || "").trim());
+  const idempotencyKey = String(order.refundIdempotencyKey || "").trim() ||
+    `order-refund:${String(order.id || "").trim()}:${String(order.paymentIntentId || "").trim()}`;
+  order.refundIdempotencyKey = idempotencyKey;
+  order.refundAttempts = Math.max(0, Math.round(Number(order.refundAttempts || 0))) + 1;
+  order.refundStatus = "processing";
+  order.refundLastError = "";
+  order.refundUpdatedAt = new Date().toISOString();
 
   try {
-    const refund = await createRefund(env, form);
+    const refund = await createRefund(env, form, { idempotencyKey });
     order.refundStatus = String(refund?.status || "pending").trim().toLowerCase();
     order.refundId = String(refund?.id || "").trim();
     order.refundAmountTotal = Number.isFinite(Number(refund?.amount)) ? Number(refund.amount) : order.paymentAmountTotal;
     order.refundCreatedAt = Number.isFinite(Number(refund?.created))
       ? new Date(Number(refund.created) * 1000).toISOString()
       : new Date().toISOString();
+    order.refundLastError = "";
+    order.refundUpdatedAt = new Date().toISOString();
 
     return {
       attempted: true,
       ...refundPayload(order)
     };
   } catch (error) {
+    const errorMessage = error instanceof Error && error.message ? error.message : "Refund could not be created.";
     order.refundStatus = "failed";
     order.refundId = String(order.refundId || "").trim();
-    order.refundAmountTotal = Number.isFinite(Number(order.refundAmountTotal))
-      ? Number(order.refundAmountTotal)
+    const existingRefundAmount = order.refundAmountTotal === null ||
+      order.refundAmountTotal === undefined ||
+      order.refundAmountTotal === ""
+      ? null
+      : Number(order.refundAmountTotal);
+    order.refundAmountTotal = Number.isFinite(existingRefundAmount)
+      ? existingRefundAmount
       : Number(order.paymentAmountTotal);
-    order.refundCreatedAt = String(order.refundCreatedAt || new Date().toISOString());
+    order.refundCreatedAt = String(order.refundCreatedAt || "");
+    order.refundLastError = errorMessage.slice(0, 500);
+    order.refundUpdatedAt = new Date().toISOString();
 
     return {
       attempted: true,
       ...refundPayload(order),
-      error: error instanceof Error && error.message ? error.message : "Refund could not be created."
+      error: errorMessage
     };
   }
 }
@@ -118,6 +165,9 @@ export async function readOrderStatus(env, query) {
 
   if (!reference) throw new ApiError("reference is required.", 400);
   if (!trackingToken) throw new ApiError("tracking token is required.", 400);
+  if (reference.length > 64 || trackingToken.length > 64) {
+    throw new ApiError("Order tracking details are invalid.", 400);
+  }
 
   const orders = await loadOrders(env);
   const { order } = findOrderOrThrow(orders, reference);
@@ -133,30 +183,50 @@ export async function updateOrderStatus(env, payload = {}) {
   const nextStatus = validDecisionStatus(payload.status);
   const etaMinutes = parseEtaMinutes(payload.etaMinutes);
   if (!reference) throw new ApiError("reference is required.", 400);
+  if (reference.length > 64) throw new ApiError("reference is invalid.", 400);
   if (!nextStatus) throw new ApiError("status must be accepted or rejected.", 400);
   if (nextStatus === "accepted" && (!Number.isFinite(etaMinutes) || etaMinutes <= 0)) {
     throw new ApiError("etaMinutes is required when accepting an order.", 400);
   }
-
-  const orders = await loadOrders(env);
-  const { index, order: existing } = findOrderOrThrow(orders, reference);
-
-  const order = { ...existing };
-  const previousStatus = normalizedStatus(order.status || "submitted");
-  order.status = nextStatus;
-  order.statusUpdatedAt = new Date().toISOString();
-  order.etaMinutes = nextStatus === "accepted" ? etaMinutes : null;
-  order.decisionDate = String(payload.scheduledDate || order.decisionDate || "").trim();
-  order.decisionTime = String(payload.scheduledTime || order.decisionTime || "").trim().toUpperCase();
-
-  orders[index] = order;
-  await saveOrders(env, orders);
-
-  const refund = await maybeRefundRejectedStripeOrder(env, order, makeReference(order.id), previousStatus, nextStatus);
-  if (refund.attempted) {
-    orders[index] = order;
-    await saveOrders(env, orders);
+  const scheduledDate = String(payload.scheduledDate || "").trim();
+  const scheduledTime = String(payload.scheduledTime || "").trim().toUpperCase();
+  if (scheduledDate && !isRealISODate(scheduledDate)) {
+    throw new ApiError("scheduledDate must be a real date in yyyy-MM-dd format.", 400);
   }
+  if (scheduledTime && !isRealClock(scheduledTime)) {
+    throw new ApiError("scheduledTime must be a real time in HH:mm format or ASAP.", 400);
+  }
+
+  const mutation = await withOrdersMutationLock(async () => {
+    const orders = await loadOrders(env);
+    const { index, order: existing } = findOrderOrThrow(orders, reference);
+    const order = { ...existing };
+    const previousStatus = normalizedStatus(order.status || "submitted");
+    const refundAttempts = Math.max(0, Math.round(Number(order.refundAttempts || 0)));
+
+    if (nextStatus === "accepted" && previousStatus === "rejected" && refundAttempts > 0) {
+      throw new ApiError("An order with a refund attempt cannot be accepted again.", 409);
+    }
+
+    order.status = nextStatus;
+    order.statusUpdatedAt = new Date().toISOString();
+    order.etaMinutes = nextStatus === "accepted" ? etaMinutes : null;
+    order.decisionDate = scheduledDate || String(order.decisionDate || "").trim();
+    order.decisionTime = scheduledTime || String(order.decisionTime || "").trim().toUpperCase();
+
+    const refund = await maybeRefundRejectedStripeOrder(
+      env,
+      order,
+      makeReference(order.id),
+      nextStatus
+    );
+    orders[index] = order;
+    await saveOrderEntity(env, order);
+    await saveOrdersAfterEntity(env, orders);
+    return { order, previousStatus, refund };
+  });
+
+  const { order, previousStatus, refund } = mutation;
 
   const shouldNotify = payload.notify !== false && previousStatus !== nextStatus;
   let email = null;

@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
-Disallow: /account/
-Disallow: /admin/
+Disallow: /api/
+Disallow: /bookings/feed.
+Disallow: /orders/feed.
 
 Sitemap: https://millers.cafe/sitemap.xml

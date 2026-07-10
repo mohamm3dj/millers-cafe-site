@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,25 +7,29 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Book a Table | Millers Café</title>
-  <meta name="description" content="Book a table at Millers Café in Waltham, Grimsby. Choose your date, time and party size online.">
+  <meta name="description" content="Request a table at Millers Café in Waltham, Grimsby. Choose a live date and time, then receive an email when the venue accepts your request.">
   <link rel="canonical" href="https://millers.cafe/bookings/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Book a Table | Millers Café">
-  <meta property="og:description" content="Reserve your table online at Millers Café with live availability and instant confirmations.">
+  <meta property="og:description" content="Choose a live date and time at Millers Café. We will email you when the venue accepts your booking request.">
   <meta property="og:url" content="https://millers.cafe/bookings/">
   <meta property="og:image" content="https://millers.cafe/assets/millers-logo.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Book a Table | Millers Café">
-  <meta name="twitter:description" content="Reserve your table online at Millers Café with live availability and instant confirmations.">
+  <meta name="twitter:description" content="Choose a live date and time at Millers Café. We will email you when the venue accepts your booking request.">
   <meta name="twitter:image" content="https://millers.cafe/assets/millers-logo.png">
-  <link rel="stylesheet" href="../styles.css?v=20260429c">
+  <link rel="stylesheet" href="../styles.css?v=20260710f">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "FoodEstablishmentReservation",
-      "name": "Millers Café Reservations",
+      "@type": "WebPage",
+      "name": "Request a table at Millers Café",
       "url": "https://millers.cafe/bookings/",
-      "reservationFor": {
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": "https://millers.cafe/bookings/"
+      },
+      "about": {
         "@type": "Restaurant",
         "name": "Millers Café",
         "address": {
@@ -53,14 +57,14 @@
         <img class="logoImg" src="../assets/millers-logo.webp" alt="Millers Café logo">
       </div>
       <h1>Bookings</h1>
-      <p class="subtitle">Book online in real time</p>
+      <p class="subtitle">Choose a live date and time</p>
     </section>
 
     <section class="bookingsWorkspace">
       <section class="tile simplePanel bookingsPanel">
         <div class="bookingPanelHeader">
-          <h2 class="bookingPanelTitle">Reserve your table</h2>
-          <p class="bookingPanelLead">Pick a date and time and we will confirm instantly.</p>
+          <h2 class="bookingPanelTitle">Request a table</h2>
+          <p class="bookingPanelLead">Pick an available date and time. We will email you when the venue accepts or declines your request.</p>
         </div>
 
         <div class="bookingsNotice" id="bookingsNotice" role="status" aria-live="polite">
@@ -69,31 +73,11 @@
 
         <form id="bookingForm" class="bookingForm" novalidate>
           <section class="bookingSection">
-            <h3 class="bookingSectionTitle">Contact details</h3>
-            <div class="bookingGrid bookingGridContact">
-              <label class="bookingField">
-                <span class="bookingLabel">Name</span>
-                <input id="bookingName" name="name" type="text" maxlength="80" placeholder="John Smith" required autocomplete="name">
-              </label>
-
-              <label class="bookingField">
-                <span class="bookingLabel">Phone</span>
-                <input id="bookingPhone" name="phone" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
-              </label>
-
-              <label class="bookingField bookingFieldWide">
-                <span class="bookingLabel">Email</span>
-                <input id="bookingEmail" name="email" type="email" maxlength="120" placeholder="name@example.com" required autocomplete="email">
-              </label>
-            </div>
-          </section>
-
-          <section class="bookingSection">
             <h3 class="bookingSectionTitle">Reservation details</h3>
             <div class="bookingGrid bookingGridReservation">
               <div class="bookingField bookingFieldWide bookingFieldCalendar">
-                <span class="bookingLabel">Date</span>
-                <select id="bookingDate" name="date" class="bookingNativeHidden" required></select>
+                <label class="bookingLabel" for="bookingDate">Date</label>
+                <select id="bookingDate" name="date" class="bookingNativeHidden" required tabindex="-1" aria-hidden="true"></select>
                 <div class="bookingDateSummaryRow">
                   <p id="bookingDateSummary" class="bookingDateSummary">Today</p>
                   <button
@@ -116,14 +100,14 @@
                     <div class="bookingCalendarWeekdays" aria-hidden="true">
                       <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
                     </div>
-                    <div id="bookingCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select booking date"></div>
+                    <div id="bookingCalendarGrid" class="bookingCalendarGrid" role="group" aria-label="Select booking date"></div>
                   </div>
                 </div>
               </div>
 
               <div class="bookingField bookingFieldWide bookingFieldSlots">
-                <span class="bookingLabel">Time</span>
-                <select id="bookingTime" name="time" class="bookingNativeHidden" required></select>
+                <label class="bookingLabel" for="bookingTime">Time</label>
+                <select id="bookingTime" name="time" class="bookingNativeHidden" required tabindex="-1" aria-hidden="true"></select>
                 <div id="bookingSlotCards" class="bookingSlotCards" role="radiogroup" aria-label="Select booking time"></div>
               </div>
 
@@ -148,19 +132,46 @@
           </section>
 
           <section class="bookingSection">
+            <h3 class="bookingSectionTitle">Contact details</h3>
+            <div class="bookingGrid bookingGridContact">
+              <label class="bookingField">
+                <span class="bookingLabel">Name</span>
+                <input id="bookingName" name="name" type="text" maxlength="80" placeholder="John Smith" required autocomplete="name">
+              </label>
+
+              <label class="bookingField">
+                <span class="bookingLabel">Phone</span>
+                <input id="bookingPhone" name="phone" type="tel" maxlength="30" placeholder="07123 456789 or +44…" required autocomplete="tel" inputmode="tel" aria-describedby="bookingPhoneHint">
+                <span id="bookingPhoneHint" class="bookingFieldHint">UK and international numbers are accepted.</span>
+              </label>
+
+              <label class="bookingField bookingFieldWide">
+                <span class="bookingLabel">Email</span>
+                <input id="bookingEmail" name="email" type="email" maxlength="120" placeholder="name@example.com" required autocomplete="email">
+              </label>
+            </div>
+          </section>
+
+          <section class="bookingSection">
             <h3 class="bookingSectionTitle">Notes</h3>
             <div class="bookingGrid">
-              <label class="bookingField bookingFieldWide">
-                <span class="bookingLabel">Requests (optional)</span>
-                <textarea id="bookingNotes" name="notes" rows="3" maxlength="300" placeholder="Allergies, access requests, highchair, etc."></textarea>
-              </label>
+              <div class="bookingField bookingFieldWide">
+                <label class="bookingLabel" for="bookingNotes">Requests (optional)</label>
+                <textarea id="bookingNotes" name="notes" rows="3" maxlength="300" aria-describedby="bookingSensitiveInfoHint" placeholder="Allergies, access requests, highchair, etc."></textarea>
+                <span id="bookingSensitiveInfoHint" class="bookingFieldHint">Optional notes may include allergy, health or access information only if you give the separate consent below.</span>
+                <label class="sensitiveInfoConsent">
+                  <input id="bookingSensitiveInfoConsent" name="sensitiveInfoConsent" type="checkbox">
+                  <span>I explicitly consent to Millers Café using these optional notes to handle this booking request safely. I can leave the notes blank instead.</span>
+                </label>
+              </div>
             </div>
           </section>
 
           <div id="bookingTurnstile" class="turnstileSlot" hidden></div>
 
+          <p class="policyConsentNote">By sending this request, you agree to the <a href="../terms/">online terms</a> and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
           <div class="bookingActions">
-            <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Book table</button>
+            <button id="bookingSubmit" class="bookingSubmitBtn" type="submit">Send booking request</button>
           </div>
         </form>
 
@@ -185,11 +196,16 @@
       </aside>
     </section>
 
-    <div class="footer">
+    <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
-    </div>
+      <nav class="footerPolicies" aria-label="Policies">
+        <a href="../privacy/" class="footerLink">Privacy</a>
+        <a href="../terms/" class="footerLink">Terms</a>
+        <a href="../refunds/" class="footerLink">Cancellations &amp; refunds</a>
+      </nav>
+    </footer>
   </main>
-  <script src="../client-tools.js?v=20260429c"></script>
-  <script src="./bookings.js?v=20260429c"></script>
+  <script src="../client-tools.js?v=20260710b"></script>
+  <script src="./bookings.js?v=20260710b"></script>
 </body>
 </html>

@@ -5,12 +5,12 @@ import { ApiError, errorResponse } from "../../_lib/errors.js";
 import { json, methodNotAllowed, readJsonBody } from "../../_lib/json.js";
 import { getMenuCatalog, saveMenuCatalog } from "../../_lib/site-config.js";
 
-function assertBridge(context, bodyToken = "") {
+function assertBridge(context) {
   const tokens = resolveVenueBridgeTokens(context.env);
   if (tokens.length === 0) {
     throw new ApiError("Venue bridge token is not configured.", 503);
   }
-  if (!isTokenAuthorized(context.request, tokens, bodyToken)) {
+  if (!isTokenAuthorized(context.request, tokens)) {
     throw new ApiError("Unauthorized.", 401);
   }
 }
@@ -38,11 +38,11 @@ export async function onRequestGet(context) {
 
 export async function onRequestPut(context) {
   try {
+    assertBridge(context);
     const payload = await readJsonBody(context.request);
     if (!payload || typeof payload !== "object") {
       throw new ApiError("Invalid JSON body.", 400);
     }
-    assertBridge(context, payload.token);
     const menu = await saveMenuCatalog(context.env, payload.menu || payload.categories);
     return json({
       ok: true,

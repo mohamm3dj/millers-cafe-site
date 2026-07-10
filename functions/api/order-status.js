@@ -1,6 +1,6 @@
 "use strict";
 
-import { isTokenAuthorized, resolveOrderAdminTokens } from "../_lib/auth.js";
+import { bearerTokenFromRequest, isTokenAuthorized, resolveOrderAdminTokens } from "../_lib/auth.js";
 import { ApiError, errorResponse } from "../_lib/errors.js";
 import { queryString, urlOf } from "../_lib/http.js";
 import { json, methodNotAllowed, readJsonBody } from "../_lib/json.js";
@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
     const url = urlOf(context.request);
     const payload = await readOrderStatus(context.env, {
       reference: queryString(url, "reference", ""),
-      tracking: queryString(url, "tracking", "")
+      tracking: bearerTokenFromRequest(context.request)
     });
     return json(payload);
   } catch (error) {
@@ -21,14 +21,14 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   try {
+    const tokens = resolveOrderAdminTokens(context.env);
+    if (!isTokenAuthorized(context.request, tokens)) {
+      throw new ApiError("Unauthorized.", 401);
+    }
+
     const payload = await readJsonBody(context.request);
     if (!payload || typeof payload !== "object") {
       throw new ApiError("Invalid JSON body.", 400);
-    }
-
-    const tokens = resolveOrderAdminTokens(context.env);
-    if (!isTokenAuthorized(context.request, tokens, payload.token)) {
-      throw new ApiError("Unauthorized.", 401);
     }
 
     const updated = await updateOrderStatus(context.env, payload);
