@@ -168,6 +168,31 @@ test("collection and delivery markup expose a complete price breakdown", () => {
   });
 });
 
+test("collection and delivery expose the polished three-stage checkout structure", () => {
+  ["collection/index.html", "delivery/index.html"].forEach((path) => {
+    const html = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+    assert.match(html, /id="orderStepBadge3"[^>]*>3\s*·\s*Secure payment<\/li>/);
+    assert.match(html, /<aside[^>]*id="orderCheckoutSidebar"[^>]*aria-label="Order review"/);
+    assert.match(html, /<ul[^>]*id="orderCheckoutSummaryList"[^>]*><\/ul>/);
+
+    const modifierTag = html.match(/<div[^>]*id="orderModifierPanel"[^>]*>/)?.[0] || "";
+    assert.match(modifierTag, /role="dialog"/);
+    assert.match(modifierTag, /aria-modal="true"/);
+    assert.match(modifierTag, /aria-labelledby="orderModifierTitle"/);
+  });
+});
+
+test("checkout validation moves customers to the first invalid field", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /function focusFirstInvalidCheckoutField\s*\(/);
+  assert.match(
+    source,
+    /if \(!runCheckoutFieldValidation\(\)\) \{[\s\S]*?focusFirstInvalidCheckoutField\(\);[\s\S]*?return;/
+  );
+});
+
 test("browser checkout retries reuse an idempotency key for unchanged order details", () => {
   const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
   assert.match(source, /checkoutIdempotencyKey\(payload, cartPayload\)/);

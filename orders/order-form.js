@@ -139,8 +139,10 @@ const stickyCheckoutBtn = document.getElementById("stickyCheckoutBtn");
 const turnstileContainer = document.getElementById("orderTurnstile");
 const orderStepBadge1 = document.getElementById("orderStepBadge1");
 const orderStepBadge2 = document.getElementById("orderStepBadge2");
+const orderStepBadge3 = document.getElementById("orderStepBadge3");
 const orderCheckoutFields = [...document.querySelectorAll(".orderCheckoutField")];
 const orderItemsField = document.querySelector(".orderItemsField");
+const orderCheckoutSummaryList = document.getElementById("orderCheckoutSummaryList");
 const orderReviewRow = document.getElementById("orderReviewRow");
 const orderReviewText = document.getElementById("orderReviewText");
 const orderEditItemsBtn = document.getElementById("orderEditItemsBtn");
@@ -691,6 +693,31 @@ function ensureInlineErrorElement(input) {
   return errorEl;
 }
 
+function visibleValidationProxy(input) {
+  if (input === dateSelect) return orderDateToggle;
+  if (input === timeSelect) return orderSlotCards;
+  return input;
+}
+
+function mirrorInlineErrorToVisibleProxy(input, errorEl, hasError) {
+  const proxy = visibleValidationProxy(input);
+  if (!proxy || proxy === input) return;
+
+  if (proxy === orderSlotCards && !proxy.hasAttribute("tabindex")) {
+    proxy.setAttribute("tabindex", "-1");
+  }
+
+  proxy.setAttribute("aria-invalid", hasError ? "true" : "false");
+  if (!("baseValidationDescribedby" in proxy.dataset)) {
+    proxy.dataset.baseValidationDescribedby = String(proxy.getAttribute("aria-describedby") || "").trim();
+  }
+  const describedBy = [proxy.dataset.baseValidationDescribedby, hasError ? errorEl?.id : ""]
+    .filter(Boolean)
+    .join(" ");
+  if (describedBy) proxy.setAttribute("aria-describedby", describedBy);
+  else proxy.removeAttribute("aria-describedby");
+}
+
 function setInlineError(input, message) {
   if (!input) return false;
   const field = input.closest(".bookingField");
@@ -711,6 +738,7 @@ function setInlineError(input, message) {
     errorEl.hidden = !hasError;
     errorEl.textContent = hasError ? message : "";
   }
+  mirrorInlineErrorToVisibleProxy(input, errorEl, hasError);
   return !hasError;
 }
 
@@ -802,6 +830,27 @@ function runCheckoutFieldValidation() {
   return checks.every(Boolean);
 }
 
+function focusFirstInvalidCheckoutField() {
+  const field = form?.querySelector(".bookingField.hasFieldError");
+  if (!(field instanceof HTMLElement)) return;
+
+  let focusTarget = field.querySelector('[aria-invalid="true"]');
+  if (dateSelect && field.contains(dateSelect)) {
+    focusTarget = orderDateToggle;
+  } else if (timeSelect && field.contains(timeSelect)) {
+    focusTarget = orderSlotCards;
+  } else {
+    focusTarget = visibleValidationProxy(focusTarget);
+  }
+
+  field.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
+  window.requestAnimationFrame(() => {
+    if (focusTarget instanceof HTMLElement) {
+      focusTarget.focus({ preventScroll: true });
+    }
+  });
+}
+
 function clearInlineValidation() {
   [
     nameInput,
@@ -836,19 +885,43 @@ function updateOrderReviewRow() {
 }
 
 function updateOrderFlowStepLabels() {
-  const stepOneText = "Step 1 of 2 · Select dishes";
-  const stepTwoText = "Step 2 of 2 · Confirm order";
+  const paymentStageActive = currentOrderStep === 2 && isSubmitting;
+  const stages = [
+    {
+      element: orderStepBadge1,
+      text: "1 · Browse menu",
+      label: "Step 1 of 3: Browse menu",
+      active: currentOrderStep === 1,
+      complete: currentOrderStep === 2
+    },
+    {
+      element: orderStepBadge2,
+      text: "2 · Your details",
+      label: "Step 2 of 3: Your details",
+      active: currentOrderStep === 2 && !paymentStageActive,
+      complete: paymentStageActive,
+      locked: cartItems.length === 0 && currentOrderStep === 1
+    },
+    {
+      element: orderStepBadge3,
+      text: "3 · Secure payment",
+      label: "Step 3 of 3: Secure payment",
+      active: paymentStageActive,
+      complete: false,
+      locked: !paymentStageActive
+    }
+  ];
 
-  if (orderStepBadge1) {
-    orderStepBadge1.textContent = stepOneText;
-    orderStepBadge1.setAttribute("aria-current", currentOrderStep === 1 ? "step" : "false");
-  }
-
-  if (orderStepBadge2) {
-    orderStepBadge2.textContent = stepTwoText;
-    orderStepBadge2.setAttribute("aria-current", currentOrderStep === 2 ? "step" : "false");
-    orderStepBadge2.classList.toggle("isLocked", cartItems.length === 0 && currentOrderStep === 1);
-  }
+  stages.forEach((stage) => {
+    if (!stage.element) return;
+    stage.element.textContent = stage.text;
+    stage.element.setAttribute("aria-label", stage.label);
+    stage.element.classList.toggle("isActive", Boolean(stage.active));
+    stage.element.classList.toggle("isComplete", Boolean(stage.complete));
+    stage.element.classList.toggle("isLocked", Boolean(stage.locked));
+    if (stage.active) stage.element.setAttribute("aria-current", "step");
+    else stage.element.removeAttribute("aria-current");
+  });
 }
 
 function setOrderStep(step, options = {}) {
@@ -860,6 +933,8 @@ function setOrderStep(step, options = {}) {
   }
 
   currentOrderStep = nextStep;
+  form?.classList.toggle("isOrderMenuStep", currentOrderStep === 1);
+  form?.classList.toggle("isOrderCheckoutStep", currentOrderStep === 2);
   orderCheckoutFields.forEach((el) => {
     el.hidden = currentOrderStep !== 2;
   });
@@ -868,8 +943,6 @@ function setOrderStep(step, options = {}) {
     orderItemsField.hidden = currentOrderStep !== 1;
   }
 
-  orderStepBadge1?.classList.toggle("isActive", currentOrderStep === 1);
-  orderStepBadge2?.classList.toggle("isActive", currentOrderStep === 2);
   updateOrderFlowStepLabels();
   const shouldMoveFocus = options.moveFocus !== false && !options.silent;
 
@@ -1179,6 +1252,13 @@ function updateStickyCheckoutBar() {
   const totals = cartPricingTotals();
   const hasItems = totals.totalQuantity > 0;
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
+  const isMobileCheckout = isMobileOrderMenuLayout() && currentOrderStep === 2;
+
+  const stickyHost = isMobileCheckout ? form?.parentElement : (basketColumn || orderHub);
+  if (stickyHost && stickyCheckoutBar.parentElement !== stickyHost) {
+    stickyHost.appendChild(stickyCheckoutBar);
+  }
+  stickyCheckoutBar.classList.toggle("isCheckoutStep", isMobileCheckout);
 
   const selectedDate = String(dateSelect?.value || "");
   const selectedTime = String(timeSelect?.value || "");
@@ -1188,7 +1268,7 @@ function updateStickyCheckoutBar() {
   if (stickyCheckoutDateTime) {
     stickyCheckoutDateTime.textContent = isMobileMenu
       ? `${totals.totalQuantity} item${totals.totalQuantity === 1 ? "" : "s"} in cart`
-      : `${dateLabel} · ${timeLabel}`;
+      : (isMobileCheckout ? "Secure Stripe checkout" : `${dateLabel} · ${timeLabel}`);
   }
   if (stickyCheckoutOrder) {
     const adjustmentText = currentOrderType() === "delivery" && totals.deliveryFee > 0
@@ -1196,15 +1276,19 @@ function updateStickyCheckoutBar() {
       : (totals.collectionDiscount > 0 ? " total · after 10% off" : " total");
     stickyCheckoutOrder.textContent = isMobileMenu
       ? `${formatGBP(totals.total)}${adjustmentText}`
-      : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`;
+      : (isMobileCheckout
+        ? `${formatGBP(totals.total)} due`
+        : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`);
   }
   if (stickyCheckoutBtn) {
     stickyCheckoutBtn.textContent = onlineOrderingEnabled
-      ? (isMobileMenu ? "Cart" : "Continue")
+      ? (isMobileMenu ? "Cart" : (isMobileCheckout ? "Pay securely" : "Continue"))
       : "Ordering paused";
     stickyCheckoutBtn.disabled = !onlineOrderingEnabled || (isMobileMenu
       ? isSubmitting
-      : !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting));
+      : (isMobileCheckout
+        ? isSubmitting || !hasItems || !hasSelectableTime
+        : !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting)));
   }
   if (basketCheckoutBtn) {
     basketCheckoutBtn.disabled = !onlineOrderingEnabled || !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting);
@@ -1215,7 +1299,8 @@ function updateStickyCheckoutBar() {
       : (hasSelectableTime ? "Checkout details" : "Choose another date"));
   }
 
-  const showBar = currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting);
+  const showBar = (currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting))
+    || (isMobileCheckout && hasItems);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
   queueActiveCategoryPillSync();
 }
@@ -1748,6 +1833,7 @@ function setSubmitting(submitting) {
   if (!submitBtn) return;
   isSubmitting = Boolean(submitting);
   updateSubmitButtonState();
+  updateOrderFlowStepLabels();
 }
 
 function updateSubmitButtonState() {
@@ -2344,6 +2430,7 @@ function showModifierError(message) {
 }
 
 function hideModifierPanel(options = {}) {
+  document.body.classList.remove("isModifierOpen");
   if (!modifierPanel) return;
 
   const restoreTarget = activeDraftAnchor?.querySelector("button.orderMenuActionBtn")
@@ -2373,13 +2460,51 @@ function hideModifierPanel(options = {}) {
 function positionModifierPanel() {
   if (!modifierPanel) return;
 
-  if (activeDraftAnchor && activeDraftAnchor.parentElement) {
-    activeDraftAnchor.insertAdjacentElement("afterend", modifierPanel);
+  if (modifierPanel.parentElement !== document.body) {
+    document.body.appendChild(modifierPanel);
+  }
+}
+
+function modifierFocusableControls() {
+  if (!modifierPanel || modifierPanel.hidden) return [];
+  const selector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(",");
+  return [...modifierPanel.querySelectorAll(selector)].filter((element) => (
+    element instanceof HTMLElement && !element.closest("[hidden]")
+  ));
+}
+
+function handleModifierPanelKeydown(event) {
+  if (!modifierPanel || modifierPanel.hidden) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    hideModifierPanel({ restoreFocus: true });
     return;
   }
 
-  if (orderHub) {
-    orderHub.appendChild(modifierPanel);
+  if (event.key !== "Tab") return;
+  const controls = modifierFocusableControls();
+  if (controls.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
@@ -2513,6 +2638,7 @@ function startItemDraft(item, quantity = 1, anchorCard = null) {
   positionModifierPanel();
   if (modifierPanel) {
     modifierPanel.hidden = false;
+    document.body.classList.add("isModifierOpen");
     window.requestAnimationFrame(() => {
       const firstControl = modifierPanel.querySelector("input, select, textarea, button:not([disabled])");
       if (firstControl instanceof HTMLElement) firstControl.focus({ preventScroll: true });
@@ -2808,6 +2934,76 @@ function modifierSummary(selection) {
 
   const sign = adjustment > 0 ? "+" : "-";
   return `${base} (${sign}${formatGBP(Math.abs(adjustment))})`;
+}
+
+function renderCheckoutSummaryList(totals = cartPricingTotals()) {
+  if (!orderCheckoutSummaryList) return;
+  orderCheckoutSummaryList.textContent = "";
+
+  if (cartItems.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "orderCheckoutSummaryEmpty";
+    empty.textContent = "Your selected dishes will appear here.";
+    orderCheckoutSummaryList.appendChild(empty);
+    return;
+  }
+
+  cartItems.forEach((item) => {
+    const row = document.createElement("li");
+    row.className = "orderCheckoutSummaryItem";
+
+    const details = document.createElement("div");
+    details.className = "orderCheckoutSummaryItemDetails";
+
+    const name = document.createElement("strong");
+    name.className = "orderCheckoutSummaryItemName";
+    name.textContent = `${item.quantity} × ${item.itemName}`;
+    details.appendChild(name);
+
+    const modifierText = (item.modifierSelections || [])
+      .map(modifierSummary)
+      .filter(Boolean)
+      .join(" · ");
+    if (modifierText) {
+      const modifiers = document.createElement("span");
+      modifiers.className = "orderCheckoutSummaryItemModifiers";
+      modifiers.textContent = modifierText;
+      details.appendChild(modifiers);
+    }
+
+    const price = document.createElement("strong");
+    price.className = "orderCheckoutSummaryItemPrice";
+    price.textContent = formatGBP(item.linePrice);
+
+    row.appendChild(details);
+    row.appendChild(price);
+    orderCheckoutSummaryList.appendChild(row);
+  });
+
+  const pricing = document.createElement("li");
+  pricing.className = "orderCheckoutSummaryPricing";
+
+  const appendPriceRow = (label, value, className = "") => {
+    const row = document.createElement("div");
+    row.className = `orderCheckoutSummaryPriceRow${className ? ` ${className}` : ""}`;
+    const labelEl = document.createElement("span");
+    labelEl.textContent = label;
+    const valueEl = document.createElement("strong");
+    valueEl.textContent = value;
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    pricing.appendChild(row);
+  };
+
+  appendPriceRow("Subtotal", formatGBP(totals.subtotal));
+  if (totals.collectionDiscount > 0) {
+    appendPriceRow("Collection discount (10%)", `−${formatGBP(totals.collectionDiscount)}`, "isDiscount");
+  }
+  if (currentOrderType() === "delivery" && totals.deliveryFee > 0) {
+    appendPriceRow("Delivery fee", formatGBP(totals.deliveryFee));
+  }
+  appendPriceRow("Total due at Stripe", formatGBP(totals.total), "isTotal");
+  orderCheckoutSummaryList.appendChild(pricing);
 }
 
 function lineSummary(item) {
@@ -3118,6 +3314,7 @@ function renderCart() {
 
   const totals = cartPricingTotals();
   const hasItems = cartItems.length > 0;
+  renderCheckoutSummaryList(totals);
 
   cartEmpty.hidden = hasItems;
   cartList.hidden = !hasItems;
@@ -3290,6 +3487,7 @@ async function handleSubmit(event) {
 
   if (!runCheckoutFieldValidation()) {
     showError("Please correct the highlighted fields.");
+    focusFirstInvalidCheckoutField();
     return;
   }
 
@@ -3388,13 +3586,6 @@ function initializeMenuInteractions() {
     menuItemsList.innerHTML = "<div class=\"orderMenuEmpty\">Menu is temporarily unavailable.</div>";
     setNotice("Menu is temporarily unavailable. Please try again shortly.", true);
     return false;
-  }
-
-  if (stickyCheckoutBar) {
-    const checkoutHost = basketColumn || orderHub;
-    if (checkoutHost && stickyCheckoutBar.parentElement !== checkoutHost) {
-      checkoutHost.appendChild(stickyCheckoutBar);
-    }
   }
 
   if (!selectedCategory) selectedCategory = defaultCategoryName();
@@ -3538,6 +3729,12 @@ function initializeMenuInteractions() {
   });
 
   modifierCancelBtn?.addEventListener("click", () => hideModifierPanel({ restoreFocus: true }));
+
+  modifierPanel?.addEventListener("click", (event) => {
+    if (event.target !== modifierPanel) return;
+    hideModifierPanel({ restoreFocus: true });
+  });
+  modifierPanel?.addEventListener("keydown", handleModifierPanelKeydown);
 
   modifierConfirmBtn?.addEventListener("click", () => {
     clearModifierError();
@@ -3689,6 +3886,11 @@ async function initialize() {
       return;
     }
     if (!form || stickyCheckoutBtn.disabled) return;
+    if (isMobileOrderMenuLayout() && currentOrderStep === 2) {
+      if (typeof form.requestSubmit === "function") form.requestSubmit();
+      else submitBtn?.click();
+      return;
+    }
     setOrderStep(2);
   });
   DESKTOP_BASKET_MEDIA?.addEventListener?.("change", () => {

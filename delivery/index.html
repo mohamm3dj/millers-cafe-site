@@ -10,17 +10,27 @@
   <meta name="description" content="Order delivery from Millers Café online and pay securely with Stripe.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/delivery/">
-  <link rel="stylesheet" href="../styles.css?v=20260710f">
+  <link rel="preload" href="../assets/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="../assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="../styles.css?v=20260711f">
 </head>
 <body class="orderBody">
   <main class="orderPage">
-    <div class="header">
-      <a href="../" class="tile backBtn">← Back</a>
+    <header class="header orderHeader">
+      <a href="../" class="tile backBtn"><img src="../assets/icon-arrow-left.svg" alt="" width="19" height="19">Home</a>
+      <a href="../" class="orderBrand" aria-label="Millers Café home">
+        <img src="../assets/millers-logo.webp" alt="" width="116" height="78">
+      </a>
       <div class="headerStack">
+        <p class="orderEyebrow">Order online</p>
         <h1 class="headerTitleNoMargin">Delivery</h1>
         <p class="subtitle">Order online to your door</p>
       </div>
-    </div>
+      <nav class="orderServiceSwitch" aria-label="Choose order type">
+        <a class="orderServiceLink" href="../collection/"><img src="../assets/icon-bag.svg" alt="" width="19" height="19">Collection</a>
+        <a class="orderServiceLink isActive" href="../delivery/" aria-current="page"><img src="../assets/icon-delivery.svg" alt="" width="19" height="19">Delivery</a>
+      </nav>
+    </header>
 
     <section class="tile simplePanel bookingsPanel">
       <div class="bookingsNotice" id="orderNotice" role="status" aria-live="polite">
@@ -30,11 +40,13 @@
       <form id="orderForm" class="bookingForm bookingFormDelivery" novalidate>
         <input type="hidden" id="orderType" name="orderType" value="delivery">
 
-        <div class="orderFlowHeader" aria-label="Checkout steps">
-          <span id="orderStepBadge1" class="orderFlowStep isActive">1. Select dishes</span>
-          <span class="orderFlowDivider">→</span>
-          <span id="orderStepBadge2" class="orderFlowStep">2. Confirm order</span>
-        </div>
+        <ol class="orderFlowHeader" aria-label="Checkout steps">
+          <li id="orderStepBadge1" class="orderFlowStep isActive">1 · Browse menu</li>
+          <li class="orderFlowDivider" aria-hidden="true"><img src="../assets/icon-arrow-right.svg" alt="" width="16" height="16"></li>
+          <li id="orderStepBadge2" class="orderFlowStep">2 · Your details</li>
+          <li class="orderFlowDivider" aria-hidden="true"><img src="../assets/icon-arrow-right.svg" alt="" width="16" height="16"></li>
+          <li id="orderStepBadge3" class="orderFlowStep isLocked">3 · Secure payment</li>
+        </ol>
 
         <div class="orderTrustStrip" aria-label="Order assurance">
           <span class="orderTrustItem">Secure order</span>
@@ -72,7 +84,7 @@
           <label class="bookingField orderCheckoutField deliveryFieldPostcode">
             <span class="bookingLabel">Postcode</span>
             <input id="orderPostcode" name="postcode" type="text" maxlength="10" required autocomplete="postal-code" placeholder="DN37 0JZ">
-            <p id="deliveryAreaHint" class="deliveryAreaHint" aria-live="polite"></p>
+            <span id="deliveryAreaHint" class="deliveryAreaHint" aria-live="polite"></span>
           </label>
 
           <div class="bookingField bookingFieldWide bookingFieldCalendar orderCheckoutField">
@@ -171,15 +183,18 @@
                 </div>
               </div>
 
-              <div id="orderModifierPanel" class="orderModifierPanel" hidden>
-                <div class="orderModifierHead">
-                  <strong id="orderModifierTitle">Customize item</strong>
-                </div>
-                <div id="orderModifierFields" class="orderModifierFields"></div>
-                <div id="orderModifierError" class="orderModifierError" role="alert" hidden></div>
-                <div class="orderModifierActions">
-                  <button id="orderModifierCancel" class="orderCancelBtn" type="button">Cancel</button>
-                  <button id="orderModifierConfirm" class="orderConfirmBtn" type="button">Add to order</button>
+              <div id="orderModifierPanel" class="orderModifierPanel" role="dialog" aria-modal="true" aria-labelledby="orderModifierTitle" hidden>
+                <div class="orderModifierDialog">
+                  <div class="orderModifierHead">
+                    <span>Make it yours</span>
+                    <strong id="orderModifierTitle">Customize item</strong>
+                  </div>
+                  <div id="orderModifierFields" class="orderModifierFields"></div>
+                  <div id="orderModifierError" class="orderModifierError" role="alert" hidden></div>
+                  <div class="orderModifierActions">
+                    <button id="orderModifierCancel" class="orderCancelBtn" type="button">Cancel</button>
+                    <button id="orderModifierConfirm" class="orderConfirmBtn" type="button">Add to order</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -196,22 +211,29 @@
           </div>
         </div>
 
-        <div id="orderReviewRow" class="orderReviewRow orderCheckoutField">
-          <p id="orderReviewText" class="orderReviewText">Review before placing your order</p>
-          <button id="orderEditItemsBtn" class="orderReviewEditBtn" type="button">Edit basket</button>
-        </div>
-
-        <p class="policyConsentNote orderCheckoutField">By continuing to payment, you agree to the <a href="../terms/">online terms</a>, <a href="../refunds/">cancellations and refunds policy</a>, and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
-        <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
-          <button id="orderBackToItems" class="orderBackToItemsBtn" type="button">← Back to dishes</button>
-          <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Continue to secure payment</button>
-          <div class="tileSub">
-            Need the menu first?
-            <a href="../menu/" class="footerLink">View menu</a>
+        <aside id="orderCheckoutSidebar" class="orderCheckoutSidebar orderCheckoutField" aria-label="Order review">
+          <div class="orderCheckoutSidebarHead">
+            <span>Order summary</span>
+            <strong>Almost there</strong>
           </div>
-        </div>
+          <ul id="orderCheckoutSummaryList" class="orderCheckoutSummaryList" aria-label="Selected dishes and total"></ul>
+          <div id="orderReviewRow" class="orderReviewRow orderCheckoutField">
+            <p id="orderReviewText" class="orderReviewText">Review before placing your order</p>
+            <button id="orderEditItemsBtn" class="orderReviewEditBtn" type="button">Edit basket</button>
+          </div>
 
-        <div id="orderTurnstile" class="turnstileSlot orderCheckoutField" hidden></div>
+          <p class="policyConsentNote orderCheckoutField">By continuing to payment, you agree to the <a href="../terms/">online terms</a>, <a href="../refunds/">cancellations and refunds policy</a>, and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
+          <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
+            <button id="orderBackToItems" class="orderBackToItemsBtn" type="button"><img src="../assets/icon-arrow-left.svg" alt="" width="18" height="18">Back to dishes</button>
+            <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Continue to secure payment</button>
+            <div class="tileSub">
+              Need the menu first?
+              <a href="../menu/" class="footerLink">View menu</a>
+            </div>
+          </div>
+
+          <div id="orderTurnstile" class="turnstileSlot orderCheckoutField" hidden></div>
+        </aside>
       </form>
 
       <div id="stickyCheckoutBar" class="stickyCheckoutBar">
@@ -236,6 +258,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script type="module" src="../orders/order-form.js?v=20260710c"></script>
+  <script type="module" src="../orders/order-form.js?v=20260711g"></script>
 </body>
 </html>
