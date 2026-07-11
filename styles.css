@@ -1,3 +1,19 @@
+@font-face{
+  font-family: "Manrope Desktop";
+  src: url("./assets/manrope-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: "Urbanist Desktop";
+  src: url("./assets/urbanist-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+}
+
 :root{
   --bg: #f6f8fb;
   --card: rgba(255,255,255,.78);
@@ -12,6 +28,35 @@
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
   --font-body: "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-display: "Urbanist", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.desktopHome{
+  display: none;
+}
+
+.desktopSiteHeader{
+  display: none;
+}
+
+.skipLink{
+  position: fixed;
+  top: 10px;
+  left: 14px;
+  z-index: 10000;
+  padding: 11px 15px;
+  border-radius: 12px;
+  background: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .22);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 760;
+  text-decoration: none;
+  transform: translateY(-180%);
+  transition: transform 160ms ease;
+}
+
+.skipLink:focus{
+  transform: translateY(0);
 }
 
 *{ box-sizing: border-box; }
@@ -6206,5 +6251,787 @@ h1{
 
   .adminTextarea{
     min-height: 360px;
+  }
+}
+
+/* Aurora Glass desktop homepage */
+@media (min-width: 960px){
+  body.homeBody{
+    min-height: 100vh;
+    background:
+      radial-gradient(72% 62% at 7% 4%, rgba(125, 211, 252, .20), transparent 70%),
+      radial-gradient(58% 52% at 96% 7%, rgba(45, 212, 191, .15), transparent 72%),
+      linear-gradient(180deg, #f8fbfe 0%, #f4f8fb 54%, #f7f9fc 100%);
+  }
+
+  body.homeBody::before{
+    inset: 0;
+    opacity: .72;
+    background:
+      radial-gradient(36% 28% at 74% 30%, rgba(129, 140, 248, .10), transparent 76%),
+      radial-gradient(34% 25% at 20% 68%, rgba(45, 212, 191, .08), transparent 78%);
+    animation: none;
+  }
+
+  body.homeBody main{
+    display: block;
+    width: min(1500px, 100%);
+    min-height: 100vh;
+    padding: 0 clamp(30px, 4vw, 64px) 28px;
+  }
+
+  body.homeBody main:focus{
+    outline: none;
+  }
+
+  .homeBody main > .glassHero,
+  .homeBody main > .homeGrid{
+    display: none;
+  }
+
+  .desktopSiteHeader{
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: min(1500px, 100%);
+    margin: 0 auto;
+    padding: 24px clamp(30px, 4vw, 64px) 0;
+  }
+
+  .desktopSiteHeader,
+  .desktopHome{
+    --font-body: "Manrope Desktop", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Urbanist Desktop", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-body);
+  }
+
+  .desktopHome{
+    display: block;
+  }
+
+  .desktopSiteHeader a,
+  .desktopHome a{
+    text-decoration: none;
+  }
+
+  .desktopNav{
+    min-height: 68px;
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr) 150px;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 10px 8px 18px;
+    border: 1px solid rgba(255, 255, 255, .88);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, .72);
+    box-shadow:
+      0 16px 44px rgba(15, 23, 42, .07),
+      inset 0 1px 0 rgba(255, 255, 255, .96);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+  }
+
+  .desktopBrand{
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    border-radius: 14px;
+  }
+
+  .desktopBrand img{
+    display: block;
+    width: 178px;
+    height: 58px;
+    object-fit: contain;
+  }
+
+  .desktopNavLinks{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(22px, 3.2vw, 48px);
+  }
+
+  .desktopNavLinks a{
+    position: relative;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 2px;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 720;
+    letter-spacing: -.01em;
+    transition: color 180ms ease;
+  }
+
+  .desktopNavLinks a img{
+    width: 16px;
+    height: 16px;
+    opacity: .62;
+    transition: opacity 180ms ease;
+  }
+
+  .desktopNavLinks a::after{
+    content: "";
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 4px;
+    height: 2px;
+    border-radius: 999px;
+    background: #0f766e;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 180ms ease;
+  }
+
+  .desktopNavLinks a:hover,
+  .desktopNavLinks a:focus-visible{
+    color: #0f766e;
+  }
+
+  .desktopNavLinks a:hover img,
+  .desktopNavLinks a:focus-visible img{
+    opacity: .9;
+  }
+
+  .desktopNavLinks a:hover::after,
+  .desktopNavLinks a:focus-visible::after{
+    transform: scaleX(1);
+  }
+
+  .desktopAccountLink{
+    justify-self: end;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 0 17px;
+    border: 1px solid rgba(15, 23, 42, .09);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .92);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 760;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .desktopAccountLink:hover{
+    transform: translateY(-2px);
+    border-color: rgba(15, 118, 110, .24);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, .09);
+  }
+
+  .desktopAccountLink img{
+    opacity: .82;
+  }
+
+  .desktopHero{
+    display: grid;
+    grid-template-columns: minmax(390px, .88fr) minmax(520px, 1.12fr);
+    align-items: stretch;
+    gap: clamp(32px, 4vw, 62px);
+    min-height: 474px;
+    margin-top: 22px;
+  }
+
+  .desktopHeroCopy{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding: 16px 0 8px 6px;
+  }
+
+  .desktopStatus{
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 5px 11px;
+    border: 1px solid rgba(15, 23, 42, .08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .74);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .05);
+    color: #475569;
+    font-size: 12px;
+    font-weight: 760;
+  }
+
+  .desktopStatusDot{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f97316;
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, .12);
+  }
+
+  .desktopStatus.isOpen .desktopStatusDot{
+    background: #0f9f75;
+    box-shadow: 0 0 0 4px rgba(15, 159, 117, .13);
+  }
+
+  .desktopEyebrow{
+    margin: 18px 0 8px;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 820;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  .desktopHero h1{
+    margin: 0;
+    max-width: 640px;
+    color: #0f172a;
+    font-family: var(--font-display);
+    font-size: clamp(50px, 4.35vw, 70px);
+    font-weight: 790;
+    letter-spacing: -.058em;
+    line-height: .91;
+  }
+
+  .desktopHero h1 span{
+    color: #0f766e;
+  }
+
+  .desktopHeroIntro{
+    max-width: 530px;
+    margin: 20px 0 0;
+    color: #536175;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .desktopHeroActions{
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 11px;
+    margin-top: 22px;
+  }
+
+  .desktopButton{
+    min-height: 50px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 20px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 800;
+    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .desktopButton:hover{
+    transform: translateY(-2px);
+  }
+
+  .desktopButtonPrimary{
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+    box-shadow: 0 14px 26px rgba(15, 118, 110, .24);
+    color: #ffffff;
+  }
+
+  .desktopButtonPrimary:hover{
+    box-shadow: 0 18px 32px rgba(15, 118, 110, .3);
+  }
+
+  .desktopButtonPrimary img{
+    filter: invert(1);
+  }
+
+  .desktopButtonSecondary{
+    border: 1px solid rgba(15, 118, 110, .18);
+    background: rgba(255, 255, 255, .72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+    color: #0f766e;
+  }
+
+  .desktopButtonSecondary:hover{
+    background: rgba(255, 255, 255, .96);
+  }
+
+  .desktopVisitCard{
+    max-width: 590px;
+    display: grid;
+    grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
+    gap: 0;
+    margin-top: 22px;
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .61);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    overflow: hidden;
+  }
+
+  .desktopVisitItem{
+    min-width: 0;
+    min-height: 68px;
+    display: grid;
+    grid-template-columns: 35px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    padding: 10px 14px;
+    color: #536175;
+  }
+
+  .desktopVisitItem + .desktopVisitItem{
+    border-left: 1px solid rgba(15, 23, 42, .08);
+  }
+
+  .desktopVisitIcon{
+    width: 35px;
+    height: 35px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #e5f7f4;
+  }
+
+  .desktopVisitIcon img{
+    width: 19px;
+    height: 19px;
+    opacity: .78;
+  }
+
+  .desktopVisitItem > span:last-child{
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .desktopVisitItem strong{
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .desktopVisitItem strong + span{
+    overflow: hidden;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktopVisitDirections{
+    transition: background 180ms ease;
+  }
+
+  .desktopVisitDirections:hover{
+    background: rgba(255, 255, 255, .7);
+  }
+
+  .desktopHeroMedia{
+    position: relative;
+    min-width: 0;
+    min-height: 474px;
+    border: 1px solid rgba(255, 255, 255, .92);
+    border-radius: 34px;
+    background: linear-gradient(145deg, rgba(220, 242, 248, .92), rgba(224, 240, 245, .72) 48%, rgba(226, 232, 255, .78));
+    box-shadow:
+      0 24px 54px rgba(15, 23, 42, .10),
+      inset 0 1px 0 rgba(255, 255, 255, .96);
+    overflow: hidden;
+  }
+
+  .desktopFoodCard{
+    position: absolute;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .85);
+    background: #ffffff;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, .20);
+    transition: transform 260ms cubic-bezier(.2, .8, .2, 1), box-shadow 260ms ease;
+  }
+
+  .desktopFoodCard picture{
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .desktopFoodCard img{
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 700ms cubic-bezier(.2, .8, .2, 1);
+  }
+
+  .desktopFoodCard:hover img{
+    transform: scale(1.035);
+  }
+
+  .desktopFoodCard figcaption{
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    min-width: 148px;
+    display: grid;
+    gap: 2px;
+    padding: 10px 13px;
+    border: 1px solid rgba(255, 255, 255, .64);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .13);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .desktopFoodCard figcaption span{
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 840;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .desktopFoodCard figcaption strong{
+    color: #0f172a;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 790;
+    letter-spacing: -.02em;
+  }
+
+  .desktopFoodCardMain{
+    inset: 27px 88px 30px 26px;
+    border-radius: 28px;
+    transform: rotate(-1.25deg);
+  }
+
+  .desktopFoodCardMain:hover{
+    transform: rotate(-.45deg) translateY(-3px);
+    box-shadow: 0 30px 58px rgba(15, 23, 42, .24);
+  }
+
+  .desktopFoodCardFloat{
+    width: 30%;
+    height: 68%;
+    right: 22px;
+    bottom: 18px;
+    z-index: 2;
+    border-radius: 24px;
+    transform: rotate(2.5deg);
+  }
+
+  .desktopFoodCardFloat:hover{
+    transform: rotate(1.5deg) translateY(-4px);
+    box-shadow: 0 30px 58px rgba(15, 23, 42, .25);
+  }
+
+  .desktopFoodCardFloat img{
+    object-position: 50% 52%;
+  }
+
+  .desktopFoodCardFloat figcaption{
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    min-width: 0;
+    padding: 9px 10px;
+  }
+
+  .desktopFoodCardFloat figcaption strong{
+    font-size: 15px;
+  }
+
+  .desktopActionBand{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, .86);
+    border-radius: 24px;
+    background: linear-gradient(115deg, rgba(219, 243, 247, .82), rgba(226, 238, 252, .76) 52%, rgba(222, 246, 241, .82));
+    box-shadow: 0 18px 40px rgba(15, 23, 42, .07);
+  }
+
+  .desktopActionCard{
+    min-width: 0;
+    min-height: 76px;
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) 26px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .63);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+    color: #0f172a;
+    transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  }
+
+  .desktopActionCard:hover{
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, .9);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, .08);
+  }
+
+  .desktopActionIcon{
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    background: #dff4f1;
+  }
+
+  .desktopActionIcon img{
+    opacity: .82;
+  }
+
+  .desktopActionCard > span:nth-child(2){
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  .desktopActionCard strong{
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 790;
+    letter-spacing: -.02em;
+  }
+
+  .desktopActionCard small{
+    overflow: hidden;
+    color: #64748b;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktopActionArrow{
+    width: 19px;
+    height: 19px;
+    opacity: .56;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  .desktopActionCard:hover .desktopActionArrow{
+    opacity: .9;
+    transform: translateX(3px);
+  }
+
+  .desktopFlavourSection{
+    margin-top: 24px;
+  }
+
+  .desktopSectionHeading{
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 14px;
+    padding: 0 4px;
+  }
+
+  .desktopSectionHeading p{
+    margin: 0 0 2px;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 820;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+
+  .desktopSectionHeading h2{
+    margin: 0;
+    color: #0f172a;
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 790;
+    letter-spacing: -.035em;
+  }
+
+  .desktopSectionHeading > a{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 3px;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 780;
+  }
+
+  .desktopSectionHeading > a img{
+    width: 17px;
+    height: 17px;
+    transition: transform 180ms ease;
+  }
+
+  .desktopSectionHeading > a:hover img{
+    transform: translateX(3px);
+  }
+
+  .desktopFlavourRail{
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .desktopFlavourCard{
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: 9px;
+    padding: 13px 10px 11px;
+    border: 1px solid rgba(255, 255, 255, .88);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .56);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+    color: #253247;
+    transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  }
+
+  .desktopFlavourCard:hover{
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, .91);
+    box-shadow: 0 18px 32px rgba(15, 23, 42, .09);
+  }
+
+  .desktopFlavourCard > img{
+    width: clamp(76px, 7.4vw, 106px);
+    height: clamp(76px, 7.4vw, 106px);
+    display: block;
+    border: 5px solid rgba(255, 255, 255, .9);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .13);
+    transition: transform 240ms ease;
+  }
+
+  .desktopFlavourCard:nth-child(2) > img{
+    object-position: 48% 53%;
+  }
+
+  .desktopFlavourCard:nth-child(5) > img{
+    object-position: 50% 44%;
+  }
+
+  .desktopFlavourCard:hover > img{
+    transform: scale(1.035);
+  }
+
+  .desktopFlavourCard span{
+    overflow: hidden;
+    width: 100%;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 760;
+    letter-spacing: -.01em;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeBody main > .footer{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 28px;
+    padding: 18px 4px 4px;
+    font-size: 12px;
+    font-family: "Manrope Desktop", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    text-align: left;
+  }
+
+  .homeBody main > .footer .footerPolicies{
+    display: flex;
+    gap: 18px;
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 960px) and (max-width: 1160px){
+  .desktopSiteHeader,
+  body.homeBody main{
+    padding-inline: 28px;
+  }
+
+  .desktopNav{
+    grid-template-columns: 120px minmax(0, 1fr) 132px;
+  }
+
+  .desktopBrand img{
+    width: 118px;
+    height: 52px;
+  }
+
+  .desktopNavLinks{
+    gap: 20px;
+  }
+
+  .desktopAccountLink{
+    padding-inline: 13px;
+  }
+
+  .desktopHero{
+    grid-template-columns: minmax(370px, .9fr) minmax(460px, 1.1fr);
+    gap: 28px;
+    min-height: 450px;
+  }
+
+  .desktopHeroMedia{
+    min-height: 450px;
+  }
+
+  .desktopHero h1{
+    font-size: clamp(48px, 5vw, 58px);
+  }
+
+  .desktopHeroIntro{
+    margin-top: 16px;
+    font-size: 14px;
+  }
+
+  .desktopHeroActions,
+  .desktopVisitCard{
+    margin-top: 17px;
+  }
+
+  .desktopFoodCardMain{
+    right: 70px;
+  }
+
+  .desktopFoodCardFloat{
+    width: 32%;
+  }
+
+  .desktopActionCard{
+    grid-template-columns: 42px minmax(0, 1fr) 22px;
+    gap: 9px;
+    padding-inline: 11px;
+  }
+
+  .desktopActionIcon{
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 960px){
+  .desktopHome *,
+  .desktopHome *::before,
+  .desktopHome *::after{
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

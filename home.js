@@ -105,10 +105,19 @@ function updateRestaurantSchema(config) {
 }
 
 function updateOpeningStatus() {
-  const statusWrap = document.getElementById("heroStatus");
-  const statusText = document.getElementById("heroStatusText");
-  const heroHours = document.getElementById("heroHours");
-  if (!statusWrap || !statusText || !heroHours) return;
+  const statusWraps = [
+    document.getElementById("heroStatus"),
+    ...document.querySelectorAll("[data-home-status]")
+  ].filter((element) => element instanceof HTMLElement);
+  const statusTexts = [
+    document.getElementById("heroStatusText"),
+    ...document.querySelectorAll("[data-home-status-text]")
+  ].filter((element) => element instanceof HTMLElement);
+  const mobileHoursText = document.getElementById("heroHours");
+  const desktopHoursTexts = [...document.querySelectorAll("[data-home-hours]")]
+    .filter((element) => element instanceof HTMLElement);
+
+  if (!statusWraps.length || !statusTexts.length || !(mobileHoursText instanceof HTMLElement)) return;
 
   const { dayIndex, minutesNow } = getNowInBusinessTimezone();
   const windows = weeklyHours[dayIndex] || [];
@@ -118,10 +127,36 @@ function updateOpeningStatus() {
     return minutesNow >= startMin && minutesNow < endMin;
   });
 
-  statusWrap.classList.toggle("isOpen", isOpen);
-  statusWrap.classList.toggle("isClosed", !isOpen);
-  statusText.textContent = isOpen ? "Open now" : "Closed now";
-  heroHours.textContent = `${openingSummary} • Today: ${formatDayHours(windows)}`;
+  statusWraps.forEach((statusWrap) => {
+    statusWrap.classList.toggle("isOpen", isOpen);
+    statusWrap.classList.toggle("isClosed", !isOpen);
+  });
+  statusTexts.forEach((statusText) => {
+    statusText.textContent = isOpen ? "Open now" : "Closed now";
+  });
+  mobileHoursText.textContent = `${openingSummary} • Today: ${formatDayHours(windows)}`;
+  desktopHoursTexts.forEach((hoursText) => {
+    hoursText.textContent = `Today: ${formatDayHours(windows)}`;
+  });
+}
+
+function updateHomeOrderingCopy(config) {
+  const orderingEnabled = config?.orders?.onlineOrderingEnabled === true;
+  const copy = orderingEnabled
+    ? {
+        collection: "Order ahead and pick up",
+        delivery: "Fresh favourites to your door"
+      }
+    : {
+        collection: "Browse the collection menu",
+        delivery: "Explore local delivery options"
+      };
+
+  document.querySelectorAll("[data-home-ordering-copy]").forEach((element) => {
+    if (!(element instanceof HTMLElement)) return;
+    const key = element.dataset.homeOrderingCopy;
+    if (key && copy[key]) element.textContent = copy[key];
+  });
 }
 
 async function loadHomeConfig() {
@@ -144,12 +179,17 @@ async function loadHomeConfig() {
       weeklyHours = config.home.weeklyHours;
     }
 
-    const heroMeta = document.querySelector(".heroMeta");
-    if (heroMeta instanceof HTMLElement && config.business?.address) {
-      heroMeta.textContent = String(config.business.address).trim();
+    const addressElements = document.querySelectorAll(".heroMeta, [data-home-address]");
+    if (config.business?.address) {
+      addressElements.forEach((addressElement) => {
+        if (addressElement instanceof HTMLElement) {
+          addressElement.textContent = String(config.business.address).trim();
+        }
+      });
     }
 
     updateRestaurantSchema(config);
+    updateHomeOrderingCopy(config);
     updateOpeningStatus();
   } catch (error) {
     // Keep bundled defaults if live config is unavailable.
@@ -163,6 +203,18 @@ void trackClientEvent("page_view", {
   page: "home",
   route: window.location.pathname
 });
+
+function setupSkipLink() {
+  const skipLink = document.querySelector(".skipLink");
+  const mainContent = document.getElementById("mainContent");
+  if (!(skipLink instanceof HTMLAnchorElement) || !(mainContent instanceof HTMLElement)) return;
+
+  skipLink.addEventListener("click", () => {
+    window.requestAnimationFrame(() => mainContent.focus({ preventScroll: true }));
+  });
+}
+
+setupSkipLink();
 
 function setupHeroParallax() {
   const hero = document.querySelector(".glassHero");
