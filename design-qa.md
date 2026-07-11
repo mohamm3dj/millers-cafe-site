@@ -1,79 +1,107 @@
-# Design QA — Aurora order flow redesign
+# Design QA — Millers Aurora Glass ordering
 
 ## Scope and visual truth
 
-- Source design language: `/private/tmp/millers-order-audit/01-home-entry.png` — the accepted Aurora Glass desktop homepage at 1280 × 720.
-- Source flow state: `/private/tmp/millers-order-audit/02-menu-browse.png`, `03-customize-item.png`, `04-basket-filled.png`, `05-checkout-details.png`, and `07-delivery-details.png` — the pre-redesign collection and delivery flow at 1280 × 720.
+- Source layout target: `/Users/mo/.codex/generated_images/019f4da8-15c7-73e2-a6f3-36cdb5c78784/exec-ccc1b618-2d9b-4026-b148-547cef6eee3d.png` — the selected glass desktop ordering direction.
+- Source brand target: `/private/tmp/millers-order-audit/01-home-entry.png` — the accepted Millers desktop homepage and its Aurora Glass visual system.
 - Browser-rendered implementation:
-  - `/private/tmp/millers-order-redesign/implementation-menu-desktop.jpg`
-  - `/private/tmp/millers-order-redesign/implementation-checkout-desktop.jpg`
-  - `/private/tmp/millers-order-redesign/implementation-modifier-desktop.jpg`
-  - `/private/tmp/millers-order-redesign/implementation-mobile-payment.jpg`
-- Combined comparison evidence:
-  - `/private/tmp/millers-order-redesign/qa-comparison-desktop.jpg`
-  - `/private/tmp/millers-order-redesign/qa-comparison-modifier.jpg`
-- Primary desktop viewport: 1280 × 720.
+  - `/private/tmp/millers-order-glass/implementation-menu-desktop.png`
+  - `/private/tmp/millers-order-glass/implementation-checkout-desktop.png`
+  - `/private/tmp/millers-order-glass/implementation-menu-mobile.png`
+  - `/private/tmp/millers-order-glass/implementation-modifier-mobile.png`
+- Primary viewport: 1440 × 1024.
 - Responsive viewport: 390 × 844.
-- States: populated collection menu and basket, item customisation, collection checkout, delivery checkout, empty-field validation, and mobile secure-payment action.
+- Primary state: collection menu with a populated basket and 10% collection discount.
+- Additional states: collection checkout, delivery menu/checkout, search results, item customiser, responsive menu, responsive basket, and return-to-menu.
 
-The accepted homepage and the legacy order screen are different page states. The comparison therefore treats the homepage as the visual-system target and the legacy order captures as the functional/content baseline; layout changes from the legacy flow are intentional.
+The user explicitly made the live homepage the source of truth for colour and glass treatment. The generated ordering mock remains the layout and interaction reference; its warm photographic canvas is intentionally replaced by the homepage's exact icy Aurora gradients, navy ink, Millers teal, mint, glass borders, and restrained logo-gold.
 
-## Full-view comparison
+## Full-view comparison evidence
 
-- The order header now uses the same real Millers logo, Manrope/Urbanist typography, soft teal/navy palette, glass surface, rounded geometry, and low-contrast elevation as the accepted homepage.
-- The menu workspace replaces the legacy 27-row category sidebar and single item column with a horizontal category rail, two-column dish grid, and one compact sticky basket action.
-- Checkout now keeps the form and a live, sticky order summary in the same view. Collection discount, delivery fee, item price, and the exact Stripe total remain visible.
-- Delivery contact fields now occupy a balanced 4/2-column row, while address and fulfilment fields retain their intended hierarchy.
-- At 390px the flow has no horizontal page overflow, the three stages fit without truncation, category and basket controls remain usable, and the secure-payment action stays visible at the bottom of the viewport.
+The layout target, homepage brand source, and browser-rendered implementation were opened together in one original-resolution comparison input. The implementation preserves the target's major composition: compact brand header, oversized menu heading, three-step progress control, frosted search, horizontal category rail, elevated menu rows, persistent dark basket, pricing breakdown, and one luminous checkout action.
 
-## Focused comparison
+The implementation deliberately follows the homepage for:
 
-`qa-comparison-modifier.jpg` compares the same Iced Caramel Latte customisation state before and after the redesign. The old inline expander interrupts the menu grid; the implementation uses a centred, labelled dialog on desktop and a bottom sheet on mobile. The overlay has a stable viewport root, real focus containment, Escape/backdrop close, and trigger-focus restoration. Controls and footer actions remain readable without clipping at both tested viewports.
+- `#0f172a` display ink and `#0f766e → #0d9488` action gradient.
+- The homepage's blue/mint Aurora background gradients.
+- White glass fills, bright 1px edges, low-contrast navy shadows, 18–24px radii, and Manrope/Urbanist typography.
+- The real Millers logo and the existing Tabler-style icon family.
 
-No additional crop was needed for typography or basket pricing because those details are legible in the full-view comparison and were also verified directly in the browser DOM.
+The menu catalogue exposes no item-image URL. The implementation therefore uses real, category-appropriate Tabler icons instead of inventing or repeating inaccurate product photography. This is an intentional data constraint, not a missing placeholder.
+
+## Focused comparison evidence
+
+An additional crop was not required: the 1440 × 1024 source and implementation were inspected at original resolution, where header type, progress numbers, search icon, category states, item prices, add/customise controls, basket quantity controls, discount, total, and CTA label were all readable. The checkout and mobile customiser captures provide focused evidence for the dense form and interaction states that are not present in the single menu mock.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Manrope Desktop is used for UI text and Urbanist Desktop for display hierarchy, matching the accepted homepage. Weights, letter spacing, and small uppercase labels remain readable; there is no material truncation at either tested viewport.
-- Spacing and layout rhythm: header, progress, notice, menu cards, basket, form fields, and summary cards use a consistent 12–24px rhythm, 12–26px radii, and restrained elevation. Desktop alignment uses explicit menu/basket and form/summary grids.
-- Colors and tokens: the implementation reuses the established teal, navy, mist, white, and warm allergen-warning palette. Focus, selected, error, discount, and disabled states remain semantically distinct.
-- Image quality and asset fidelity: the canonical Millers WebP logo and existing Tabler-style SVG icon assets are used. Order items do not have source photography, so the flow does not invent placeholder food images. No emoji, CSS-drawn product art, or approximate branding is used.
-- Copy and content: collection/delivery language, live hours, allergen guidance, price breakdowns, consent text, policy links, and “Total due at Stripe” remain accurate. Progress is clearer as Browse menu → Your details → Secure payment.
+- Fonts and typography: the implementation uses the same bundled Manrope Desktop and Urbanist Desktop files as the homepage. The headline scale, tight display tracking, progress microcopy, item hierarchy, price weight, and dark-panel typography remain readable without truncation at the tested desktop viewport.
+- Spacing and layout rhythm: the desktop frame uses the homepage's 1500px shell, 4vw outer gutter, 24px header radius, 22px section gap, and disciplined 18–32px glass radii. Menu and basket proportions stay balanced; the basket action remains visible above the fold.
+- Colors and visual tokens: order ink, teal, mint, button gradient, background glows, glass fills, edge opacity, and shadow colour are mapped directly to the homepage system. Gold is limited to the active progress marker and small count accents.
+- Image quality and asset fidelity: the canonical WebP logo and real SVG icon assets are used. No emoji, inline SVG, CSS-drawn product art, or fake item imagery is present. The lack of individual item photography is explicitly tied to the live catalogue data model.
+- Copy and content: collection/delivery language, allergen guidance, basket quantities, collection discount, delivery fee, Stripe total, checkout labels, consent copy, and policy links remain accurate. The CTA is amount-aware on desktop and explicit on mobile.
+- Accessibility and states: focus-visible treatment remains intact; 44px mobile targets are preserved; progress exposes full step labels through `aria-label`; the customiser retains dialog semantics, focus management, Escape handling, and trigger-focus restoration; reduced-motion handling remains in place.
 
 ## Comparison history
 
-### Iteration 1
+### Iteration 1 — rejected flat direction
 
-- [P1] The first fixed customisation overlay was contained by the glass panel and visually centred below the viewport.
-  - Fix: move the dialog to a stable `body` overlay root while open.
-  - Post-fix evidence: `implementation-modifier-desktop.jpg`; the dialog fills the viewport backdrop and is fully visible.
-- [P1] Desktop delivery email remained full width and left a large blank area beside phone because the wide-field selector overrode the delivery span.
-  - Fix: exclude `deliveryFieldEmail` from the full-width override and restore the 4/2 contact row.
-  - Post-fix evidence: browser measurement recorded email at 519px and phone at 254px in the 1280px checkout grid.
-- [P2] Mobile stage three was clipped by the horizontal progress scroller.
-  - Fix: use three equal mobile stage segments and hide decorative dividers at that breakpoint.
-  - Post-fix evidence: all three labels are visible in the 390 × 844 capture.
-- [P2] The broad checkout input rule enlarged the optional-consent checkbox and disrupted its baseline.
-  - Fix: restore a specific 20 × 20 checkbox rule and accent token.
-  - Post-fix evidence: `implementation-checkout-desktop.jpg` shows aligned consent copy and control.
-- [P2] Mobile checkout required scrolling through the entire form before the final action appeared.
-  - Fix: add a persistent, amount-aware “Pay securely” action using the real lock icon; the action submits through the existing validation and Stripe handoff.
-  - Post-fix evidence: `implementation-mobile-payment.jpg`; invalid activation focuses the first invalid field and leaves the action visible.
+- [P1] The first option-2 implementation was editorial and flat rather than glass.
+  - Fix: generated a new glass target and rebuilt the visual layer around the accepted homepage's Aurora design system.
+  - Post-fix evidence: `implementation-menu-desktop.png` shows the frosted header, search, category rail, item rows, smoked basket, and teal CTA.
 
-### Final pass
+### Iteration 2 — glass cascade and hierarchy
 
-- No actionable P0, P1, or P2 visual differences remain.
-- Residual P3: the horizontal desktop category rail relies on native scrolling for less-common categories; a subtle edge fade could improve discoverability later without changing the flow.
+- [P1] The first glass rules appeared before the editorial foundation, so later flat rules won for menu cards and header surfaces.
+  - Fix: move the Aurora Glass refinement after the complete layout foundation and bump the versioned stylesheet asset.
+  - Post-fix evidence: `implementation-menu-desktop.png`; computed desktop card radius was 22px, header radius 24px, and the homepage glass background was active.
+- [P1] Checkout summary rows had no explicit layout, collapsing labels and prices together.
+  - Fix: add grid/flex structure, spacing, a distinct glass total panel, and a stable review row.
+  - Post-fix evidence: `implementation-checkout-desktop.png`; subtotal, discount/fee, total, item name, and price align in separate columns.
+- [P2] The progress control used compressed sentence labels and did not carry the selected target's visual signature.
+  - Fix: render numbered circles with concise Menu, Details, and Payment labels while retaining full accessible names.
+  - Post-fix evidence: `implementation-menu-desktop.png` and `implementation-checkout-desktop.png`.
+
+### Iteration 3 — order-flow usability
+
+- [P1] Returning from checkout could leave the forced-open desktop basket panel hidden.
+  - Fix: reopen the basket whenever desktop returns to step one.
+  - Post-fix browser evidence: checkout → Back to dishes returned `basketHidden: false` and `aria-expanded: true`, with focus on menu search.
+- [P1] Direct mobile adds and customiser confirmation opened the basket and moved focus away from menu browsing.
+  - Fix: keep direct adds in context, announce the added item, quantity and total through the live cart status, update the sticky summary, and open the basket only from View basket.
+  - Post-fix browser evidence: direct add left `basketHidden: true`; customiser confirmation restored focus to Customize and left the basket closed.
+- [P1] The mobile sticky basket bar could cover a customiser control and remained visible behind an open basket sheet.
+  - Fix: reserve scroll clearance for menu actions, mark the basket-open state, hide the redundant sticky bar while open, reset the sheet to its header, and expose the sheet as a focus-trapped mobile dialog with expanded/control semantics on its real opener.
+  - Post-fix browser evidence: the customiser trigger worked through the semantic button locator; the open sheet set `isBasketOpen`, hid the sticky bar, and focused Close.
+- [P2] Desktop CTA copy was generic and mobile allowed an empty basket action.
+  - Fix: use amount-aware `Checkout details · £x.xx`, explicit `View basket`, and disable the mobile basket action until dishes exist.
+  - Post-fix evidence: menu and delivery captures show the correct amount-aware actions and totals.
+
+### Iteration 4 — final accessibility and resilience review
+
+- [P1] A transient mobile drawer-open state could be restored on load without moving focus into the sheet.
+  - Fix: stop persisting drawer visibility; persist basket contents only. Breakpoint changes now close the transient mobile sheet, reopen the desktop basket, and restore focus to a visible equivalent control.
+- [P1] The mobile sticky bar and desktop summary needed explicit viewport safeguards.
+  - Fix: add safe-area-aware mobile edges, cap the desktop summary to the viewport with contained scrolling, and consolidate the basket minimum height.
+- [P2] Final brand details used near-match teal/gold values and a more opaque basket than the homepage glass system.
+  - Fix: normalize all new icon strokes to `#0f766e`, consolidate progress gold to `#c7a24e` with dark ink, soften the smoked-glass alpha, reduce menu-row shadow density, and add an intentional category-overflow fade.
+- [P2] A superseded 1,380-line order-workspace block remained commented in the stylesheet and made future cascade edits error-prone.
+  - Fix: remove the dead block and retain one Editorial layout foundation followed by one active Aurora Glass refinement layer.
 
 ## Functional and accessibility verification
 
-- Collection and delivery menu browsing, search, category selection, add-to-basket, quantity changes, basket drawer, and both checkout transitions were exercised.
-- Desktop dialog and mobile sheet were exercised; Escape closes, backdrop click is supported, Tab is contained, body scroll is locked, and focus returns to the initiating button.
-- Empty checkout submission focuses and scrolls to the first invalid visible field. Hidden date/time errors are mirrored to the visible date toggle and slot radiogroup.
-- Mobile payment action invokes the existing form submission path; an invalid test focused `orderName` and reported three invalid fields without transmitting an order.
-- Desktop and mobile page widths matched their viewports; no duplicate IDs were found; one H1 remained; no visible interactive target under 24px was found in the mobile pass.
-- Browser console warnings/errors: none.
-- Automated suite: 121/121 passed.
-- JavaScript syntax and `git diff --check`: passed.
+- Collection: search-by-Enter, direct add, customisation, populated basket, quantity display, 10% discount, checkout transition, and Back to dishes were exercised.
+- Delivery: persisted items, £2 delivery fee, £10 total, email/phone/address/town/postcode fields, slot selection, and checkout summary were exercised.
+- Responsive: 390 × 844 menu, numbered progress, filtered single-item result, bottom-sheet customiser, sticky View basket state, and basket focus restoration were exercised.
+- The mobile basket opener now owns `aria-controls`/`aria-expanded`; the open sheet switches to `role="dialog"` with `aria-modal="true"`, traps Tab/Shift+Tab, closes on Escape, and returns focus to the visible opener.
+- Search Enter remained on `isOrderMenuStep` and returned only the matching item.
+- Checkout focused `orderName` for collection and `orderEmail` for delivery.
+- Browser console warnings/errors: none during the completed collection, delivery, checkout, search, and customiser passes.
+- Automated suite: 125/125 passed.
+- JavaScript syntax, `git diff --check`, and service-worker cache versioning: passed.
+
+## Follow-up polish
+
+- P3: add individual menu photography only after the live catalogue gains approved per-item image assets and mappings.
 
 final result: passed

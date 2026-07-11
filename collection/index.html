@@ -12,7 +12,7 @@
   <link rel="canonical" href="https://millers.cafe/collection/">
   <link rel="preload" href="../assets/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="../assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="../styles.css?v=20260711f">
+  <link rel="stylesheet" href="../styles.css?v=20260711o">
 </head>
 <body class="orderBody">
   <main class="orderPage">
@@ -41,17 +41,22 @@
         <input type="hidden" id="orderType" name="orderType" value="collection">
 
         <ol class="orderFlowHeader" aria-label="Checkout steps">
-          <li id="orderStepBadge1" class="orderFlowStep isActive">1 · Browse menu</li>
+          <li id="orderStepBadge1" class="orderFlowStep isActive"><span class="orderFlowStepNumber">1</span><span class="orderFlowStepLabel">Menu</span></li>
           <li class="orderFlowDivider" aria-hidden="true"><img src="../assets/icon-arrow-right.svg" alt="" width="16" height="16"></li>
-          <li id="orderStepBadge2" class="orderFlowStep">2 · Your details</li>
+          <li id="orderStepBadge2" class="orderFlowStep"><span class="orderFlowStepNumber">2</span><span class="orderFlowStepLabel">Details</span></li>
           <li class="orderFlowDivider" aria-hidden="true"><img src="../assets/icon-arrow-right.svg" alt="" width="16" height="16"></li>
-          <li id="orderStepBadge3" class="orderFlowStep isLocked">3 · Secure payment</li>
+          <li id="orderStepBadge3" class="orderFlowStep isLocked"><span class="orderFlowStepNumber">3</span><span class="orderFlowStepLabel">Payment</span></li>
         </ol>
 
         <div class="orderTrustStrip" aria-label="Order assurance">
           <span class="orderTrustItem">Secure order</span>
           <span class="orderTrustItem">Email receipt and updates</span>
           <span class="orderTrustItem">Live hours</span>
+        </div>
+
+        <div class="orderMenuLead">
+          <p class="orderMenuLeadEyebrow">Order online</p>
+          <h2 class="orderMenuLeadTitle">Choose your favourites<span aria-hidden="true">.</span></h2>
         </div>
 
         <div class="bookingGrid">
@@ -116,7 +121,7 @@
               <div class="orderSearchWrap">
                 <label for="menuSearch">Search dishes</label>
                 <div class="orderSearchControl">
-                  <input id="menuSearch" type="search" maxlength="80" placeholder="Search your food" autocomplete="off">
+                  <input id="menuSearch" type="search" maxlength="80" placeholder="Search dishes" autocomplete="off">
                   <button id="menuSearchSubmit" class="orderSearchButton" type="button">Search</button>
                 </div>
               </div>
@@ -242,6 +247,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script type="module" src="../orders/order-form.js?v=20260711g"></script>
+  <script type="module" src="../orders/order-form.js?v=20260711o"></script>
 </body>
 </html>

@@ -201,7 +201,6 @@ function checkoutIdempotencyKey(payload, cartPayload) {
   }
   return checkoutAttemptKey;
 }
-let restoredBasketOpen = false;
 let restoredDraftHadCart = false;
 let checkoutFinalizeTimer = null;
 let orderTurnstileToken = "";
@@ -889,14 +888,16 @@ function updateOrderFlowStepLabels() {
   const stages = [
     {
       element: orderStepBadge1,
-      text: "1 · Browse menu",
+      number: "1",
+      text: "Menu",
       label: "Step 1 of 3: Browse menu",
       active: currentOrderStep === 1,
       complete: currentOrderStep === 2
     },
     {
       element: orderStepBadge2,
-      text: "2 · Your details",
+      number: "2",
+      text: "Details",
       label: "Step 2 of 3: Your details",
       active: currentOrderStep === 2 && !paymentStageActive,
       complete: paymentStageActive,
@@ -904,7 +905,8 @@ function updateOrderFlowStepLabels() {
     },
     {
       element: orderStepBadge3,
-      text: "3 · Secure payment",
+      number: "3",
+      text: "Payment",
       label: "Step 3 of 3: Secure payment",
       active: paymentStageActive,
       complete: false,
@@ -914,7 +916,14 @@ function updateOrderFlowStepLabels() {
 
   stages.forEach((stage) => {
     if (!stage.element) return;
-    stage.element.textContent = stage.text;
+    const number = document.createElement("span");
+    number.className = "orderFlowStepNumber";
+    number.textContent = stage.number;
+    number.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.className = "orderFlowStepLabel";
+    label.textContent = stage.text;
+    stage.element.replaceChildren(number, label);
     stage.element.setAttribute("aria-label", stage.label);
     stage.element.classList.toggle("isActive", Boolean(stage.active));
     stage.element.classList.toggle("isComplete", Boolean(stage.complete));
@@ -985,6 +994,7 @@ function setOrderStep(step, options = {}) {
       });
     }
   } else if (!options.silent) {
+    setBasketOpen(isDesktopBasketLayout());
     const orderType = String(orderTypeField?.value || "collection").toLowerCase();
     const label = orderType === "delivery" ? "Delivery" : "Collection";
     setNotice(`${label} hours: ${orderOpenDaySummary()}, ${orderHoursSummary()}. ${label} slots are in ${orderIntervalSummary()}.`, false);
@@ -1253,6 +1263,7 @@ function updateStickyCheckoutBar() {
   const hasItems = totals.totalQuantity > 0;
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
   const isMobileCheckout = isMobileOrderMenuLayout() && currentOrderStep === 2;
+  const isDesktopMenu = isDesktopBasketLayout() && currentOrderStep === 1;
 
   const stickyHost = isMobileCheckout ? form?.parentElement : (basketColumn || orderHub);
   if (stickyHost && stickyCheckoutBar.parentElement !== stickyHost) {
@@ -1275,20 +1286,43 @@ function updateStickyCheckoutBar() {
       ? ` total · includes ${formatGBP(totals.deliveryFee)} delivery`
       : (totals.collectionDiscount > 0 ? " total · after 10% off" : " total");
     stickyCheckoutOrder.textContent = isMobileMenu
-      ? `${formatGBP(totals.total)}${adjustmentText}`
+      ? `${formatGBP(totals.total)} total`
       : (isMobileCheckout
         ? `${formatGBP(totals.total)} due`
         : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`);
   }
   if (stickyCheckoutBtn) {
-    stickyCheckoutBtn.textContent = onlineOrderingEnabled
-      ? (isMobileMenu ? "Cart" : (isMobileCheckout ? "Pay securely" : "Continue"))
-      : "Ordering paused";
+    const totalLabel = formatGBP(totals.total);
+    stickyCheckoutBtn.textContent = !onlineOrderingEnabled
+      ? "Ordering paused"
+      : (isMobileMenu
+        ? (hasItems ? "View basket" : "Add dishes")
+        : (isMobileCheckout
+          ? "Pay securely"
+          : (isDesktopMenu
+            ? (hasItems ? `Checkout details · ${totalLabel}` : "Add dishes to continue")
+            : "Continue")));
+    stickyCheckoutBtn.setAttribute("aria-label", !onlineOrderingEnabled
+      ? "Online ordering is paused"
+      : (isMobileMenu
+        ? (hasItems ? `View basket, total ${totalLabel}` : "Add dishes to continue")
+        : (isMobileCheckout
+          ? `Continue to secure payment, total ${totalLabel}`
+          : (isDesktopMenu
+            ? (hasItems ? `Continue to checkout details, total ${totalLabel}` : "Add dishes to continue")
+            : "Continue"))));
     stickyCheckoutBtn.disabled = !onlineOrderingEnabled || (isMobileMenu
-      ? isSubmitting
+      ? isSubmitting || !hasItems
       : (isMobileCheckout
         ? isSubmitting || !hasItems || !hasSelectableTime
         : !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting)));
+    if (isMobileMenu) {
+      stickyCheckoutBtn.setAttribute("aria-controls", "orderBasketPanel");
+      stickyCheckoutBtn.setAttribute("aria-expanded", basketPanel?.hidden ? "false" : "true");
+    } else {
+      stickyCheckoutBtn.removeAttribute("aria-controls");
+      stickyCheckoutBtn.removeAttribute("aria-expanded");
+    }
   }
   if (basketCheckoutBtn) {
     basketCheckoutBtn.disabled = !onlineOrderingEnabled || !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting);
@@ -2188,6 +2222,17 @@ function createMenuActionButton(label, actionType, entry, secondary = false, sin
   button.dataset.itemId = entry.item.id;
   button.dataset.baseLabel = label;
 
+  if (actionType === "add") {
+    const icon = document.createElement("img");
+    icon.className = "orderMenuAddIcon";
+    icon.src = "../assets/icon-plus.svg";
+    icon.alt = "";
+    icon.width = 17;
+    icon.height = 17;
+    icon.setAttribute("aria-hidden", "true");
+    button.appendChild(icon);
+  }
+
   const text = document.createElement("span");
   text.className = "orderMenuAddText";
   text.textContent = label;
@@ -2618,7 +2663,7 @@ function startItemDraft(item, quantity = 1, anchorCard = null) {
 
   const groups = item.modifierGroups || [];
   if (groups.length === 0) {
-    addItemToCart(item, [], activeDraft.quantity, true);
+    addItemToCart(item, [], activeDraft.quantity, false);
     activeDraft = null;
     activeDraftAnchor = null;
     return;
@@ -2836,9 +2881,7 @@ function persistOrderDraft() {
     nextCartId,
     selectedCategory,
     searchQuery,
-    basketOpen: currentOrderStep === 1 &&
-      cartItems.length > 0 &&
-      basketToggleBtn?.getAttribute("aria-expanded") === "true",
+    basketOpen: false,
     schedules: {
       ...persistedOrderDraft.schedules,
       [orderType]: {
@@ -2860,7 +2903,6 @@ function restoreOrderDraft() {
   nextCartId = persistedOrderDraft.nextCartId;
   selectedCategory = persistedOrderDraft.selectedCategory;
   searchQuery = persistedOrderDraft.searchQuery;
-  restoredBasketOpen = persistedOrderDraft.basketOpen;
   restoredDraftHadCart = restoredDraftMeta.sourceLineCount > 0;
 
   if (menuSearchInput) {
@@ -2892,7 +2934,6 @@ function applyRestoredScheduleDraft() {
 }
 
 function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
-  const wasEmpty = cartItems.length === 0;
   const cleanQty = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)));
   const signature = cartLineSignature(item.id || item.name, modifierSelections);
 
@@ -2922,7 +2963,9 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
   }
 
   renderCart();
-  if (openBasket || wasEmpty) {
+  const totals = cartPricingTotals();
+  announceCartStatus(`${item.name} added to basket. ${totals.totalQuantity} ${totals.totalQuantity === 1 ? "item" : "items"}, ${formatGBP(totals.total)} total.`);
+  if (openBasket) {
     setBasketOpen(true, { focusPanel: true });
   }
 }
@@ -3064,8 +3107,24 @@ function setBasketOpen(open, options = {}) {
   const nextState = canOpen && (forceOpen || Boolean(open));
   basketPanel.hidden = !nextState;
   basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+  basketColumn?.classList.toggle("isBasketOpen", nextState);
+  const mobileDialog = isMobileOrderMenuLayout() && currentOrderStep === 1 && nextState;
+  if (mobileDialog) {
+    basketPanel.setAttribute("role", "dialog");
+    basketPanel.setAttribute("aria-modal", "true");
+  } else {
+    basketPanel.setAttribute("role", "region");
+    basketPanel.removeAttribute("aria-modal");
+  }
+  if (stickyCheckoutBtn && isMobileOrderMenuLayout() && currentOrderStep === 1) {
+    stickyCheckoutBtn.setAttribute("aria-controls", "orderBasketPanel");
+    stickyCheckoutBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+  }
   if (nextState && options.focusPanel && !forceOpen) {
-    window.requestAnimationFrame(() => basketCloseBtn?.focus({ preventScroll: true }));
+    window.requestAnimationFrame(() => {
+      basketPanel.scrollTop = 0;
+      basketCloseBtn?.focus({ preventScroll: true });
+    });
   } else if (!nextState && options.restoreFocus) {
     window.requestAnimationFrame(() => {
       const returnTarget = isMobileOrderMenuLayout() ? stickyCheckoutBtn : basketToggleBtn;
@@ -3073,6 +3132,48 @@ function setBasketOpen(open, options = {}) {
     });
   }
   persistOrderDraft();
+}
+
+function basketFocusableControls() {
+  if (!basketPanel || basketPanel.hidden || !isMobileOrderMenuLayout()) return [];
+  const selector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(",");
+  return [...basketPanel.querySelectorAll(selector)].filter((element) => (
+    element instanceof HTMLElement && !element.closest("[hidden]")
+  ));
+}
+
+function handleBasketPanelKeydown(event) {
+  if (!basketPanel || basketPanel.hidden || !isMobileOrderMenuLayout()) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setBasketOpen(false, { restoreFocus: true });
+    return;
+  }
+
+  if (event.key !== "Tab") return;
+  const controls = basketFocusableControls();
+  if (controls.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function updateBasketSummary(totalPrice, totalQuantity) {
@@ -3595,9 +3696,7 @@ function initializeMenuInteractions() {
   renderCategoryChips();
   renderMenuItems();
   renderCart();
-  if (restoredBasketOpen && cartItems.length > 0) {
-    setBasketOpen(true);
-  }
+  setBasketOpen(isDesktopBasketLayout());
 
   menuCategoryChips.addEventListener("click", (event) => {
     const target = event.target;
@@ -3623,6 +3722,16 @@ function initializeMenuInteractions() {
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
     queueActiveCategoryPillSync();
+    persistOrderDraft();
+  });
+
+  menuSearchInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    searchQuery = normalizeText(menuSearchInput.value || "");
+    renderMenuItems();
+    queueActiveCategoryPillSync();
+    menuSearchInput.focus();
     persistOrderDraft();
   });
 
@@ -3675,7 +3784,7 @@ function initializeMenuInteractions() {
     const card = button.closest(".orderMenuCard");
 
     if (actionType === "add") {
-      addItemToCart(item, [], 1, true);
+      addItemToCart(item, [], 1, false);
       return;
     }
 
@@ -3694,11 +3803,7 @@ function initializeMenuInteractions() {
     setBasketOpen(false, { restoreFocus: true });
   });
 
-  basketPanel?.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || isDesktopBasketLayout()) return;
-    event.preventDefault();
-    setBasketOpen(false, { restoreFocus: true });
-  });
+  basketPanel?.addEventListener("keydown", handleBasketPanelKeydown);
 
   basketCheckoutBtn?.addEventListener("click", () => {
     if (!form || basketCheckoutBtn.disabled) return;
@@ -3745,7 +3850,7 @@ function initializeMenuInteractions() {
     }
 
     if (!activeDraft) return;
-    addItemToCart(activeDraft.item, result.selections, activeDraft.quantity, true);
+    addItemToCart(activeDraft.item, result.selections, activeDraft.quantity, false);
     hideModifierPanel({ restoreFocus: true });
   });
 
@@ -3881,11 +3986,11 @@ async function initialize() {
   orderEditItemsBtn?.addEventListener("click", () => setOrderStep(1));
   orderBackToItemsBtn?.addEventListener("click", () => setOrderStep(1));
   stickyCheckoutBtn?.addEventListener("click", () => {
+    if (!form || stickyCheckoutBtn.disabled) return;
     if (isMobileOrderMenuLayout() && currentOrderStep === 1) {
       setBasketOpen(true, { focusPanel: true });
       return;
     }
-    if (!form || stickyCheckoutBtn.disabled) return;
     if (isMobileOrderMenuLayout() && currentOrderStep === 2) {
       if (typeof form.requestSubmit === "function") form.requestSubmit();
       else submitBtn?.click();
@@ -3894,11 +3999,23 @@ async function initialize() {
     setOrderStep(2);
   });
   DESKTOP_BASKET_MEDIA?.addEventListener?.("change", () => {
-    const isOpen = basketToggleBtn?.getAttribute("aria-expanded") === "true";
+    const focusWasInBasket = basketColumn?.contains(document.activeElement);
+    const focusWasInMenu = menuItemsList?.contains(document.activeElement);
     renderCategoryChips();
     renderMenuItems();
-    setBasketOpen(isOpen || isDesktopBasketLayout());
+    const desktopLayout = isDesktopBasketLayout();
+    setBasketOpen(desktopLayout);
     updateStickyCheckoutBar();
+    window.requestAnimationFrame(() => {
+      if (focusWasInBasket) {
+        const target = desktopLayout
+          ? basketPanel?.querySelector("button.orderCartBtn:not([disabled])")
+          : stickyCheckoutBtn;
+        target?.focus({ preventScroll: true });
+      } else if (focusWasInMenu) {
+        menuSearchInput?.focus({ preventScroll: true });
+      }
+    });
   });
   resultEl?.addEventListener("click", (event) => {
     const target = event.target;
