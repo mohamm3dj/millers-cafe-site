@@ -26,13 +26,15 @@ test("write-capable token scopes do not inherit read-only or unrelated tokens", 
     BOOKINGS_FEED_TOKEN: "booking-feed",
     ORDERS_FEED_TOKEN: "orders-feed",
     ORDERS_ADMIN_TOKEN: "orders-admin",
-    VENUE_BRIDGE_TOKEN: "venue-bridge",
+    VENUE_BRIDGE_TOKEN: "retired-exposed-token",
+    VENUE_BRIDGE_TOKEN_V2: "venue-bridge",
     ADMIN_API_TOKEN: "admin-primary",
     ADMIN_API_TOKENS: "admin-secondary, admin-tertiary"
   };
 
   assert.deepEqual(resolveOrderAdminTokens(env), ["orders-admin"]);
   assert.deepEqual(resolveVenueBridgeTokens(env), ["venue-bridge"]);
+  assert.equal(resolveVenueBridgeTokens({ VENUE_BRIDGE_TOKEN: "retired-exposed-token" }).length, 0);
   assert.deepEqual(resolveAdminTokens(env), [
     "admin-primary",
     "admin-secondary",

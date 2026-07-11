@@ -52,7 +52,7 @@ export function resolveOrderAdminTokens(env) {
 }
 
 export function resolveVenueBridgeTokens(env) {
-  return uniqueNonEmpty([env?.VENUE_BRIDGE_TOKEN]);
+  return uniqueNonEmpty([env?.VENUE_BRIDGE_TOKEN_V2]);
 }
 
 export function resolveAdminTokens(env) {

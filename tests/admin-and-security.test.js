@@ -367,7 +367,7 @@ test("admin config and menu endpoints require a token and persist updates", asyn
 
 test("venue bridge booking endpoint is token protected and updates booking decisions", async () => {
   const env = {
-    VENUE_BRIDGE_TOKEN: "bridge-secret"
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret"
   };
   const created = await createBooking(env, makeBookingPayload());
 
@@ -402,7 +402,7 @@ test("venue bridge booking endpoint is token protected and updates booking decis
 
 test("venue bridge menu endpoint imports POS menu ids into the public catalog", async () => {
   const env = {
-    VENUE_BRIDGE_TOKEN: "bridge-secret"
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret"
   };
 
   const unauthorizedResponse = await putBridgeMenu({
@@ -546,7 +546,7 @@ test("menu catalog endpoint pulls a configured POS menu source and falls back to
 
 test("venue bridge order endpoint is token protected and updates order decisions", async () => {
   const env = {
-    VENUE_BRIDGE_TOKEN: "bridge-secret",
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
     RESEND_API_KEY: "re_test_123",
     ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
     ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe"

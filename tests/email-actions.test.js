@@ -48,7 +48,7 @@ function extractActionUrl(text, labelPattern) {
 
 test("email actions require their dedicated secret and never inherit other credentials", async () => {
   const env = {
-    VENUE_BRIDGE_TOKEN: "bridge-secret",
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
     ORDERS_ADMIN_TOKEN: "orders-admin-secret",
     RESEND_API_KEY: "re_test_123"
   };
@@ -68,7 +68,7 @@ test("booking staff email action accepts a pending booking after confirmation", 
     const env = {
       SITE_ORIGIN: "https://millers.cafe",
       EMAIL_ACTION_SECRET: "email-action-secret",
-      VENUE_BRIDGE_TOKEN: "bridge-secret",
+      VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
       RESEND_API_KEY: "re_test_123",
       BOOKINGS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
       BOOKINGS_NOTIFICATION_EMAIL: "help@millers.cafe"
@@ -112,7 +112,7 @@ test("order staff email action accepts a submitted order and sets ETA", async ()
     const env = {
       SITE_ORIGIN: "https://millers.cafe",
       EMAIL_ACTION_SECRET: "email-action-secret",
-      VENUE_BRIDGE_TOKEN: "bridge-secret",
+      VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
       RESEND_API_KEY: "re_test_123",
       ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
       ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe",

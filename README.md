@@ -54,7 +54,7 @@ Set every credential below as a Cloudflare Pages secret in both Production and P
   Read-only access to order CSV/JSON feeds.
 - `ORDERS_ADMIN_TOKEN`
   Write access to order decisions and refund-triggering status changes.
-- `VENUE_BRIDGE_TOKEN`
+- `VENUE_BRIDGE_TOKEN_V2`
   Read/write access to venue bridge routes.
 - `ADMIN_API_TOKENS`
   Comma-separated admin tokens for site configuration, menu management, and analytics. `ADMIN_API_TOKEN` is also accepted for a single admin credential.
@@ -131,6 +131,6 @@ The POS response can be a category array, `{ "menu": [...] }`, `{ "categories": 
 
 ## POS bridge
 
-Bookings now enter the site as pending requests. The venue POS bridge should use a dedicated Cloudflare Pages secret named `VENUE_BRIDGE_TOKEN`, send it as a bearer token, then read pending bookings from `GET /api/bridge/bookings?status=pending` and post decisions to `POST /api/bridge/bookings`.
+Bookings now enter the site as pending requests. The venue POS bridge should use a dedicated Cloudflare Pages secret named `VENUE_BRIDGE_TOKEN_V2`, send it as a bearer token, then read pending bookings from `GET /api/bridge/bookings?status=pending` and post decisions to `POST /api/bridge/bookings`.
 
 The POS can still push a menu into the site with `PUT /api/bridge/menu`; that saved menu becomes the fallback cache for the direct POS pull.
