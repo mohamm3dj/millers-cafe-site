@@ -33,7 +33,7 @@ environment-specific.
    - `BOOKINGS_FEED_TOKEN`: read-only booking feed
    - `ORDERS_FEED_TOKEN`: read-only order feed
    - `ORDERS_ADMIN_TOKEN`: order-status administration
-   - `VENUE_BRIDGE_TOKEN`: POS/venue write integration
+   - `VENUE_BRIDGE_TOKEN_V2`: POS/venue write integration
    - `ADMIN_API_TOKENS`: site configuration, menu, and analytics administration
    - `EMAIL_ACTION_SECRET`: signed staff email actions
 5. Configure Stripe and Resend secrets described in `README.md` and
@@ -41,7 +41,7 @@ environment-specific.
 6. Set `SITE_ORIGIN=https://millers.cafe`.
 7. While the business is closed, set Production `MAINTENANCE_MODE=true` and
    Preview `MAINTENANCE_MODE=false`.
-8. Keep Production `ONLINE_ORDERING_ENABLED=false` (or unset) until the
+8. Keep Production `ONLINE_ORDERING_ENABLED=false` until the
    owner-verified recipe/supplier allergen matrix in `ALLERGEN-DATA-TEMPLATE.md`
    is complete. Set it to `true` only after that release gate passes.
 

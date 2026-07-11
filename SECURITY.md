@@ -17,9 +17,8 @@ This site is static and should be fronted by Cloudflare.
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `X-Frame-Options: DENY`
 - `Permissions-Policy: geolocation=(), microphone=(), camera=()`
-- `Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content`
 
-The repository-level `_headers` file applies this baseline to static Pages assets. Keep a matching Cloudflare Response Header Transform Rule for Pages Function responses, which `_headers` does not cover. This repo also sets CSP/referrer/permissions via HTML meta tags. Do not leave an older transform rule that limits `script-src`, `connect-src`, or `frame-src` to `'self'`; multiple CSP headers are intersected, so that older policy still blocks Turnstile even when the application keys are configured.
+The repository-level `_headers` file applies the Turnstile-compatible CSP to static Pages assets, and the root Pages middleware applies it to Function responses. Do not also set CSP in a Cloudflare Response Header Transform Rule: multiple CSP headers are intersected, so an older edge policy that limits `script-src`, `connect-src`, or `frame-src` to `'self'` still blocks Turnstile even when the application keys are configured.
 
 ## Required production controls
 
@@ -39,7 +38,7 @@ Generate an independent random secret of at least 32 bytes for every scope:
 - `BOOKINGS_FEED_TOKEN`: read booking feeds only.
 - `ORDERS_FEED_TOKEN`: read order feeds only.
 - `ORDERS_ADMIN_TOKEN`: update order status and trigger refund workflows only.
-- `VENUE_BRIDGE_TOKEN`: venue bridge routes only.
+- `VENUE_BRIDGE_TOKEN_V2`: venue bridge routes only; the retired legacy name is intentionally ignored.
 - `ADMIN_API_TOKENS` or `ADMIN_API_TOKEN`: admin configuration, menu, and analytics only.
 - `EMAIL_ACTION_SECRET`: sign staff email actions only.
 - `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`: Stripe only.
