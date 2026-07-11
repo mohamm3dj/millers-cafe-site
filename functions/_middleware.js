@@ -49,8 +49,22 @@ const MAINTENANCE_CONTENT_SECURITY_POLICY = [
   "form-action 'none'"
 ].join("; ");
 
+const MAINTENANCE_BRIDGE_PATHS = new Set([
+  "/api/bridge/bookings",
+  "/api/bridge/menu",
+  "/api/bridge/orders"
+]);
+
 function isEnabled(value) {
   return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+}
+
+function isMaintenanceBridgeRequest(request) {
+  try {
+    return MAINTENANCE_BRIDGE_PATHS.has(new URL(request.url).pathname);
+  } catch {
+    return false;
+  }
 }
 
 function applySecurityHeaders(headers, contentSecurityPolicy = CONTENT_SECURITY_POLICY) {
@@ -77,7 +91,7 @@ function maintenanceResponse(request) {
 }
 
 export async function onRequest(context) {
-  if (isEnabled(context.env?.MAINTENANCE_MODE)) {
+  if (isEnabled(context.env?.MAINTENANCE_MODE) && !isMaintenanceBridgeRequest(context.request)) {
     return maintenanceResponse(context.request);
   }
 
