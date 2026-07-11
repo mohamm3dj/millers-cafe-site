@@ -59,6 +59,45 @@ test("site middleware can shield production with a non-cacheable maintenance res
   assert.doesNotMatch(await response.text(), /sensitive/);
 });
 
+test("maintenance permits only the exact authenticated venue bridge routes", async () => {
+  const allowedPaths = [
+    "/api/bridge/bookings",
+    "/api/bridge/menu",
+    "/api/bridge/orders"
+  ];
+
+  for (const path of allowedPaths) {
+    let nextCalled = false;
+    const response = await applySiteMiddleware({
+      env: { MAINTENANCE_MODE: "true" },
+      request: new Request(`https://millers.cafe${path}`),
+      async next() {
+        nextCalled = true;
+        return Response.json({ routed: path });
+      }
+    });
+
+    assert.equal(nextCalled, true);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  }
+
+  for (const path of ["/api/bridge", "/api/bridge/bookings/extra", "/api/site-config"]) {
+    let nextCalled = false;
+    const response = await applySiteMiddleware({
+      env: { MAINTENANCE_MODE: "true" },
+      request: new Request(`https://millers.cafe${path}`),
+      async next() {
+        nextCalled = true;
+        return new Response("sensitive");
+      }
+    });
+
+    assert.equal(nextCalled, false);
+    assert.equal(response.status, 503);
+  }
+});
+
 test("site middleware applies security headers to function responses", async () => {
   const response = await applySiteMiddleware({
     env: {},
