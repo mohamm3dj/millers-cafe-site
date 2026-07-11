@@ -5,8 +5,10 @@ import test from "node:test";
 
 import {
   isTokenAuthorized,
+  resolveAdminTokens,
   resolveFeedTokens,
-  resolveOrderAdminTokens
+  resolveOrderAdminTokens,
+  resolveVenueBridgeTokens
 } from "../functions/_lib/auth.js";
 
 test("resolveFeedTokens keeps booking and order feed scopes separate", () => {
@@ -19,22 +21,33 @@ test("resolveFeedTokens keeps booking and order feed scopes separate", () => {
   assert.deepEqual(resolveFeedTokens(env, "orders"), ["orders-feed"]);
 });
 
-test("resolveOrderAdminTokens excludes the booking feed token", () => {
+test("write-capable token scopes do not inherit read-only or unrelated tokens", () => {
   const env = {
     BOOKINGS_FEED_TOKEN: "booking-feed",
     ORDERS_FEED_TOKEN: "orders-feed",
-    ORDERS_ADMIN_TOKEN: "orders-admin"
+    ORDERS_ADMIN_TOKEN: "orders-admin",
+    VENUE_BRIDGE_TOKEN: "retired-exposed-token",
+    VENUE_BRIDGE_TOKEN_V2: "venue-bridge",
+    ADMIN_API_TOKEN: "admin-primary",
+    ADMIN_API_TOKENS: "admin-secondary, admin-tertiary"
   };
 
-  assert.deepEqual(resolveOrderAdminTokens(env), ["orders-admin", "orders-feed"]);
+  assert.deepEqual(resolveOrderAdminTokens(env), ["orders-admin"]);
+  assert.deepEqual(resolveVenueBridgeTokens(env), ["venue-bridge"]);
+  assert.equal(resolveVenueBridgeTokens({ VENUE_BRIDGE_TOKEN: "retired-exposed-token" }).length, 0);
+  assert.deepEqual(resolveAdminTokens(env), [
+    "admin-primary",
+    "admin-secondary",
+    "admin-tertiary"
+  ]);
 });
 
-test("isTokenAuthorized accepts tokens from supported request locations", () => {
+test("isTokenAuthorized accepts scoped headers but ignores query and body tokens", () => {
   const configured = ["orders-admin", "orders-feed"];
 
   assert.equal(
     isTokenAuthorized(new Request("https://example.com/api/order-status?token=orders-feed"), configured),
-    true
+    false
   );
   assert.equal(
     isTokenAuthorized(new Request("https://example.com/api/order-status", {
@@ -50,19 +63,19 @@ test("isTokenAuthorized accepts tokens from supported request locations", () => 
   );
   assert.equal(
     isTokenAuthorized(new Request("https://example.com/api/order-status", {
-      headers: { "x-api-key": "booking-feed" }
+      headers: { "x-api-key": "orders-feed" }
     }), configured),
-    false
+    true
   );
   assert.equal(
     isTokenAuthorized(new Request("https://example.com/api/order-status"), configured, "orders-admin"),
-    true
+    false
   );
 });
 
-test("isTokenAuthorized allows requests when no tokens are configured", () => {
+test("isTokenAuthorized fails closed when no tokens are configured", () => {
   assert.equal(
     isTokenAuthorized(new Request("https://example.com/api/bookings"), []),
-    true
+    false
   );
 });

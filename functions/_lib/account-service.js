@@ -1,12 +1,24 @@
 "use strict";
 
-import { createBookingRecord, loadBookings, saveBookings } from "../_booking-core.js";
+import {
+  createBookingRecord,
+  loadBookings,
+  saveBookingEntity,
+  saveBookingsAfterEntity,
+  withBookingsMutationLock
+} from "../_booking-core.js";
 import { loadOrders, makeReference as makeOrderReference } from "../_orders-core.js";
 import { ApiError } from "./errors.js";
 import { requireAccountSession } from "./account-auth.js";
 import { getSiteConfig } from "./site-config.js";
 
 const ACCOUNT_PROFILE_PREFIX = "account_profile:";
+const MAX_PROFILE_NAME_LENGTH = 80;
+const MAX_PROFILE_PHONE_LENGTH = 30;
+const MAX_ADDRESS_LABEL_LENGTH = 60;
+const MAX_ADDRESS_LINE_LENGTH = 120;
+const MAX_TOWN_CITY_LENGTH = 80;
+const MAX_POSTCODE_LENGTH = 10;
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -74,6 +86,36 @@ function normalizeAccountProfile(email, rawProfile) {
     defaultDeliveryAddress: hasAddress ? address : null,
     updatedAt: String(profile.updatedAt || "")
   };
+}
+
+function assertAccountProfileBounds(profile) {
+  if (profile.fullName.length > MAX_PROFILE_NAME_LENGTH) {
+    throw new ApiError(`Full name must be ${MAX_PROFILE_NAME_LENGTH} characters or fewer.`, 400);
+  }
+  if (profile.phoneNumber.length > MAX_PROFILE_PHONE_LENGTH) {
+    throw new ApiError(`Phone number must be ${MAX_PROFILE_PHONE_LENGTH} characters or fewer.`, 400);
+  }
+  if (profile.phoneNumber) {
+    const phoneDigits = profile.phoneNumber.replace(/\D/g, "");
+    if (!/^[+\d][\d ().-]*$/.test(profile.phoneNumber) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+      throw new ApiError("Phone number must contain between 7 and 15 digits.", 400);
+    }
+  }
+
+  const address = profile.defaultDeliveryAddress;
+  if (!address) return;
+  if (address.label.length > MAX_ADDRESS_LABEL_LENGTH) {
+    throw new ApiError(`Address label must be ${MAX_ADDRESS_LABEL_LENGTH} characters or fewer.`, 400);
+  }
+  if (address.addressLine1.length > MAX_ADDRESS_LINE_LENGTH || address.addressLine2.length > MAX_ADDRESS_LINE_LENGTH) {
+    throw new ApiError(`Address lines must be ${MAX_ADDRESS_LINE_LENGTH} characters or fewer.`, 400);
+  }
+  if (address.townCity.length > MAX_TOWN_CITY_LENGTH) {
+    throw new ApiError(`Town / City must be ${MAX_TOWN_CITY_LENGTH} characters or fewer.`, 400);
+  }
+  if (address.postcode.length > MAX_POSTCODE_LENGTH) {
+    throw new ApiError(`Postcode must be ${MAX_POSTCODE_LENGTH} characters or fewer.`, 400);
+  }
 }
 
 function normalizedStatus(status) {
@@ -189,6 +231,8 @@ function mapBooking(booking) {
     status: normalizedStatus(booking.status || "approved"),
     source: String(booking.source || "").trim(),
     createdAt: String(booking.createdAt || ""),
+    statusUpdatedAt: String(booking.statusUpdatedAt || booking.createdAt || ""),
+    decisionReason: String(booking.decisionReason || "").trim(),
     assignedTables: Array.isArray(booking.assignedTables)
       ? booking.assignedTables.map((value) => Number(value)).filter(Number.isInteger)
       : [],
@@ -351,6 +395,12 @@ export async function getAccountProfile(env, email) {
 
 export async function saveAccountProfile(env, email, rawProfile) {
   const normalizedEmail = normalizeEmail(email);
+  if (rawProfile && Object.prototype.hasOwnProperty.call(rawProfile, "preferredOrderType")) {
+    const requestedOrderType = String(rawProfile.preferredOrderType || "").trim().toLowerCase();
+    if (requestedOrderType !== "collection" && requestedOrderType !== "delivery") {
+      throw new ApiError("Preferred order type must be collection or delivery.", 400);
+    }
+  }
   const existing = await getAccountProfile(env, normalizedEmail);
   const next = normalizeAccountProfile(normalizedEmail, {
     ...existing,
@@ -358,6 +408,7 @@ export async function saveAccountProfile(env, email, rawProfile) {
     updatedAt: new Date().toISOString()
   });
 
+  assertAccountProfileBounds(next);
   await writeStoreRecord(env, profileKey(normalizedEmail), next);
   return next;
 }
@@ -383,26 +434,36 @@ export async function cancelAccountBooking(env, email, bookingId) {
   if (!targetId) {
     throw new ApiError("bookingId is required.", 400);
   }
-
-  const bookings = await loadBookings(env);
-  const index = bookings.findIndex((booking) =>
-    normalizeEmail(booking.email) === normalizedEmail && String(booking.id || "").trim() === targetId
-  );
-  if (index < 0) {
-    throw new ApiError("Booking not found.", 404);
+  if (targetId.length > 100) {
+    throw new ApiError("bookingId is invalid.", 400);
   }
 
-  const existing = bookings[index];
-  if (isTerminalBookingStatus(existing.status)) {
-    throw new ApiError("This booking can no longer be cancelled online.", 409);
-  }
+  const next = await withBookingsMutationLock(async () => {
+    const bookings = await loadBookings(env);
+    const index = bookings.findIndex((booking) =>
+      normalizeEmail(booking.email) === normalizedEmail && String(booking.id || "").trim() === targetId
+    );
+    if (index < 0) {
+      throw new ApiError("Booking not found.", 404);
+    }
 
-  const next = {
-    ...existing,
-    status: "cancelled"
-  };
-  bookings[index] = next;
-  await saveBookings(env, bookings);
+    const existing = bookings[index];
+    if (isTerminalBookingStatus(existing.status)) {
+      throw new ApiError("This booking can no longer be cancelled online.", 409);
+    }
+
+    const cancelled = {
+      ...existing,
+      status: "cancelled",
+      assignedTables: [],
+      statusUpdatedAt: new Date().toISOString(),
+      decisionReason: "Cancelled by customer."
+    };
+    bookings[index] = cancelled;
+    await saveBookingEntity(env, cancelled);
+    await saveBookingsAfterEntity(env, bookings);
+    return cancelled;
+  });
   return mapBooking(next);
 }
 
@@ -412,53 +473,63 @@ export async function rescheduleAccountBooking(env, email, bookingId, payload = 
   if (!targetId) {
     throw new ApiError("bookingId is required.", 400);
   }
-
-  const bookings = await loadBookings(env);
-  const index = bookings.findIndex((booking) =>
-    normalizeEmail(booking.email) === normalizedEmail && String(booking.id || "").trim() === targetId
-  );
-  if (index < 0) {
-    throw new ApiError("Booking not found.", 404);
-  }
-
-  const existing = bookings[index];
-  if (isTerminalBookingStatus(existing.status)) {
-    throw new ApiError("This booking can no longer be rescheduled online.", 409);
+  if (targetId.length > 100) {
+    throw new ApiError("bookingId is invalid.", 400);
   }
 
   const siteConfig = await getSiteConfig(env);
-  const creation = createBookingRecord(
-    bookings.filter((booking) => String(booking.id || "").trim() !== targetId),
-    {
-      customerName: existing.customerName,
-      phoneNumber: existing.phoneNumber,
-      email: existing.email,
-      date: String(payload.date || existing.date),
-      time: String(payload.time || existing.time),
-      partySize: Number(payload.partySize || existing.partySize),
-      durationMinutes: Number(payload.durationMinutes || existing.durationMinutes),
-      specialOccasion: String(payload.specialOccasion || existing.specialOccasion),
-      notes: String(payload.notes ?? existing.notes)
-    },
-    {
-      rules: siteConfig.bookings
+  const next = await withBookingsMutationLock(async () => {
+    const bookings = await loadBookings(env);
+    const index = bookings.findIndex((booking) =>
+      normalizeEmail(booking.email) === normalizedEmail && String(booking.id || "").trim() === targetId
+    );
+    if (index < 0) {
+      throw new ApiError("Booking not found.", 404);
     }
-  );
 
-  if (!creation.ok) {
-    throw new ApiError(creation.error || "Booking could not be rescheduled.", creation.status || 400);
-  }
+    const existing = bookings[index];
+    if (isTerminalBookingStatus(existing.status)) {
+      throw new ApiError("This booking can no longer be rescheduled online.", 409);
+    }
 
-  const next = {
-    ...existing,
-    ...creation.record,
-    id: existing.id,
-    createdAt: existing.createdAt,
-    source: existing.source || creation.record.source
-  };
+    const creation = createBookingRecord(
+      bookings.filter((booking) => String(booking.id || "").trim() !== targetId),
+      {
+        customerName: existing.customerName,
+        phoneNumber: existing.phoneNumber,
+        email: existing.email,
+        date: String(payload.date || existing.date),
+        time: String(payload.time || existing.time),
+        partySize: Number(payload.partySize || existing.partySize),
+        durationMinutes: Number(payload.durationMinutes || existing.durationMinutes),
+        specialOccasion: String(payload.specialOccasion || existing.specialOccasion),
+        notes: String(payload.notes ?? existing.notes),
+        sensitiveInfoConsent: payload.sensitiveInfoConsent === true
+      },
+      {
+        rules: siteConfig.bookings
+      }
+    );
 
-  bookings[index] = next;
-  await saveBookings(env, bookings);
+    if (!creation.ok) {
+      throw new ApiError(creation.error || "Booking could not be rescheduled.", creation.status || 400);
+    }
+
+    const rescheduled = {
+      ...existing,
+      ...creation.record,
+      id: existing.id,
+      createdAt: existing.createdAt,
+      source: existing.source || creation.record.source,
+      statusUpdatedAt: new Date().toISOString(),
+      decisionReason: "Rescheduled by customer."
+    };
+
+    bookings[index] = rescheduled;
+    await saveBookingEntity(env, rescheduled);
+    await saveBookingsAfterEntity(env, bookings);
+    return rescheduled;
+  });
   return mapBooking(next);
 }
 

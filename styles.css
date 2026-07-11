@@ -16,6 +16,11 @@
 
 *{ box-sizing: border-box; }
 
+:where(a, button, input, select, textarea, [tabindex]):focus-visible{
+  outline: 3px solid rgba(15, 118, 110, .72);
+  outline-offset: 3px;
+}
+
 [hidden]{
   display: none !important;
 }
@@ -35,7 +40,9 @@
 
 html, body {
   height: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: clip;
   font-family: var(--font-body);
   line-height: 1.42;
   letter-spacing: .002em;
@@ -604,6 +611,15 @@ h1{
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
 }
 
+.heroIntro{
+  margin: 2px auto 0;
+  max-width: 62ch;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .heroStatus{
   margin: 2px 0 0;
   display: inline-flex;
@@ -1002,105 +1018,6 @@ h1{
 .homeGrid .homeTileContact .homeTileIcon svg{ animation-name: iconPhone; animation-duration: 5.1s; animation-delay: .28s; }
 .homeGrid .homeTileAccount .homeTileIcon svg{ animation-name: iconBadge; animation-duration: 5.2s; animation-delay: .22s; }
 
-.homeFlipTile{
-  padding: 0;
-  cursor: default;
-  min-height: 176px;
-  perspective: 1200px;
-}
-
-.homeGrid .homeFlipTile:hover,
-.homeGrid .homeFlipTile:active{
-  transform: none !important;
-}
-
-.homeGrid .homeFlipTile,
-.homeGrid .homeFlipTile.isFlipped{
-  transform: none !important;
-}
-
-.homeGrid .homeFlipTile:hover .homeTileIcon,
-.homeGrid .homeFlipTile:active .homeTileIcon,
-.homeGrid .homeFlipTile:hover .tileCta,
-.homeGrid .homeFlipTile:active .tileCta,
-.homeGrid .homeFlipTile:hover .tileCta::after,
-.homeGrid .homeFlipTile:active .tileCta::after{
-  transform: none !important;
-}
-
-.homeFlipTile::before,
-.homeFlipTile::after{
-  display: none;
-}
-
-.homeFlipInner{
-  position: relative;
-  width: 100%;
-  min-height: 176px;
-  height: 100%;
-  isolation: isolate;
-  transition: transform 420ms cubic-bezier(.2,.82,.24,1);
-}
-
-.homeFlipFace{
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 10px;
-  padding: 20px 18px;
-  border-radius: inherit;
-  transition: transform 420ms cubic-bezier(.2,.82,.24,1), opacity 280ms ease;
-  transform-origin: center center;
-}
-
-.homeFlipTrigger{
-  appearance: none;
-  border: 0;
-  margin: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: center;
-  cursor: pointer;
-}
-
-.homeFlipTrigger:focus-visible{
-  outline: 3px solid rgba(15, 118, 110, .42);
-  outline-offset: -8px;
-}
-
-.homeFlipFront{
-  z-index: 1;
-  transform: perspective(960px) rotateY(0deg);
-  opacity: 1;
-}
-
-.homeFlipBack{
-  transform: perspective(960px) rotateY(90deg);
-  z-index: 2;
-  opacity: 0;
-}
-
-.homeFlipTile:not(.isFlipped) .homeFlipBack{
-  pointer-events: none;
-}
-
-.homeFlipTile.isFlipped .homeFlipFront{
-  transform: perspective(960px) rotateY(-90deg);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.homeFlipTile.isFlipped .homeFlipBack{
-  transform: perspective(960px) rotateY(0deg);
-  opacity: 1;
-  pointer-events: auto;
-}
-
 .flipLink{
   font-size: 13px;
   font-weight: 540;
@@ -1117,40 +1034,24 @@ h1{
   background: rgba(255,255,255,.78);
 }
 
-.flipLinkBtn{
-  appearance: none;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 560;
-  line-height: normal;
-  color: #0f172a;
-  cursor: pointer;
+.homeGrid .homeInfoTile{
+  min-height: 208px;
+  gap: 8px;
 }
 
-.flipFeedback{
-  min-height: 17px;
-  margin: 0;
+.homeInfoActions{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.homeInfoTile > .flipLink,
+.homeInfoActions .flipLink{
   font-size: 12px;
-  font-weight: 600;
-  color: #0f766e;
+  padding: 6px 10px;
 }
 
-.flipBackBtn{
-  appearance: none;
-  border: 1px solid rgba(15, 23, 42, .15);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 560;
-  color: #334155;
-  background: rgba(255,255,255,.55);
-  cursor: pointer;
-}
-
-.flipBackBtn:hover{
-  background: rgba(255,255,255,.72);
-}
 .homeGrid .homeTile:focus-visible{
   outline: 2px solid rgba(15, 118, 110, .45);
   outline-offset: 2px;
@@ -1168,6 +1069,208 @@ h1{
 .footerLink{
   color: inherit;
   text-underline-offset: 2px;
+}
+
+.footerPolicies{
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+}
+
+.footerPolicies a{
+  color:inherit;
+  text-underline-offset:2px;
+}
+
+.footerPolicies a[aria-current="page"]{
+  color:var(--accent-2);
+  font-weight:700;
+}
+
+.policyPage{
+  width:min(920px, calc(100% - 28px));
+  margin:0 auto;
+  padding:24px 0 40px;
+}
+
+.policyPage > .backBtn{
+  display:inline-flex;
+  margin-bottom:16px;
+}
+
+.policyCard{
+  display:block;
+  padding:clamp(22px, 4vw, 42px);
+}
+
+.policyCard h1{
+  margin:4px 0 8px;
+  color:#0f172a;
+  font-family:var(--font-display);
+  font-size:clamp(32px, 5vw, 48px);
+  line-height:1.05;
+}
+
+.policyCard h2{
+  margin:28px 0 9px;
+  color:var(--accent-2);
+  font-family:var(--font-display);
+  font-size:21px;
+  line-height:1.2;
+}
+
+.policyCard p,
+.policyCard li{
+  color:#334155;
+  font-size:15px;
+  line-height:1.65;
+}
+
+.policyCard ul,
+.policyCard ol{
+  padding-left:22px;
+}
+
+.policyCard a{
+  color:var(--accent-2);
+  text-underline-offset:3px;
+}
+
+.policyUpdated{
+  margin:0 0 24px;
+  color:#64748b !important;
+  font-size:13px !important;
+}
+
+.policyConsentNote{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.policyConsentNote a{
+  color:var(--accent-2);
+  text-underline-offset:2px;
+}
+
+.policyTableWrap{
+  overflow-x:auto;
+  border:1px solid rgba(148, 163, 184, .3);
+  border-radius:14px;
+}
+
+.policyTable{
+  width:100%;
+  border-collapse:collapse;
+  min-width:560px;
+  background:rgba(255,255,255,.66);
+}
+
+.policyTable th,
+.policyTable td{
+  padding:12px 14px;
+  border-bottom:1px solid rgba(148, 163, 184, .24);
+  color:#334155;
+  font-size:14px;
+  line-height:1.5;
+  text-align:left;
+  vertical-align:top;
+}
+
+.policyTable th{
+  color:#0f172a;
+  background:rgba(236, 253, 250, .7);
+}
+
+.policyTable tbody tr:last-child td{
+  border-bottom:0;
+}
+
+.actionBody{
+  overscroll-behavior:auto;
+}
+
+.actionPage{
+  width:min(620px, 100%);
+  min-height:100vh;
+  margin:0 auto;
+  padding:40px 18px;
+  display:block;
+}
+
+.actionPanel{
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:24px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(15, 23, 42, .08);
+}
+
+.actionPanel h1{
+  margin:0 0 12px;
+  font-size:24px;
+  line-height:1.2;
+}
+
+.actionPanel p{
+  margin:0 0 16px;
+}
+
+.actionPanel label{
+  display:block;
+  margin:16px 0 6px;
+  font-weight:700;
+}
+
+.actionPanel input,
+.actionPanel textarea{
+  width:100%;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:10px 12px;
+  font:inherit;
+}
+
+.actionPanel textarea{
+  min-height:92px;
+  resize:vertical;
+}
+
+.actionPanel .actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+
+.actionPanel button,
+.actionPanel .link-button{
+  display:inline-block;
+  border:0;
+  border-radius:8px;
+  padding:11px 16px;
+  color:#fff;
+  background:#166534;
+  font:inherit;
+  font-weight:700;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.actionPanel .reject{
+  background:#991b1b;
+}
+
+.actionPanel .secondary{
+  background:#475569;
+}
+
+.actionPanel .muted{
+  color:#64748b;
+  font-size:14px;
 }
 
 .footerHours{
@@ -1678,6 +1781,15 @@ h1{
 }
 
 @media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    scroll-behavior:auto !important;
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+
   body::before,
   .homeGrid .homeTile .tileCta::before,
   .homeGrid .homeTileIcon,
@@ -1942,11 +2054,33 @@ h1{
   background: linear-gradient(120deg, #14b8a6, #0f766e);
   border-color: transparent;
 }
+.toggle input:focus-visible + .toggleUi{
+  outline:3px solid rgba(15, 118, 110, .45);
+  outline-offset:3px;
+}
 
 /* Hide labels when toggled off */
 .hide-labels .labels,
 .hide-labels .labelText{ display:none; }
-.hide-legend .menuLegend{ display:none; }
+.hide-legend .menuLegend .tileTitle,
+.hide-legend .menuLegend .legendGrid{ display:none; }
+
+.sensitiveInfoConsent{
+  display:grid;
+  grid-template-columns:22px minmax(0, 1fr);
+  align-items:start;
+  gap:9px;
+  margin-top:5px;
+  color:#475467;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.sensitiveInfoConsent input{
+  width:20px;
+  height:20px;
+  margin:1px 0 0;
+}
 
 /* Legend button */
 .legendBtn{
@@ -2055,12 +2189,25 @@ h1{
 /* Collapsible menu cards to avoid wall-of-text scrolling */
 .menuSection.accordion .tileTitle{
   position:relative;
-  padding-right:24px;
+}
+
+.menuAccordionToggle{
+  appearance:none;
+  display:block;
+  width:100%;
+  padding:0 24px 0 0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  letter-spacing:inherit;
+  line-height:inherit;
+  text-align:left;
   cursor:pointer;
   user-select:none;
 }
 
-.menuSection.accordion .tileTitle::after{
+.menuAccordionToggle::after{
   content:"▾";
   position:absolute;
   right:0;
@@ -2070,8 +2217,19 @@ h1{
   color:var(--accent);
 }
 
-.menuSection.accordion.collapsed .tileTitle::after{
+.menuSection.accordion.collapsed .menuAccordionToggle::after{
   content:"▸";
+}
+
+.menuAllergenNotice{
+  margin:14px 0 0;
+  padding:12px 14px;
+  border:1px solid rgba(180, 83, 9, .22);
+  border-radius:14px;
+  background:rgba(255, 247, 237, .78);
+  color:#713f12;
+  font-size:13px;
+  line-height:1.48;
 }
 
 .menuSection.accordion .accordionBody{
@@ -2274,6 +2432,7 @@ h1{
   align-content: start;
   position: relative;
   overflow: hidden;
+  overflow: clip;
 }
 
 .bookingsPanel::before{
@@ -2450,6 +2609,14 @@ h1{
   color: #334155;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+.bookingFieldHint{
+  display: block;
+  margin-top: 5px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .bookingFieldCalendar,
@@ -2939,6 +3106,8 @@ h1{
   opacity: 0;
   pointer-events: none;
   transition: opacity 320ms ease;
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 
 .bookingSuccessFx.isVisible{
@@ -3097,6 +3266,8 @@ h1{
   transform: translateY(16px) scale(.95);
   pointer-events: none;
   transition: opacity 320ms ease, transform 360ms cubic-bezier(.2,.82,.24,1);
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 
 .bookingSuccessFx.isConfirm .bookingSuccessStage{
@@ -3125,6 +3296,9 @@ h1{
   display: grid;
   justify-items: center;
   gap: 10px;
+  max-height:calc(100dvh - 32px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 
 .bookingSuccessConfirmCheck{
@@ -3149,6 +3323,15 @@ h1{
   line-height: 1;
   letter-spacing: -.012em;
   color: #0f172a;
+}
+
+.bookingSuccessConfirmDescription{
+  margin: 0;
+  max-width: 48ch;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .bookingSuccessConfirmRef{
@@ -3610,24 +3793,19 @@ h1{
   .heroStatus,
   .heroHours,
   .heroMeta{
-    font-size: 11px;
+    font-size: 12px;
     padding-left: 10px;
     padding-right: 10px;
+  }
+
+  .heroIntro{
+    font-size: 13px;
+    line-height: 1.45;
   }
 
   .homeGrid .homeTile{
     min-height: 152px;
     padding: 14px 12px;
-  }
-
-  .homeFlipTile,
-  .homeFlipInner{
-    min-height: 152px;
-  }
-
-  .homeFlipFace{
-    padding: 14px 12px;
-    gap: 8px;
   }
 
   .homeGrid .homeTile .tileTitle{
@@ -3764,6 +3942,17 @@ h1{
 
   .footer{
     font-size: 13px;
+  }
+}
+
+@media (max-width: 640px){
+  .homeGrid .homeInfoTile{
+    min-height: 212px;
+  }
+
+  .homeInfoTile > .flipLink,
+  .homeInfoActions .flipLink{
+    width: 100%;
   }
 }
 
@@ -4005,6 +4194,13 @@ h1{
   color: #334155;
 }
 
+.orderCartDietaryAllergens{
+  margin:0;
+  color:#526176;
+  font-size:11px;
+  line-height:1.4;
+}
+
 .orderCartActionsRow{
   display: flex;
   align-items: center;
@@ -4056,6 +4252,33 @@ h1{
 
 .orderCartTotal strong{
   font-size: 16px;
+}
+
+.orderCartBreakdown{
+  display:grid;
+  gap:6px;
+  padding:8px 0 2px;
+  border-top:1px solid rgba(15, 23, 42, .1);
+}
+
+.orderCartBreakdownRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  color:#475569;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.orderCartBreakdownRow strong{
+  color:#1f2937;
+  font-size:12px;
+}
+
+.orderCartDiscountRow,
+.orderCartDiscountRow strong{
+  color:#166534;
 }
 
 @media (max-width: 940px){
@@ -4352,6 +4575,12 @@ h1{
   border-color: rgba(22, 163, 74, .24);
 }
 
+.orderMenuBadge.isDietaryOption{
+  color:#475569;
+  background:rgba(241, 245, 249, .92);
+  border-color:rgba(100, 116, 139, .24);
+}
+
 .orderMenuSelectionBadge{
   color: #0f766e;
   background: rgba(236, 253, 250, .94);
@@ -4361,6 +4590,35 @@ h1{
 .orderMenuMeta{
   font-size: 12px;
   color: #526176;
+}
+
+.orderMenuDescription,
+.orderMenuAllergens{
+  margin:0;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.orderMenuDescription{
+  color:#526176;
+}
+
+.orderMenuAllergens{
+  color:#7c2d12;
+  font-weight:620;
+}
+
+.orderAllergenNotice{
+  margin:0 0 8px;
+  padding:9px 11px;
+  border:1px solid rgba(180, 83, 9, .2);
+  border-radius:10px;
+  background:rgba(255, 247, 237, .72);
+  color:#713f12;
+  font-size:12px;
+  line-height:1.45;
+  text-transform:none;
+  letter-spacing:0;
 }
 
 .orderMenuAdd{
@@ -4995,6 +5253,10 @@ h1{
     overflow: visible;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+
+  .orderPage .bookingsPanel::before{
+    display: none;
   }
 
   .orderPage .orderItemsField{
@@ -5814,6 +6076,9 @@ h1{
   width: min(760px, 100%);
   display: grid;
   gap: 16px;
+  max-height:calc(100dvh - 44px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 
 .adminPage{

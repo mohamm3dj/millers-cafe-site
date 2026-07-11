@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 
 import { createBooking } from "../functions/_lib/bookings-service.js";
+import { requestAccountSignInCode, verifyAccountSignInCode } from "../functions/_lib/account-auth.js";
 import { createOrderRecord, saveOrders } from "../functions/_orders-core.js";
 import { onRequestGet as getAccountBookings } from "../functions/api/account/bookings.js";
 import { onRequestPost as cancelAccountBookingRoute } from "../functions/api/account/bookings/cancel.js";
@@ -89,6 +90,57 @@ async function createAccountSession(email) {
   assert.match(cookie, /millers_account_session=/);
   return cookie;
 }
+
+test("production account verification fails closed without a fresh Turnstile verification", async () => {
+  const response = await verifyAccountCode({
+    env: { REQUIRE_TURNSTILE: "true" },
+    request: new Request("https://example.com/api/account/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "turnstile@example.com",
+        code: "123456",
+        turnstileToken: ""
+      })
+    })
+  });
+
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /security verification/i);
+});
+
+test("concurrent code guesses are serialized within an isolate and exhaust the code", async () => {
+  const email = "race@example.com";
+  let sentCode = "";
+  globalThis.fetch = async (_url, options = {}) => {
+    const payload = JSON.parse(String(options.body || "{}"));
+    const match = /(\d{6})/.exec(String(payload.subject || ""));
+    assert.ok(match);
+    sentCode = match[1];
+    return new Response(JSON.stringify({ id: "email_race" }), { status: 200 });
+  };
+
+  const env = {
+    RESEND_API_KEY: "re_test_123",
+    BOOKINGS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>"
+  };
+  await requestAccountSignInCode(env, email);
+  assert.match(sentCode, /^\d{6}$/);
+
+  const wrongCodes = Array.from({ length: 5 }, (_, index) => (
+    String((Number(sentCode) + index + 1) % 1000000).padStart(6, "0")
+  ));
+  const attempts = await Promise.allSettled([
+    ...wrongCodes.map((code) => verifyAccountSignInCode(env, email, code)),
+    verifyAccountSignInCode(env, email, sentCode)
+  ]);
+
+  assert.equal(attempts.every((result) => result.status === "rejected"), true);
+  await assert.rejects(
+    verifyAccountSignInCode(env, email, sentCode),
+    /invalid or has expired/i
+  );
+});
 
 test("customer account routes expose booking and order history for the signed-in email", async () => {
   const accountEmail = "alice@example.com";
@@ -338,7 +390,8 @@ test("signed-in customers can cancel and reschedule their own bookings", async (
           date: rescheduledDate,
           time: "13:30",
           partySize: 4,
-          notes: "Window table please"
+          notes: "Window table please",
+          sensitiveInfoConsent: true
         }
       })
     })

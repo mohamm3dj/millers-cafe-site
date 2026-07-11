@@ -1,6 +1,6 @@
 "use strict";
 
-import { jsonError } from "./json.js";
+import { jsonError, RequestBodyError } from "./json.js";
 
 export class ApiError extends Error {
   constructor(message, status = 400, details = null) {
@@ -13,6 +13,9 @@ export class ApiError extends Error {
 
 export function asApiError(error, fallbackMessage = "Request failed.") {
   if (error instanceof ApiError) return error;
+  if (error instanceof RequestBodyError) {
+    return new ApiError(error.message, error.status);
+  }
   const message = error instanceof Error && error.message
     ? error.message
     : fallbackMessage;
@@ -23,4 +26,3 @@ export function errorResponse(error, fallbackMessage = "Request failed.") {
   const normalized = asApiError(error, fallbackMessage);
   return jsonError(normalized.message, normalized.status, normalized.details);
 }
-

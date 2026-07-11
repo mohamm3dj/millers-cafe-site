@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +10,7 @@
   <meta name="description" content="Order collection from Millers Café online and pay securely with Stripe.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/collection/">
-  <link rel="stylesheet" href="../styles.css?v=20260429c">
+  <link rel="stylesheet" href="../styles.css?v=20260710f">
 </head>
 <body class="orderBody">
   <main class="orderPage">
@@ -38,7 +38,7 @@
 
         <div class="orderTrustStrip" aria-label="Order assurance">
           <span class="orderTrustItem">Secure order</span>
-          <span class="orderTrustItem">Email confirmation</span>
+          <span class="orderTrustItem">Email receipt and updates</span>
           <span class="orderTrustItem">Live hours</span>
         </div>
 
@@ -50,7 +50,8 @@
 
           <label class="bookingField orderCheckoutField">
             <span class="bookingLabel">Phone</span>
-            <input id="orderPhone" name="phoneNumber" type="tel" maxlength="12" placeholder="07123 456789" required autocomplete="tel" inputmode="numeric" pattern="\d{5}\s\d{6}">
+            <input id="orderPhone" name="phoneNumber" type="tel" maxlength="30" placeholder="07123 456789 or +44…" required autocomplete="tel" inputmode="tel" aria-describedby="orderPhoneHint">
+            <span id="orderPhoneHint" class="bookingFieldHint">UK and international numbers are accepted.</span>
           </label>
 
           <label class="bookingField bookingFieldWide orderCheckoutField">
@@ -60,7 +61,7 @@
 
           <div class="bookingField bookingFieldWide bookingFieldCalendar orderCheckoutField">
             <span class="bookingLabel">Collection date</span>
-            <select id="orderDate" name="requestedDate" class="bookingNativeHidden" required></select>
+            <select id="orderDate" name="requestedDate" class="bookingNativeHidden" required tabindex="-1" aria-hidden="true" aria-label="Collection date"></select>
             <div class="bookingDateSummaryRow">
               <p id="orderDateSummary" class="bookingDateSummary">Today</p>
               <button
@@ -83,19 +84,22 @@
                 <div class="bookingCalendarWeekdays" aria-hidden="true">
                   <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
                 </div>
-                <div id="orderCalendarGrid" class="bookingCalendarGrid" role="grid" aria-label="Select order date"></div>
+                <div id="orderCalendarGrid" class="bookingCalendarGrid" role="group" aria-label="Select collection date"></div>
               </div>
             </div>
           </div>
 
-          <label class="bookingField bookingFieldWide bookingFieldSlots orderCheckoutField">
+          <div class="bookingField bookingFieldWide bookingFieldSlots orderCheckoutField">
             <span class="bookingLabel">Collection time</span>
-            <select id="orderTime" name="requestedTime" class="bookingNativeHidden" required></select>
+            <select id="orderTime" name="requestedTime" class="bookingNativeHidden" required tabindex="-1" aria-hidden="true" aria-label="Collection time"></select>
             <div id="orderSlotCards" class="orderSlotCards" role="radiogroup" aria-label="Select collection time"></div>
-          </label>
+          </div>
 
           <div class="bookingField bookingFieldWide orderItemsField">
             <span class="bookingLabel">Order items</span>
+            <p class="bookingMeta orderAllergenNotice">
+              Dietary labels update with your choices. “Contains” badges show published dairy and nut information; add any allergy details below and contact us if you are unsure.
+            </p>
             <div class="orderHub">
               <div class="orderSearchWrap">
                 <label for="menuSearch">Search dishes</label>
@@ -105,9 +109,11 @@
                 </div>
               </div>
 
-              <div id="menuCategoryChips" class="orderCategoryChips" role="tablist" aria-label="Menu categories"></div>
-              <p id="orderActiveCategoryPill" class="orderActiveCategoryPill" aria-live="polite"></p>
-              <div id="menuItemsList" class="orderMenuList" aria-live="polite"></div>
+              <div id="menuCategoryChips" class="orderCategoryChips" role="group" aria-label="Menu categories"></div>
+              <p id="orderActiveCategoryPill" class="orderActiveCategoryPill"></p>
+              <div id="menuItemsList" class="orderMenuList"></div>
+              <p id="orderMenuStatus" class="visuallyHidden" role="status" aria-live="polite" aria-atomic="true"></p>
+              <p id="orderCartStatus" class="visuallyHidden" role="status" aria-live="polite" aria-atomic="true"></p>
 
               <div class="orderBasketColumn">
                 <button id="orderBasketToggle" class="orderBasketToggle" type="button" aria-expanded="false" aria-controls="orderBasketPanel">
@@ -115,7 +121,7 @@
                   <strong id="orderBasketTotalInline">£0.00</strong>
                 </button>
 
-                <div id="orderBasketPanel" class="orderBasketPanel" hidden>
+                <div id="orderBasketPanel" class="orderBasketPanel" role="region" aria-label="Basket" hidden>
                   <div class="orderBasketHead">
                     <strong>Basket</strong>
                     <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
@@ -124,9 +130,23 @@
                   <div id="orderCartEmpty" class="orderCartEmpty">No dishes added yet.</div>
                   <ul id="orderCartList" class="orderCartList" hidden></ul>
 
-                  <div class="orderCartTotal">
-                    <span>Total</span>
-                    <strong id="orderTotal">£0.00</strong>
+                  <div class="orderCartBreakdown" aria-label="Basket price breakdown">
+                    <div class="orderCartBreakdownRow">
+                      <span>Subtotal</span>
+                      <strong id="orderSubtotal">£0.00</strong>
+                    </div>
+                    <div id="orderDiscountRow" class="orderCartBreakdownRow orderCartDiscountRow" hidden>
+                      <span>Collection discount (10%)</span>
+                      <strong id="orderDiscount">−£0.00</strong>
+                    </div>
+                    <div id="orderDeliveryFeeRow" class="orderCartBreakdownRow" hidden>
+                      <span>Delivery fee</span>
+                      <strong id="orderDeliveryFee">£0.00</strong>
+                    </div>
+                    <div class="orderCartTotal">
+                      <span>Total due at Stripe</span>
+                      <strong id="orderTotal">£0.00</strong>
+                    </div>
                   </div>
 
                   <button id="orderBasketCheckout" class="orderBasketCheckout" type="button">Checkout</button>
@@ -149,10 +169,15 @@
             </div>
           </div>
 
-          <label class="bookingField bookingFieldWide orderCheckoutField">
-            <span class="bookingLabel">Notes (optional)</span>
-            <textarea id="orderNotes" name="notes" rows="2" maxlength="400" placeholder="Allergies, special requests, etc."></textarea>
-          </label>
+          <div class="bookingField bookingFieldWide orderCheckoutField">
+            <label class="bookingLabel" for="orderNotes">Notes (optional)</label>
+            <textarea id="orderNotes" name="notes" rows="2" maxlength="400" aria-describedby="orderSensitiveInfoHint" placeholder="Allergies, special requests, etc."></textarea>
+            <span id="orderSensitiveInfoHint" class="bookingFieldHint">Optional notes may include allergy, health or access information only if you give the separate consent below.</span>
+            <label class="sensitiveInfoConsent">
+              <input id="orderSensitiveInfoConsent" name="sensitiveInfoConsent" type="checkbox">
+              <span>I explicitly consent to Millers Café using these optional notes to handle this order safely. I can leave the notes blank instead.</span>
+            </label>
+          </div>
         </div>
 
         <div id="orderReviewRow" class="orderReviewRow orderCheckoutField">
@@ -160,6 +185,7 @@
           <button id="orderEditItemsBtn" class="orderReviewEditBtn" type="button">Edit basket</button>
         </div>
 
+        <p class="policyConsentNote orderCheckoutField">By continuing to payment, you agree to the <a href="../terms/">online terms</a>, <a href="../refunds/">cancellations and refunds policy</a>, and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
         <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
           <button id="orderBackToItems" class="orderBackToItemsBtn" type="button">← Back to dishes</button>
           <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Continue to secure payment</button>
@@ -184,11 +210,16 @@
       <div id="orderError" class="bookingError" role="alert" hidden></div>
     </section>
 
-    <div class="footer">
+    <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
-    </div>
+      <nav class="footerPolicies" aria-label="Policies">
+        <a href="../privacy/">Privacy</a>
+        <a href="../terms/">Terms</a>
+        <a href="../refunds/">Cancellations &amp; refunds</a>
+      </nav>
+    </footer>
   </main>
-  <script src="../client-tools.js?v=20260429c"></script>
-  <script type="module" src="../orders/order-form.js?v=20260429d"></script>
+  <script src="../client-tools.js?v=20260710b"></script>
+  <script type="module" src="../orders/order-form.js?v=20260710c"></script>
 </body>
 </html>

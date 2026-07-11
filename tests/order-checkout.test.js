@@ -6,6 +6,7 @@ import { beforeEach, after, test } from "node:test";
 import { loadOrders } from "../functions/_orders-core.js";
 import { createOrderCheckout, getCheckoutSessionStatus, handleStripeWebhook } from "../functions/_lib/order-checkout-service.js";
 import { priceOrderCart } from "../functions/_lib/order-menu.js";
+import { saveSiteConfig } from "../functions/_lib/site-config.js";
 import {
   makeOrderPayload,
   resetInMemoryStores
@@ -122,7 +123,9 @@ test("priceOrderCart preserves POS menu ids from the live catalog", () => {
                   id: "option-hot",
                   posModifierOptionId: "option-hot",
                   name: "Hot",
-                  priceAdjustment: 0
+                  priceAdjustment: 0,
+                  allergenCodes: ["D", "not-real"],
+                  removesAllergenCodes: ["N"]
                 }
               ]
             }
@@ -154,11 +157,14 @@ test("priceOrderCart preserves POS menu ids from the live catalog", () => {
   assert.equal(priced.items[0].posCategoryId, "cat-main");
   assert.equal(priced.items[0].modifierSelections[0].posModifierGroupId, "group-spice");
   assert.equal(priced.items[0].modifierSelections[0].posModifierOptionId, "option-hot");
+  assert.deepEqual(priced.items[0].modifierSelections[0].allergenCodes, ["D"]);
+  assert.deepEqual(priced.items[0].modifierSelections[0].removesAllergenCodes, ["N"]);
 });
 
 test("createOrderCheckout prices delivery from the bundled website menu", async () => {
   const env = {
     STRIPE_SECRET_KEY: "sk_test_123",
+    ONLINE_ORDERING_ENABLED: "true",
     POS_MENU_URL: "https://pos.example.test/menu",
     POS_MENU_API_KEY: "pos-api-key",
     ORDER_DELIVERY_FEE_GBP: "2"
@@ -209,9 +215,21 @@ test("createOrderCheckout prices delivery from the bundled website menu", async 
   assert.equal(created.amountTotal, 600);
 });
 
+test("production checkout stays paused until online ordering is explicitly enabled", async () => {
+  await assert.rejects(
+    createOrderCheckout(
+      { STRIPE_SECRET_KEY: "sk_test_123" },
+      "https://millers.cafe/api/orders/checkout",
+      makeOrderPayload()
+    ),
+    (error) => error?.status === 503 && /temporarily paused/i.test(error.message)
+  );
+});
+
 test("createOrderCheckout creates a hosted Stripe session and getCheckoutSessionStatus finalizes the paid order", async () => {
   const env = {
     STRIPE_SECRET_KEY: "sk_test_123",
+    ONLINE_ORDERING_ENABLED: "true",
     ORDER_DELIVERY_FEE_GBP: "2"
   };
 
@@ -229,6 +247,8 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
       assert.equal(form.get("customer_email"), "mo@example.com");
       assert.equal(form.has("payment_method_types[0]"), false);
       assert.ok(capturedDraftId.length > 0);
+      assert.equal(options.headers["Stripe-Version"], "2026-02-25.clover");
+      assert.match(String(options.headers["Idempotency-Key"] || ""), /^order-checkout:/);
 
       return jsonResponse({
         id: "cs_test_123",
@@ -263,11 +283,24 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
   assert.equal(created.sessionId, "cs_test_123");
   assert.equal(created.amountTotal, 180);
 
-  const status = await getCheckoutSessionStatus(env, created.sessionId);
+  await saveSiteConfig(env, {
+    orders: {
+      openDayIndexes: [1],
+      serviceStartMinutes: 16 * 60,
+      serviceEndMinutes: 17 * 60,
+      collectionEarliestScheduledMinutes: 16 * 60
+    }
+  });
+
+  const [status, duplicateStatus] = await Promise.all([
+    getCheckoutSessionStatus(env, created.sessionId),
+    getCheckoutSessionStatus(env, created.sessionId)
+  ]);
 
   assert.equal(status.status, "completed");
   assert.equal(status.reference.startsWith("MCO-"), true);
   assert.equal(status.paymentStatus, "paid");
+  assert.equal(duplicateStatus.orderId, status.orderId);
 
   const stored = await loadOrders(env);
   assert.equal(stored.length, 1);
@@ -279,9 +312,80 @@ test("createOrderCheckout creates a hosted Stripe session and getCheckoutSession
   assert.equal(stored[0].paymentCurrency, "gbp");
 });
 
+test("createOrderCheckout reuses a checkout draft and Stripe idempotency key for a repeated request", async () => {
+  const env = { STRIPE_SECRET_KEY: "sk_test_123", ONLINE_ORDERING_ENABLED: "true" };
+  const draftIds = [];
+  const stripeKeys = [];
+
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(String(url), "https://api.stripe.com/v1/checkout/sessions");
+    const form = new URLSearchParams(String(options.body || ""));
+    draftIds.push(String(form.get("client_reference_id") || ""));
+    stripeKeys.push(String(options.headers["Idempotency-Key"] || ""));
+    return jsonResponse({
+      id: "cs_test_idempotent",
+      url: "https://checkout.stripe.com/c/pay/cs_test_idempotent"
+    });
+  };
+
+  const payload = {
+    ...makeOrderPayload(),
+    cartItems: [{ itemName: "Papadom", quantity: 1, modifierSelections: [] }]
+  };
+  const options = { idempotencyKey: "browser-checkout-attempt-1" };
+  const first = await createOrderCheckout(env, "https://millers.cafe/api/orders/checkout", payload, options);
+  const second = await createOrderCheckout(env, "https://millers.cafe/api/orders/checkout", payload, options);
+
+  assert.equal(first.sessionId, second.sessionId);
+  assert.equal(draftIds.length, 2);
+  assert.equal(draftIds[0], draftIds[1]);
+  assert.equal(stripeKeys[0], stripeKeys[1]);
+});
+
+test("paid checkout finalization rejects a Stripe amount that differs from the immutable draft", async () => {
+  const env = { STRIPE_SECRET_KEY: "sk_test_123", ONLINE_ORDERING_ENABLED: "true" };
+  let draftId = "";
+
+  globalThis.fetch = async (url, options = {}) => {
+    const requestUrl = String(url);
+    if (requestUrl === "https://api.stripe.com/v1/checkout/sessions") {
+      const form = new URLSearchParams(String(options.body || ""));
+      draftId = String(form.get("client_reference_id") || "");
+      return jsonResponse({
+        id: "cs_test_wrong_total",
+        url: "https://checkout.stripe.com/c/pay/cs_test_wrong_total"
+      });
+    }
+    if (requestUrl.endsWith("/checkout/sessions/cs_test_wrong_total")) {
+      return jsonResponse({
+        id: "cs_test_wrong_total",
+        object: "checkout.session",
+        client_reference_id: draftId,
+        payment_status: "paid",
+        payment_intent: "pi_test_wrong_total",
+        amount_total: 91,
+        currency: "gbp"
+      });
+    }
+    throw new Error(`Unexpected fetch: ${requestUrl}`);
+  };
+
+  await createOrderCheckout(env, "https://millers.cafe/api/orders/checkout", {
+    ...makeOrderPayload(),
+    cartItems: [{ itemName: "Papadom", quantity: 1, modifierSelections: [] }]
+  });
+
+  await assert.rejects(
+    () => getCheckoutSessionStatus(env, "cs_test_wrong_total"),
+    (error) => error?.status === 409 && /amount/i.test(error.message)
+  );
+  assert.equal((await loadOrders(env)).length, 0);
+});
+
 test("handleStripeWebhook verifies the signature and finalizes the order from checkout.session.completed", async () => {
   const env = {
     STRIPE_SECRET_KEY: "sk_test_123",
+    ONLINE_ORDERING_ENABLED: "true",
     STRIPE_WEBHOOK_SECRET: "whsec_test_123"
   };
 

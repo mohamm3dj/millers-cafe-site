@@ -4,3 +4,4 @@
 _backups/
 .autopush.pid
 .dev.vars
+dist/

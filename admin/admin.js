@@ -89,9 +89,9 @@ function tokenValue() {
 function saveToken(token) {
   try {
     if (token) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
     } else {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     }
   } catch (error) {
     // Ignore storage failures.
@@ -100,7 +100,7 @@ function saveToken(token) {
 
 function loadStoredToken() {
   try {
-    return String(window.localStorage.getItem(TOKEN_STORAGE_KEY) || "").trim();
+    return String(window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || "").trim();
   } catch (error) {
     return "";
   }
@@ -131,6 +131,9 @@ async function fetchAdminJson(url, options = {}) {
 
   const body = await readJsonResponse(response);
   if (!response.ok) {
+    if (response.status === 401) {
+      saveToken("");
+    }
     throw new Error(String(body.error || "Request failed."));
   }
   return body;
@@ -146,7 +149,10 @@ function minutesToClock(totalMinutes) {
 function clockToMinutes(clock) {
   const match = /^(\d{2}):(\d{2})$/.exec(String(clock || "").trim());
   if (!match) return NaN;
-  return (Number(match[1]) * 60) + Number(match[2]);
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return NaN;
+  return (hours * 60) + minutes;
 }
 
 function formatWeeklyHoursValue(windows) {
@@ -161,7 +167,7 @@ function parseWeeklyHoursValue(value) {
   const normalized = String(value || "").trim();
   if (!normalized || /^closed$/i.test(normalized)) return [];
 
-  return normalized
+  const windows = normalized
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean)
@@ -170,8 +176,36 @@ function parseWeeklyHoursValue(value) {
       if (!match) {
         throw new Error(`Invalid hours window: ${part}`);
       }
+      const start = clockToMinutes(match[1]);
+      const end = clockToMinutes(match[2]);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+        throw new Error(`Invalid hours window: ${part}. The closing time must be later than the opening time.`);
+      }
       return [match[1], match[2]];
     });
+
+  const sorted = windows.slice().sort((left, right) => clockToMinutes(left[0]) - clockToMinutes(right[0]));
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (clockToMinutes(sorted[index][0]) < clockToMinutes(sorted[index - 1][1])) {
+      throw new Error(`Opening-hours windows overlap: ${sorted[index - 1].join("-")} and ${sorted[index].join("-")}.`);
+    }
+  }
+  return sorted;
+}
+
+function validateMinuteWindow(label, start, end) {
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    throw new Error(`${label} must use valid 24-hour times.`);
+  }
+  if (start >= end) {
+    throw new Error(`${label} end time must be later than its start time.`);
+  }
+}
+
+function validateNumber(label, value, minimum, maximum) {
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+  }
 }
 
 function checkedDayIndexes(root) {
@@ -233,6 +267,11 @@ function renderConfig(config) {
 }
 
 function collectConfig() {
+  if (configForm instanceof HTMLFormElement && !configForm.checkValidity()) {
+    configForm.reportValidity();
+    throw new Error("Correct the highlighted configuration fields before saving.");
+  }
+
   const weeklyHours = {};
   hoursInputs.forEach((input, dayIndex) => {
     weeklyHours[dayIndex] = parseWeeklyHoursValue(input.value);
@@ -288,6 +327,38 @@ function collectConfig() {
   }
   if (config.bookings.openDayIndexes.length === 0) {
     throw new Error("Choose at least one booking day.");
+  }
+
+  if (!config.business.name || !config.business.address || !config.business.phoneDisplay || !config.business.phoneTel) {
+    throw new Error("Business name, address and both phone fields are required.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.business.email)) {
+    throw new Error("Enter a valid business email address.");
+  }
+
+  validateMinuteWindow("Ordering service window", config.orders.serviceStartMinutes, config.orders.serviceEndMinutes);
+  validateMinuteWindow("Booking service window", config.bookings.serviceStartMinutes, config.bookings.serviceEndMinutes);
+  if (config.orders.collectionEarliestScheduledMinutes < config.orders.serviceStartMinutes
+    || config.orders.collectionEarliestScheduledMinutes > config.orders.serviceEndMinutes) {
+    throw new Error("Earliest collection time must sit inside the ordering service window.");
+  }
+  if (config.orders.deliveryEarliestScheduledMinutes < config.orders.serviceStartMinutes
+    || config.orders.deliveryEarliestScheduledMinutes > config.orders.serviceEndMinutes) {
+    throw new Error("Earliest delivery time must sit inside the ordering service window.");
+  }
+
+  validateNumber("Order slot interval", config.orders.slotStepMinutes, 5, 240);
+  validateNumber("Order lookahead", config.orders.maxLookaheadDays, 1, 365);
+  validateNumber("Collection lead time", config.orders.collectionMinLeadMinutes, 0, 1440);
+  validateNumber("Delivery lead time", config.orders.deliveryMinLeadMinutes, 0, 1440);
+  validateNumber("Booking slot interval", config.bookings.slotStepMinutes, 5, 240);
+  validateNumber("Booking lookahead", config.bookings.maxLookaheadDays, 1, 365);
+  validateNumber("Booking duration", config.bookings.defaultDurationMinutes, 15, 480);
+  validateNumber("Delivery fee", config.delivery.baseFeeGBP, 0, 100);
+  validateNumber("Minimum delivery ETA", config.delivery.etaMinMinutes, 0, 300);
+  validateNumber("Maximum delivery ETA", config.delivery.etaMaxMinutes, 0, 300);
+  if (config.delivery.etaMaxMinutes < config.delivery.etaMinMinutes) {
+    throw new Error("Maximum delivery ETA cannot be lower than minimum delivery ETA.");
   }
 
   return config;
@@ -447,7 +518,7 @@ async function handleAnalyticsRefresh(event) {
 function clearStoredToken() {
   if (tokenInput) tokenInput.value = "";
   saveToken("");
-  setFeedback(adminFeedback, "Token cleared from this browser.", false);
+  setFeedback(adminFeedback, "Token cleared from this tab.", false);
 }
 
 function initialize() {

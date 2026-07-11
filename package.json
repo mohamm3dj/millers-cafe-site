@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "build": "rm -rf dist && mkdir -p dist/.well-known dist/account dist/admin dist/assets dist/bookings dist/collection dist/delivery dist/menu dist/orders && cp index.html 404.html offline.html styles.css client-tools.js home.js sw.js manifest.webmanifest icon-192.png icon-512.png robots.txt sitemap.xml _headers dist/ && cp .well-known/security.txt dist/.well-known/ && cp account/index.html account/account.js dist/account/ && cp admin/index.html admin/admin.js dist/admin/ && cp assets/*.jpg assets/*.png assets/*.svg assets/*.webp dist/assets/ && cp bookings/index.html bookings/bookings.js dist/bookings/ && cp collection/index.html dist/collection/ && cp delivery/index.html dist/delivery/ && cp menu/index.html menu/menu.js dist/menu/ && cp orders/*.js dist/orders/ && for directory in privacy terms refunds; do if [ -f \"$directory/index.html\" ]; then mkdir -p \"dist/$directory\" && cp \"$directory/index.html\" \"dist/$directory/\"; fi; done",
+    "test": "node --test tests/*.test.js",
+    "check:js": "find . -type f -name '*.js' -not -path './.git/*' -not -path './dist/*' -not -path './node_modules/*' -exec node --check {} \\;",
+    "check": "npm test && npm run check:js && npm run build"
   }
 }

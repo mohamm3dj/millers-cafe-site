@@ -1,82 +1,87 @@
-# Bookings Integration Setup
+# Booking Feed Integration
 
-This bookings section now uses Cloudflare Pages Functions for:
+The booking system uses Cloudflare Pages Functions for:
 
-- `POST /api/bookings` (create booking)
-- `GET /api/bookings/slots?date=YYYY-MM-DD&partySize=2&durationMinutes=90` (availability API)
-- `GET /bookings/feed.csv` (POS CSV feed)
-- `GET /bookings/feed.json` (POS JSON feed)
+- `POST /api/bookings`
+- `GET /api/bookings/slots?date=YYYY-MM-DD&partySize=2&durationMinutes=90`
+- `GET /bookings/feed.csv`
+- `GET /bookings/feed.json`
 
-## 1. Deploy on Cloudflare Pages
+See `../DEPLOY-BOOKINGS-CLOUDFLARE.md` for the complete deployment checklist.
 
-GitHub Pages does not run `functions/`.  
-To use online bookings + automatic POS feed, deploy this repo on Cloudflare Pages.
+## Required bindings and credentials
 
-## 2. Add KV binding
+Bind a Cloudflare KV namespace as `BOOKINGS_KV` in both Production and Preview.
+Create a dedicated `BOOKINGS_FEED_TOKEN` with at least 32 random bytes and store it
+as an encrypted Cloudflare secret. Do not reuse an admin, order-feed, venue-bridge,
+email-action, Stripe, or Resend credential.
 
-Create a KV namespace and bind it to this project as:
+The booking feed fails closed when `BOOKINGS_FEED_TOKEN` is absent. It never becomes
+an anonymous feed.
 
-- Binding name: `BOOKINGS_KV`
+## Configure the client
 
-The functions store bookings under key `bookings_v1`.
-
-## 3. Optional feed token
-
-If you want the feed protected, add environment variable:
-
-- `BOOKINGS_FEED_TOKEN=<your-secret-token>`
-
-Then your app feed URL should include:
-
-- `https://millers.cafe/bookings/feed.csv?token=<your-secret-token>`
-
-## 4. Email confirmations (required)
-
-To email both customer + staff receipts on each booking, add these env vars in Cloudflare Pages (Production):
-
-- `RESEND_API_KEY=<your-resend-api-key>`
-- `BOOKINGS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
-- `BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe`
-- `BOOKINGS_REPLY_TO=help@millers.cafe`
-- `ORDERS_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
-- `ORDERS_NOTIFICATION_EMAIL=help@millers.cafe`
-- `ORDERS_REPLY_TO=help@millers.cafe`
-- `ACCOUNT_EMAIL_FROM=Millers Cafe <help@millers.cafe>`
-- `ACCOUNT_REPLY_TO=help@millers.cafe`
-- `SITE_ORIGIN=https://millers.cafe`
-- `EMAIL_ACTION_SECRET=<long-random-secret>` *(optional if `VENUE_BRIDGE_TOKEN` is already set)*
-- `EMAIL_ACTION_DEFAULT_ETA_MINUTES=35`
-
-Notes:
-
-- The sender domain, `millers.cafe`, must be verified in Resend.
-- If email vars are missing or delivery fails, bookings are still saved with `emailStatus: "pending"` so staff can follow up.
-- Staff booking/order notification emails include signed accept/decline links. Links open a confirmation page first, then update the same Cloudflare KV records used by the app/POS feeds and email the customer.
-
-## 5. App feed URL
-
-In the MillersCafe app website import field, use one of:
+Use either endpoint:
 
 - `https://millers.cafe/bookings/feed.csv`
 - `https://millers.cafe/bookings/feed.json`
 
-If token is enabled, append `?token=...`.
+Send the credential as an HTTP header:
 
-## Notes
+```text
+Authorization: Bearer <BOOKINGS_FEED_TOKEN>
+```
 
-- Booking rules are enforced server-side:
-  - Tue-Sun only
-  - 12:00-16:00 only
-  - 15-minute intervals only
-  - email required
-  - phone format required: `XXXXX XXXXXX`
-  - rejected if no table availability
-- Tables are auto-assigned using the same table capacities and multi-table combinations as the app.
-
-## Verify after deploy
-
-Run:
+For example:
 
 ```bash
-bash bookings/verify-deployment.sh https://millers.cafe 2026-02-18
+curl --fail-with-body \
+  --header "Authorization: Bearer $BOOKINGS_FEED_TOKEN" \
+  https://millers.cafe/bookings/feed.json
 ```
+
+Query-string tokens are not supported and are intentionally ignored. If a client
+cannot attach a request header, update or replace that integration before using the
+feed. Rotate any credential previously included in a URL.
+
+## Required booking environment
+
+In addition to the feed token and KV binding, configure:
+
+- `TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`
+- `REQUIRE_TURNSTILE=true`
+- `REQUIRE_DISTRIBUTED_RATE_LIMIT=true`
+- `RESEND_API_KEY`
+- `BOOKINGS_EMAIL_FROM=Millers Cafe <bookings@millers.cafe>`
+- `BOOKINGS_NOTIFICATION_EMAIL=help@millers.cafe`
+- `BOOKINGS_REPLY_TO=help@millers.cafe`
+- `EMAIL_ACTION_SECRET=<independent-long-random-secret>`
+- `SITE_ORIGIN=https://millers.cafe`
+
+Verify the sender domain in Resend. Configure the same controls for Preview with
+separate secrets where practical.
+
+## Verify after deployment
+
+Check that the public booking page and slots endpoint work, then exercise the feed
+with and without authentication:
+
+```bash
+curl --fail-with-body \
+  "https://millers.cafe/api/bookings/slots?date=2026-07-18&partySize=2&durationMinutes=90"
+
+curl --fail-with-body \
+  --header "Authorization: Bearer $BOOKINGS_FEED_TOKEN" \
+  https://millers.cafe/bookings/feed.csv
+```
+
+Also confirm:
+
+- no token returns `401`;
+- a query-string token returns `401`;
+- an order-feed or admin token returns `401`;
+- the correct bearer token returns CSV or JSON without being logged in the URL;
+- Turnstile is visible and a real booking can be submitted;
+- the booking appears once in KV and in the authenticated feed;
+- customer and staff email delivery succeeds.

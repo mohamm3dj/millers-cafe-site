@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 
 import { createBooking, listBookingReviewFeed } from "../functions/_lib/bookings-service.js";
+import { emailActionSecret, emailActionToken } from "../functions/_lib/email-actions.js";
 import { createOrder, listOrderReviewFeed } from "../functions/_lib/orders-service.js";
 import { onRequestGet as getBookingAction, onRequestPost as postBookingAction } from "../functions/api/email-actions/bookings.js";
 import { onRequestGet as getOrderAction, onRequestPost as postOrderAction } from "../functions/api/email-actions/orders.js";
@@ -45,12 +46,29 @@ function extractActionUrl(text, labelPattern) {
   return match[1];
 }
 
+test("email actions require their dedicated secret and never inherit other credentials", async () => {
+  const env = {
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
+    ORDERS_ADMIN_TOKEN: "orders-admin-secret",
+    RESEND_API_KEY: "re_test_123"
+  };
+
+  assert.equal(emailActionSecret(env), "");
+  assert.equal(await emailActionToken(env, {
+    kind: "booking",
+    reference: "MC-12345678",
+    status: "accepted"
+  }), "");
+  assert.equal(emailActionSecret({ ...env, EMAIL_ACTION_SECRET: "email-action-secret" }), "email-action-secret");
+});
+
 test("booking staff email action accepts a pending booking after confirmation", async () => {
   const mock = installResendMock();
   try {
     const env = {
       SITE_ORIGIN: "https://millers.cafe",
-      VENUE_BRIDGE_TOKEN: "bridge-secret",
+      EMAIL_ACTION_SECRET: "email-action-secret",
+      VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
       RESEND_API_KEY: "re_test_123",
       BOOKINGS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
       BOOKINGS_NOTIFICATION_EMAIL: "help@millers.cafe"
@@ -93,7 +111,8 @@ test("order staff email action accepts a submitted order and sets ETA", async ()
   try {
     const env = {
       SITE_ORIGIN: "https://millers.cafe",
-      VENUE_BRIDGE_TOKEN: "bridge-secret",
+      EMAIL_ACTION_SECRET: "email-action-secret",
+      VENUE_BRIDGE_TOKEN_V2: "bridge-secret",
       RESEND_API_KEY: "re_test_123",
       ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
       ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe",

@@ -1,10 +1,15 @@
 "use strict";
 
 const STORAGE_KEY = "bookings_v1";
+const BOOKING_ENTITY_PREFIX = "booking_entity:";
 const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 16 * 60;
 const SLOT_STEP_MINUTES = 15;
 const MAX_BOOKING_LOOKAHEAD_DAYS = 120;
+const MAX_CUSTOMER_NAME_LENGTH = 80;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_DISPLAY_LENGTH = 30;
+const MAX_BOOKING_NOTES_LENGTH = 400;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat
 const VALID_OCCASIONS = new Set([
   "None",
@@ -68,6 +73,32 @@ function getInMemoryStore() {
   return globalThis.__millersCafeBookingsStore;
 }
 
+function getMutationLockStore() {
+  if (!(globalThis.__millersCafeBookingMutationLocks instanceof Map)) {
+    globalThis.__millersCafeBookingMutationLocks = new Map();
+  }
+  return globalThis.__millersCafeBookingMutationLocks;
+}
+
+export async function withBookingsMutationLock(work) {
+  if (typeof work !== "function") {
+    throw new TypeError("Booking mutation work must be a function.");
+  }
+
+  const locks = getMutationLockStore();
+  const previous = locks.get(STORAGE_KEY) || Promise.resolve();
+  const current = previous.catch(() => {}).then(work);
+  locks.set(STORAGE_KEY, current);
+
+  try {
+    return await current;
+  } finally {
+    if (locks.get(STORAGE_KEY) === current) {
+      locks.delete(STORAGE_KEY);
+    }
+  }
+}
+
 function nowISO() {
   return new Date().toISOString();
 }
@@ -103,6 +134,12 @@ function roundUpToStep(minutes, stepMinutes) {
   return Math.ceil(minutes / stepMinutes) * stepMinutes;
 }
 
+function boundedRuleInteger(value, fallback, minimum, maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(minimum, Math.min(maximum, Math.round(parsed)));
+}
+
 function normalizedBookingRules(rawRules = null) {
   const source = rawRules && typeof rawRules === "object" ? rawRules : {};
   const openDayIndexes = Array.isArray(source.openDayIndexes)
@@ -111,11 +148,24 @@ function normalizedBookingRules(rawRules = null) {
       .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
     : DEFAULT_BOOKING_RULES.openDayIndexes;
 
+  const serviceStartMinutes = boundedRuleInteger(
+    source.serviceStartMinutes,
+    DEFAULT_BOOKING_RULES.serviceStartMinutes,
+    0,
+    (24 * 60) - 1
+  );
+  const serviceEndMinutes = Math.max(serviceStartMinutes, boundedRuleInteger(
+    source.serviceEndMinutes,
+    DEFAULT_BOOKING_RULES.serviceEndMinutes,
+    0,
+    (24 * 60) - 1
+  ));
+
   return {
-    serviceStartMinutes: Math.max(0, Math.round(Number(source.serviceStartMinutes ?? DEFAULT_BOOKING_RULES.serviceStartMinutes))),
-    serviceEndMinutes: Math.max(0, Math.round(Number(source.serviceEndMinutes ?? DEFAULT_BOOKING_RULES.serviceEndMinutes))),
-    slotStepMinutes: Math.max(1, Math.round(Number(source.slotStepMinutes ?? DEFAULT_BOOKING_RULES.slotStepMinutes))),
-    maxLookaheadDays: Math.max(1, Math.round(Number(source.maxLookaheadDays ?? DEFAULT_BOOKING_RULES.maxLookaheadDays))),
+    serviceStartMinutes,
+    serviceEndMinutes,
+    slotStepMinutes: boundedRuleInteger(source.slotStepMinutes, DEFAULT_BOOKING_RULES.slotStepMinutes, 1, 24 * 60),
+    maxLookaheadDays: boundedRuleInteger(source.maxLookaheadDays, DEFAULT_BOOKING_RULES.maxLookaheadDays, 1, 365),
     openDayIndexes: openDayIndexes.length > 0 ? openDayIndexes : DEFAULT_BOOKING_RULES.openDayIndexes
   };
 }
@@ -161,6 +211,7 @@ function parseClockToMinutes(clock) {
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return NaN;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return NaN;
   return (hours * 60) + minutes;
 }
 
@@ -196,7 +247,17 @@ function statusPreventsDuplicates(status) {
 }
 
 function isISODate(isoDate) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""));
+  const value = String(isoDate || "");
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
 }
 
 function todayISODateInLondon() {
@@ -332,14 +393,14 @@ function normalizeDuration(rawDuration) {
 
 function normalizePartySize(rawPartySize) {
   const parsed = Number(rawPartySize);
-  if (!Number.isFinite(parsed)) return NaN;
-  return Math.round(parsed);
+  if (!Number.isInteger(parsed)) return NaN;
+  return parsed;
 }
 
 function normalizeBookingRecord(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (!isISODate(raw.date)) return null;
-  if (!/^\d{2}:\d{2}$/.test(String(raw.time || ""))) return null;
+  if (!Number.isFinite(parseClockToMinutes(raw.time))) return null;
 
   const partySize = normalizePartySize(raw.partySize);
   if (!Number.isInteger(partySize) || partySize < 1) return null;
@@ -356,6 +417,8 @@ function normalizeBookingRecord(raw) {
     durationMinutes: normalizeDuration(raw.durationMinutes),
     specialOccasion: normalizeSpecialOccasion(raw.specialOccasion),
     notes: String(raw.notes || "").trim(),
+    sensitiveInfoConsent: Boolean(raw.sensitiveInfoConsent),
+    sensitiveInfoConsentAt: String(raw.sensitiveInfoConsentAt || "").trim(),
     status: normalizedStatus(raw.status || "approved"),
     source: String(raw.source || "Millers Cafe Website"),
     createdAt: String(raw.createdAt || nowISO()),
@@ -363,6 +426,71 @@ function normalizeBookingRecord(raw) {
     decisionReason: String(raw.decisionReason || "").trim(),
     assignedTables: normalizeAssignedTables(raw)
   };
+}
+
+function serializedBookingRecord(booking) {
+  return {
+    id: booking.id,
+    customerName: booking.customerName,
+    phoneNumber: booking.phoneNumber,
+    email: booking.email,
+    date: booking.date,
+    time: booking.time,
+    partySize: booking.partySize,
+    durationMinutes: booking.durationMinutes,
+    specialOccasion: normalizeSpecialOccasion(booking.specialOccasion),
+    notes: booking.notes,
+    sensitiveInfoConsent: Boolean(booking.sensitiveInfoConsent),
+    sensitiveInfoConsentAt: String(booking.sensitiveInfoConsentAt || "").trim(),
+    status: booking.status,
+    source: booking.source,
+    createdAt: booking.createdAt,
+    statusUpdatedAt: booking.statusUpdatedAt || booking.createdAt,
+    decisionReason: String(booking.decisionReason || "").trim(),
+    tableNumber: booking.assignedTables[0] || null,
+    additionalTableNumbers: booking.assignedTables.slice(1),
+    assignedTables: booking.assignedTables
+  };
+}
+
+function bookingFreshnessMillis(booking) {
+  return Math.max(
+    Date.parse(String(booking?.statusUpdatedAt || "")) || 0,
+    Date.parse(String(booking?.createdAt || "")) || 0
+  );
+}
+
+async function loadBookingEntities(env) {
+  if (!env.BOOKINGS_KV || typeof env.BOOKINGS_KV.list !== "function" || typeof env.BOOKINGS_KV.get !== "function") {
+    return [];
+  }
+
+  const entities = [];
+  let cursor = "";
+  for (let page = 0; page < 100; page += 1) {
+    const listed = await env.BOOKINGS_KV.list({
+      prefix: BOOKING_ENTITY_PREFIX,
+      ...(cursor ? { cursor } : {})
+    });
+    const keys = Array.isArray(listed?.keys) ? listed.keys : [];
+    for (let offset = 0; offset < keys.length; offset += 50) {
+      const names = keys
+        .slice(offset, offset + 50)
+        .map((key) => String(key?.name || "").trim())
+        .filter(Boolean);
+      const pageEntities = await Promise.all(
+        names.map((keyName) => env.BOOKINGS_KV.get(keyName, "json"))
+      );
+      for (const rawEntity of pageEntities) {
+        const entity = normalizeBookingRecord(rawEntity);
+        if (entity) entities.push(entity);
+      }
+    }
+
+    cursor = String(listed?.cursor || "").trim();
+    if (listed?.list_complete === true || !cursor) break;
+  }
+  return entities;
 }
 
 export async function loadBookings(env) {
@@ -374,30 +502,22 @@ export async function loadBookings(env) {
     records = getInMemoryStore();
   }
 
-  return records.map(normalizeBookingRecord).filter(Boolean);
+  const storedRecords = records.map(normalizeBookingRecord).filter(Boolean);
+  const entityRecords = await loadBookingEntities(env);
+  if (entityRecords.length === 0) return storedRecords;
+
+  const merged = new Map(entityRecords.map((booking) => [booking.id, booking]));
+  for (const booking of storedRecords) {
+    const entity = merged.get(booking.id);
+    if (!entity || bookingFreshnessMillis(booking) >= bookingFreshnessMillis(entity)) {
+      merged.set(booking.id, booking);
+    }
+  }
+  return Array.from(merged.values());
 }
 
 export async function saveBookings(env, bookings) {
-  const records = bookings.map((booking) => ({
-    id: booking.id,
-    customerName: booking.customerName,
-    phoneNumber: booking.phoneNumber,
-    email: booking.email,
-    date: booking.date,
-    time: booking.time,
-    partySize: booking.partySize,
-    durationMinutes: booking.durationMinutes,
-    specialOccasion: normalizeSpecialOccasion(booking.specialOccasion),
-    notes: booking.notes,
-    status: booking.status,
-    source: booking.source,
-    createdAt: booking.createdAt,
-    statusUpdatedAt: booking.statusUpdatedAt || booking.createdAt,
-    decisionReason: String(booking.decisionReason || "").trim(),
-    tableNumber: booking.assignedTables[0] || null,
-    additionalTableNumbers: booking.assignedTables.slice(1),
-    assignedTables: booking.assignedTables
-  }));
+  const records = bookings.map(serializedBookingRecord);
 
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.put === "function") {
     await env.BOOKINGS_KV.put(STORAGE_KEY, JSON.stringify(records));
@@ -405,6 +525,27 @@ export async function saveBookings(env, bookings) {
   }
 
   globalThis.__millersCafeBookingsStore = records;
+}
+
+export async function saveBookingsAfterEntity(env, bookings) {
+  try {
+    await saveBookings(env, bookings);
+    return true;
+  } catch (error) {
+    if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.list === "function") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function saveBookingEntity(env, booking) {
+  if (!env.BOOKINGS_KV || typeof env.BOOKINGS_KV.put !== "function") return;
+  const bookingId = String(booking?.id || "").trim();
+  if (!/^[a-zA-Z0-9-]{8,100}$/.test(bookingId)) {
+    throw new Error("Booking entity id is invalid.");
+  }
+  await env.BOOKINGS_KV.put(`${BOOKING_ENTITY_PREFIX}${bookingId}`, JSON.stringify(serializedBookingRecord(booking)));
 }
 
 function tableCapacityForTables(tables) {
@@ -450,6 +591,43 @@ function availableTablesForRange(bookings, isoDate, startMinutes, endMinutes, ex
     .map(Number)
     .filter((table) => !busy.has(table))
     .sort((a, b) => a - b);
+}
+
+export function validateTableAssignment(bookings, booking, rawTables) {
+  const tables = Array.from(new Set(
+    (Array.isArray(rawTables) ? rawTables : [])
+      .map((table) => Number(table))
+      .filter(Number.isInteger)
+  )).sort((left, right) => left - right);
+
+  if (tables.length === 0) {
+    return { ok: false, status: 400, error: "At least one table must be assigned." };
+  }
+  if (tables.some((table) => !Object.prototype.hasOwnProperty.call(TABLE_CAPACITIES, table))) {
+    return { ok: false, status: 400, error: "Table assignment contains an unknown table." };
+  }
+  if (tableCapacityForTables(tables) < Number(booking?.partySize || 0)) {
+    return { ok: false, status: 409, error: "The selected tables do not have enough capacity for this booking." };
+  }
+
+  const startMinutes = parseClockToMinutes(booking?.time);
+  const durationMinutes = Number(booking?.durationMinutes);
+  if (!Number.isFinite(startMinutes) || !Number.isInteger(durationMinutes) || durationMinutes < 1) {
+    return { ok: false, status: 400, error: "Booking time or duration is invalid." };
+  }
+
+  const available = new Set(availableTablesForRange(
+    bookings,
+    booking.date,
+    startMinutes,
+    startMinutes + durationMinutes,
+    booking.id
+  ));
+  if (tables.some((table) => !available.has(table))) {
+    return { ok: false, status: 409, error: "One or more selected tables are already in use at that time." };
+  }
+
+  return { ok: true, tables };
 }
 
 export function suggestTableAssignment(bookings, isoDate, clock, partySize, durationMinutes, excludeBookingId = null) {
@@ -507,15 +685,28 @@ function validatePayloadShape(payload, rawRules = null) {
   if (!payload || typeof payload !== "object") {
     return { ok: false, status: 400, error: "Invalid booking payload." };
   }
-  if (!String(payload.customerName || "").trim()) {
+  const customerName = String(payload.customerName || "").trim();
+  if (!customerName) {
     return { ok: false, status: 400, error: "Customer name is required." };
   }
-  if (!/^\d{5}\s\d{6}$/.test(String(payload.phoneNumber || "").trim())) {
-    return { ok: false, status: 400, error: "Phone number must be in format XXXXX XXXXXX." };
+  if (customerName.length > MAX_CUSTOMER_NAME_LENGTH) {
+    return { ok: false, status: 400, error: `Customer name must be ${MAX_CUSTOMER_NAME_LENGTH} characters or fewer.` };
+  }
+  const phoneNumber = String(payload.phoneNumber || "").trim();
+  const phoneDigits = normalizePhoneDigits(phoneNumber);
+  if (phoneNumber.length > MAX_PHONE_DISPLAY_LENGTH ||
+      !/^[+\d][\d ().-]*$/.test(phoneNumber) ||
+      phoneDigits.length < 7 ||
+      phoneDigits.length > 15) {
+    return { ok: false, status: 400, error: "Phone number must contain between 7 and 15 digits." };
   }
 
-  if (!isLikelyEmail(payload.email || "")) {
+  const email = String(payload.email || "").trim();
+  if (!isLikelyEmail(email)) {
     return { ok: false, status: 400, error: "A valid email address is required." };
+  }
+  if (email.length > MAX_EMAIL_LENGTH) {
+    return { ok: false, status: 400, error: `Email address must be ${MAX_EMAIL_LENGTH} characters or fewer.` };
   }
 
   const partySize = normalizePartySize(payload.partySize);
@@ -523,9 +714,21 @@ function validatePayloadShape(payload, rawRules = null) {
     return { ok: false, status: 400, error: "Party size must be between 1 and 40." };
   }
 
-  const durationMinutes = normalizeDuration(payload.durationMinutes);
-  if (durationMinutes < 15 || durationMinutes > 240) {
+  const rawDuration = payload.durationMinutes === undefined || payload.durationMinutes === null || payload.durationMinutes === ""
+    ? 90
+    : Number(payload.durationMinutes);
+  if (!Number.isInteger(rawDuration) || rawDuration < 15 || rawDuration > 240) {
     return { ok: false, status: 400, error: "Duration must be between 15 and 240 minutes." };
+  }
+  const durationMinutes = rawDuration;
+
+  const notes = String(payload.notes || "").trim();
+  if (notes.length > MAX_BOOKING_NOTES_LENGTH) {
+    return { ok: false, status: 400, error: `Notes must be ${MAX_BOOKING_NOTES_LENGTH} characters or fewer.` };
+  }
+  const sensitiveInfoConsent = Boolean(notes) && payload.sensitiveInfoConsent === true;
+  if (notes && !sensitiveInfoConsent) {
+    return { ok: false, status: 400, error: "Explicit consent is required when optional notes are provided." };
   }
 
   const date = String(payload.date || "");
@@ -539,16 +742,17 @@ function validatePayloadShape(payload, rawRules = null) {
   return {
     ok: true,
     data: {
-      customerName: String(payload.customerName || "").trim(),
-      phoneNumber: String(payload.phoneNumber || "").trim(),
-      phoneDigits: normalizePhoneDigits(payload.phoneNumber || ""),
-      email: String(payload.email || "").trim(),
+      customerName,
+      phoneNumber,
+      phoneDigits,
+      email,
       date,
       time,
       partySize,
       durationMinutes,
       specialOccasion,
-      notes: String(payload.notes || "").trim()
+      notes,
+      sensitiveInfoConsent
     }
   };
 }
@@ -586,6 +790,8 @@ export function createBookingRecord(bookings, payload, options = {}) {
     durationMinutes: data.durationMinutes,
     specialOccasion: data.specialOccasion,
     notes: data.notes,
+    sensitiveInfoConsent: data.sensitiveInfoConsent,
+    sensitiveInfoConsentAt: data.sensitiveInfoConsent ? createdAt : "",
     status: "pending",
     source: "Millers Cafe Website",
     createdAt,
@@ -635,10 +841,11 @@ export function feedRows(bookings, includePast = false) {
 
 function escapeCSVCell(value) {
   const text = String(value ?? "");
-  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
-    return `"${text.replace(/"/g, "\"\"")}"`;
+  const safeText = /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+  if (safeText.includes(",") || safeText.includes("\"") || safeText.includes("\n")) {
+    return `"${safeText.replace(/"/g, "\"\"")}"`;
   }
-  return text;
+  return safeText;
 }
 
 export function toCSV(rows) {

@@ -1,7 +1,8 @@
-const CACHE_NAME = "millers-static-v61";
+const CACHE_NAME = "millers-static-v64";
 const CORE_ASSETS = [
   "/",
   "/index.html",
+  "/offline.html",
   "/styles.css",
   "/assets/millers-logo.webp",
   "/manifest.webmanifest",
@@ -11,48 +12,67 @@ const CORE_ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(CORE_ASSETS);
+      await self.skipWaiting();
+    })()
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => (key === CACHE_NAME ? null : caches.delete(key))))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      );
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
-async function networkFirst(request) {
+async function networkFirst(request, options = {}) {
   const cache = await caches.open(CACHE_NAME);
+  const cacheResponse = options.cacheResponse !== false;
   try {
     const response = await fetch(request);
-    if (response && response.ok) {
+    if (cacheResponse && response && response.ok) {
       await cache.put(request, response.clone());
     }
     return response;
   } catch (error) {
-    const cached = await caches.match(request);
+    const cached = cacheResponse
+      ? await cache.match(request, { ignoreSearch: true })
+      : null;
     if (cached) return cached;
-    const fallback = await caches.match("/index.html");
+    const fallback = await cache.match("/offline.html");
     if (fallback) return fallback;
     throw error;
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function refreshCachedAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const response = await fetch(request);
+  if (response && response.ok) {
+    await cache.put(request, response.clone());
+  }
+  return response;
+}
+
+async function staleWhileRevalidate(request, refresh) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const fresh = fetch(request).then((response) => {
-    if (response && response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  }).catch(() => cached);
+  if (cached) return cached;
 
-  return cached || fresh.then((response) => response || Response.error());
+  try {
+    return (await refresh) || Response.error();
+  } catch (error) {
+    return (await cache.match(request, { ignoreSearch: true })) || Response.error();
+  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -63,11 +83,17 @@ self.addEventListener("fetch", (event) => {
   if (requestUrl.pathname.startsWith("/api/")) return;
 
   if (event.request.mode === "navigate") {
-    event.respondWith(networkFirst(event.request));
+    // Query strings can contain short-lived payment/session credentials. Never
+    // persist query-bearing navigation URLs or their responses in Cache Storage.
+    event.respondWith(networkFirst(event.request, {
+      cacheResponse: requestUrl.search.length === 0
+    }));
     return;
   }
 
   if (["style", "script", "image", "manifest"].includes(event.request.destination)) {
-    event.respondWith(staleWhileRevalidate(event.request));
+    const refresh = refreshCachedAsset(event.request);
+    event.waitUntil(refresh.catch(() => undefined));
+    event.respondWith(staleWhileRevalidate(event.request, refresh));
   }
 });

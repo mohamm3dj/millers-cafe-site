@@ -14,24 +14,34 @@ This project keeps the existing frontend and visual design, but the Pages Functi
   - `orders-service.js`: order feed/create workflow
   - `order-status-service.js`: order status read/update workflow
 - `functions/_booking-core.js`, `functions/_orders-core.js`
-  Domain logic and persistence core (validation, scheduling rules, record generation, feed shaping).
+  Domain logic and persistence core (validation, scheduling rules, record generation, per-record recovery, feed shaping).
 - `functions/_booking-email.js`, `functions/_order-email.js`
   Outbound email adapters.
 
 ## Design goals
 
-- Keep endpoint contracts stable for the existing frontend.
+- Keep customer-facing endpoint contracts stable; insecure legacy direct order creation is deliberately retired.
 - Centralize cross-cutting concerns (auth, JSON responses, parsing, error handling).
 - Keep route files small and testable.
 - Make future migration to full TypeScript straightforward.
 
+## Deployment boundary
+
+`npm run build` creates an allowlisted `dist/` directory containing only public browser assets. Cloudflare Pages must use `dist` as its build output. The repository-level `functions/` directory remains the Pages Functions source and is not copied into the public asset output.
+
+## Persistence model
+
+The current Cloudflare KV namespace retains the legacy aggregate keys for compatibility, while booking and order mutations first write `booking_entity:*` or `order_entity:*` records. Reads merge both sources by freshness. This prevents a racing aggregate write from permanently dropping a record and supports migration without an outage.
+
+KV is eventually consistent and has no compare-and-set transaction. The in-isolate locks and per-entity records improve durability and idempotency, but they cannot strictly serialize two simultaneous requests handled in different Cloudflare isolates. A D1 transaction or Durable Object is required for a hard global guarantee against simultaneous duplicate bookings or competing table assignments.
+
 ## Local verification
 
-- `node --test`
+- `node --test tests/*.test.js`
   Runs the built-in `node:test` suite against booking rules, order rules, service behavior, and auth boundaries.
-- `npm test`
-  Equivalent script entry if `npm` is installed on the machine.
+- `npm run check`
+  Runs the complete test suite, checks every JavaScript file, and builds the public-only Pages output.
 
 ## Suggested next step
 
-If you want this to go further, the next high-impact move is converting `_lib` and `api` to TypeScript while keeping `_booking-core.js` and `_orders-core.js` behavior unchanged during the first TS transition. The new test harness provides enough safety to do that incrementally instead of in one risky jump.
+Move booking and order mutation coordination to D1 or a Durable Object before traffic grows enough for simultaneous writes to be routine. After that consistency boundary is in place, TypeScript conversion can be done incrementally behind the existing tests.

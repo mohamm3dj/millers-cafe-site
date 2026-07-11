@@ -5,8 +5,12 @@ import { beforeEach, test } from "node:test";
 
 import {
   createBookingRecord,
+  loadBookings,
+  saveBookingEntity,
+  saveBookings,
   slotAvailability,
   suggestTableAssignment,
+  toCSV,
   validateBookingWindow
 } from "../functions/_booking-core.js";
 import {
@@ -36,6 +40,22 @@ test("validateBookingWindow rejects past dates and dates beyond the lookahead wi
   assert.match(tooFarCheck.error, /120 days ahead/i);
 });
 
+test("booking validation rejects impossible dates, clocks, and fractional party sizes", () => {
+  const impossibleDate = validateBookingWindow("2026-02-30", "12:00");
+  const impossibleClock = validateBookingWindow(nextOpenDate(2), "12:75");
+  const fractionalParty = createBookingRecord([], makeBookingPayload({ partySize: 2.5 }));
+  const zeroDuration = createBookingRecord([], makeBookingPayload({ durationMinutes: 0 }));
+
+  assert.equal(impossibleDate.ok, false);
+  assert.match(impossibleDate.error, /date/i);
+  assert.equal(impossibleClock.ok, false);
+  assert.match(impossibleClock.error, /time/i);
+  assert.equal(fractionalParty.ok, false);
+  assert.match(fractionalParty.error, /party size/i);
+  assert.equal(zeroDuration.ok, false);
+  assert.match(zeroDuration.error, /duration/i);
+});
+
 test("createBookingRecord creates a pending request and normalizes the occasion", () => {
   const created = createBookingRecord([], makeBookingPayload({
     specialOccasion: "Something custom",
@@ -47,6 +67,60 @@ test("createBookingRecord creates a pending request and normalizes the occasion"
   assert.deepEqual(created.record.assignedTables, []);
   assert.equal(created.record.specialOccasion, "None");
   assert.match(created.reference, /^MC-/);
+});
+
+test("booking notes require and record explicit consent", () => {
+  const rejected = createBookingRecord([], makeBookingPayload({ notes: "Allergy information" }));
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.error, /explicit consent/i);
+
+  const accepted = createBookingRecord([], makeBookingPayload({
+    notes: "Allergy information",
+    sensitiveInfoConsent: true
+  }));
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.record.sensitiveInfoConsent, true);
+  assert.match(accepted.record.sensitiveInfoConsentAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("createBookingRecord accepts common international phone formatting and rejects letters", () => {
+  const accepted = createBookingRecord([], makeBookingPayload({
+    phoneNumber: "+44 (0)1472-828600"
+  }));
+  const rejected = createBookingRecord([], makeBookingPayload({
+    phoneNumber: "01472 CALL-ME"
+  }));
+
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.record.phoneNumber, "+44 (0)1472-828600");
+  assert.equal(accepted.record.phoneDigits, "4401472828600");
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.error, /7 and 15 digits/i);
+});
+
+test("booking CSV neutralizes spreadsheet formula cells", () => {
+  const csv = toCSV([{
+    date: "2026-07-12",
+    time: "12:00",
+    guest_name: "=HYPERLINK(\"https://attacker.invalid\")",
+    guest_phone: "+441472828600",
+    guest_email: "guest@example.com",
+    people: 2,
+    duration: 90,
+    special_occasion: "None",
+    status: "pending",
+    payment_amount: "",
+    payment_status: "",
+    payment_type: "",
+    comments: "",
+    notes: " @SUM(1+1)",
+    source: "Website",
+    created_at: "2026-07-11T00:00:00.000Z"
+  }]);
+
+  assert.match(csv, /"'=HYPERLINK\(""https:\/\/attacker\.invalid""\)"/);
+  assert.match(csv, /,'\+441472828600,/);
+  assert.match(csv, /,' @SUM\(1\+1\),/);
 });
 
 test("suggestTableAssignment uses a multi-table combination for larger parties", () => {
@@ -83,4 +157,37 @@ test("validateBookingWindow honors custom booking rules", () => {
   });
 
   assert.equal(check.ok, true);
+});
+
+test("per-booking entities recover a booking missing from the legacy aggregate", async () => {
+  const values = new Map();
+  const kv = {
+    async get(key, type) {
+      const value = values.get(String(key));
+      if (value === undefined) return null;
+      return type === "json" ? JSON.parse(value) : value;
+    },
+    async put(key, value) {
+      values.set(String(key), String(value));
+    },
+    async list({ prefix }) {
+      return {
+        keys: Array.from(values.keys())
+          .filter((key) => key.startsWith(prefix))
+          .map((name) => ({ name })),
+        list_complete: true
+      };
+    }
+  };
+  const env = { BOOKINGS_KV: kv };
+  const created = createBookingRecord([], makeBookingPayload());
+  assert.equal(created.ok, true);
+
+  await saveBookingEntity(env, created.record);
+  await saveBookings(env, []);
+
+  const recovered = await loadBookings(env);
+  assert.equal(recovered.length, 1);
+  assert.equal(recovered[0].id, created.record.id);
+  assert.equal(recovered[0].customerName, created.record.customerName);
 });

@@ -6,8 +6,10 @@ import {
   feedRows,
   loadOrders,
   makeReference,
-  saveOrders,
-  toCSV
+  saveOrderEntity,
+  saveOrdersAfterEntity,
+  toCSV,
+  withOrdersMutationLock
 } from "../_orders-core.js";
 import { updateOrderStatus } from "./order-status-service.js";
 import { ApiError } from "./errors.js";
@@ -106,17 +108,21 @@ export async function updateOrderDecision(env, payload = {}) {
 }
 
 export async function createOrder(env, payload) {
-  const orders = await loadOrders(env);
   const siteConfig = await getSiteConfig(env);
-  const creation = createOrderRecord(orders, payload, {
-    rules: siteConfig.orders
-  });
-  if (!creation.ok) {
-    throw new ApiError(creation.error || "Invalid order request.", creation.status || 400);
-  }
+  const creation = await withOrdersMutationLock(async () => {
+    const orders = await loadOrders(env);
+    const result = createOrderRecord(orders, payload, {
+      rules: siteConfig.orders
+    });
+    if (!result.ok) {
+      throw new ApiError(result.error || "Invalid order request.", result.status || 400);
+    }
 
-  orders.push(creation.record);
-  await saveOrders(env, orders);
+    orders.push(result.record);
+    await saveOrderEntity(env, result.record);
+    await saveOrdersAfterEntity(env, orders);
+    return result;
+  });
 
   let emailResult = null;
   try {
@@ -131,41 +137,19 @@ export async function createOrder(env, payload) {
     };
   }
 
-  if (!emailResult.enabled || !emailResult.sentAll) {
-    const rolledBack = orders.filter((order) => order.id !== creation.record.id);
-    try {
-      await saveOrders(env, rolledBack);
-    } catch (rollbackError) {
-      throw new ApiError(
-        "Order could not be confirmed because emails failed and rollback did not complete. Please contact help@millers.cafe.",
-        500,
-        { emailErrors: emailResult.errors || [] }
-      );
-    }
-
-    if (!emailResult.enabled) {
-      throw new ApiError(
-        "Order confirmation email service is not configured yet. Please try again shortly.",
-        503,
-        { emailErrors: emailResult.errors || [] }
-      );
-    }
-
-    throw new ApiError(
-      "Order could not be confirmed because confirmation emails were not delivered. Please try again.",
-      502,
-      { emailErrors: emailResult.errors || [] }
-    );
-  }
+  const emailsSentAll = Boolean(emailResult?.enabled && emailResult?.sentAll);
 
   return {
     ok: true,
     reference: creation.reference,
     orderId: creation.record.id,
     trackingToken: creation.record.trackingToken,
-    emailStatus: "sent",
-    emailDelivered: emailResult.delivered,
-    emailTotal: emailResult.total,
-    emailErrors: emailResult.errors
+    emailStatus: emailsSentAll ? "sent" : "pending",
+    emailDelivered: Number(emailResult?.delivered || 0),
+    emailTotal: Number(emailResult?.total || 0),
+    emailErrors: emailResult?.errors || [],
+    emailMessage: emailsSentAll
+      ? "Order received and confirmation emails sent."
+      : "Order received. Email confirmation is delayed right now."
   };
 }

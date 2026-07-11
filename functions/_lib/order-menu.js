@@ -1,6 +1,9 @@
 "use strict";
 
-import { MILLERS_ORDER_MENU } from "../../orders/menu-catalog.js";
+import {
+  MILLERS_ORDER_MENU,
+  normalizeMenuItemAllergenCodes
+} from "../../orders/menu-catalog.js";
 
 const MAX_ITEM_QUANTITY = 20;
 const COLLECTION_DISCOUNT_RATE = 0.10;
@@ -80,7 +83,9 @@ function normalizeModifierGroup(rawGroup) {
         const normalized = {
           key: normalizeKey(optionName),
           name: optionName,
-          priceAdjustment: roundMoney(priceAdjustment)
+          priceAdjustment: roundMoney(priceAdjustment),
+          allergenCodes: normalizeMenuItemAllergenCodes({ codes: rawOption?.allergenCodes }),
+          removesAllergenCodes: normalizeMenuItemAllergenCodes({ codes: rawOption?.removesAllergenCodes })
         };
         if (optionId) {
           normalized.id = optionId;
@@ -267,6 +272,8 @@ function normalizeModifierSelections(rawSelections, menuItem) {
       groupName: group.name,
       optionName: option.name,
       priceAdjustment: option.priceAdjustment,
+      allergenCodes: option.allergenCodes.slice(),
+      removesAllergenCodes: option.removesAllergenCodes.slice(),
       isTextInput: false
     });
   }

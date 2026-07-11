@@ -1,9 +1,11 @@
 "use strict";
 
 import { ApiError } from "./errors.js";
+import { readTextBody, RequestBodyError } from "./json.js";
 
 const DEFAULT_SITE_ORIGIN = "https://millers.cafe";
 const TOKEN_VERSION = "v1";
+const MAX_EMAIL_ACTION_BODY_BYTES = 64 * 1024;
 
 const encoder = new TextEncoder();
 
@@ -48,13 +50,7 @@ export function normalizeEmailActionStatus(value) {
 }
 
 export function emailActionSecret(env) {
-  return String(
-    env?.EMAIL_ACTION_SECRET ||
-    env?.VENUE_BRIDGE_TOKEN ||
-    env?.ORDERS_ADMIN_TOKEN ||
-    env?.RESEND_API_KEY ||
-    ""
-  ).trim();
+  return String(env?.EMAIL_ACTION_SECRET || "").trim();
 }
 
 export function emailActionsEnabled(env) {
@@ -138,12 +134,22 @@ export async function actionParamsFromRequest(request) {
 
   if (String(request.method || "").toUpperCase() === "POST") {
     try {
-      const form = await request.formData();
-      for (const [key, value] of form.entries()) {
-        params.set(key, String(value || ""));
+      const contentType = String(request.headers.get("content-type") || "").toLowerCase();
+      if (contentType && !contentType.includes("application/x-www-form-urlencoded")) {
+        throw new ApiError("Email action form encoding is invalid.", 415);
+      }
+      const rawBody = await readTextBody(request, {
+        maxBytes: MAX_EMAIL_ACTION_BODY_BYTES
+      });
+      for (const [key, value] of new URLSearchParams(rawBody).entries()) {
+        params.set(key, value);
       }
     } catch (error) {
-      // Non-form POSTs can still use query-string parameters.
+      if (error instanceof ApiError) throw error;
+      if (error instanceof RequestBodyError) {
+        throw new ApiError(error.message, error.status);
+      }
+      throw new ApiError("Email action form could not be read.", 400);
     }
   }
 
@@ -167,65 +173,18 @@ export function htmlEscape(value) {
 export function pageResponse(title, body, status = 200) {
   const safeTitle = htmlEscape(title);
   return new Response(`<!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
   <title>${safeTitle}</title>
-  <style>
-    :root { color-scheme: light; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f8fafc;
-      color: #111827;
-      line-height: 1.5;
-    }
-    main {
-      max-width: 620px;
-      margin: 0 auto;
-      padding: 40px 18px;
-    }
-    .panel {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 24px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-    }
-    h1 { margin: 0 0 12px; font-size: 24px; line-height: 1.2; }
-    p { margin: 0 0 16px; }
-    label { display: block; margin: 16px 0 6px; font-weight: 700; }
-    input, textarea {
-      box-sizing: border-box;
-      width: 100%;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 10px 12px;
-      font: inherit;
-    }
-    textarea { min-height: 92px; resize: vertical; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-    button, .link-button {
-      border: 0;
-      border-radius: 6px;
-      padding: 11px 16px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      background: #166534;
-      text-decoration: none;
-      display: inline-block;
-    }
-    .reject { background: #991b1b; }
-    .secondary { background: #475569; }
-    .muted { color: #64748b; font-size: 14px; }
-  </style>
+  <link rel="stylesheet" href="/styles.css?v=20260710a">
 </head>
-<body>
-  <main>
-    <section class="panel">
+<body class="actionBody">
+  <main class="actionPage">
+    <section class="actionPanel">
       ${body}
     </section>
   </main>
@@ -234,7 +193,13 @@ export function pageResponse(title, body, status = 200) {
     status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      "Content-Security-Policy": "default-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content",
+      "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "X-Robots-Tag": "noindex, nofollow"
     }
   });
 }

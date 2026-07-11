@@ -1,6 +1,9 @@
 "use strict";
 
+import { normalizeMenuItemAllergenCodes } from "../orders/menu-catalog.js";
+
 const STORAGE_KEY = "orders_v1";
+const ORDER_ENTITY_PREFIX = "order_entity:";
 const SERVICE_START_MINUTES = 12 * 60;
 const SERVICE_END_MINUTES = 17 * 60;
 const SLOT_STEP_MINUTES = 15;
@@ -10,6 +13,16 @@ const COLLECTION_MIN_LEAD_MINUTES = 30;
 const DELIVERY_MIN_LEAD_MINUTES = 60;
 const COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;
 const DELIVERY_EARLIEST_SCHEDULED_MINUTES = 13 * 60;
+const MAX_CUSTOMER_NAME_LENGTH = 80;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_DISPLAY_LENGTH = 30;
+const MAX_ORDER_NOTES_LENGTH = 400;
+const MAX_ADDRESS_LINE_LENGTH = 120;
+const MAX_TOWN_CITY_LENGTH = 80;
+const MAX_POSTCODE_LENGTH = 10;
+const MAX_ITEMS_SUMMARY_LENGTH = 20000;
+const MAX_CART_LINES = 50;
+const MAX_CART_TOTAL_QUANTITY = 100;
 const OPEN_DAY_INDEXES = new Set([0, 2, 3, 4, 5, 6]); // Sun, Tue-Sat
 const VALID_ORDER_TYPES = new Set(["collection", "delivery"]);
 const VALID_OCCASIONS = new Set([
@@ -41,6 +54,32 @@ function getInMemoryStore() {
   return globalThis.__millersCafeOrdersStore;
 }
 
+function getMutationLockStore() {
+  if (!(globalThis.__millersCafeOrderMutationLocks instanceof Map)) {
+    globalThis.__millersCafeOrderMutationLocks = new Map();
+  }
+  return globalThis.__millersCafeOrderMutationLocks;
+}
+
+export async function withOrdersMutationLock(work) {
+  if (typeof work !== "function") {
+    throw new TypeError("Order mutation work must be a function.");
+  }
+
+  const locks = getMutationLockStore();
+  const previous = locks.get(STORAGE_KEY) || Promise.resolve();
+  const current = previous.catch(() => {}).then(work);
+  locks.set(STORAGE_KEY, current);
+
+  try {
+    return await current;
+  } finally {
+    if (locks.get(STORAGE_KEY) === current) {
+      locks.delete(STORAGE_KEY);
+    }
+  }
+}
+
 function nowISO() {
   return new Date().toISOString();
 }
@@ -68,6 +107,7 @@ function parseClockToMinutes(clock) {
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return NaN;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return NaN;
   return (hours * 60) + minutes;
 }
 
@@ -81,8 +121,24 @@ function roundUpToStep(minutes, stepMinutes) {
   return Math.ceil(minutes / stepMinutes) * stepMinutes;
 }
 
+function boundedRuleInteger(value, fallback, minimum, maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(minimum, Math.min(maximum, Math.round(parsed)));
+}
+
 function isISODate(isoDate) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""));
+  const value = String(isoDate || "");
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
 }
 
 function parseISODateUTC(isoDate) {
@@ -108,23 +164,48 @@ function normalizedRules(rawRules = null) {
       .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6)
     : DEFAULT_ORDER_RULES.openDayIndexes;
 
+  const serviceStartMinutes = boundedRuleInteger(
+    source.serviceStartMinutes,
+    DEFAULT_ORDER_RULES.serviceStartMinutes,
+    0,
+    (24 * 60) - 1
+  );
+  const serviceEndMinutes = Math.max(serviceStartMinutes, boundedRuleInteger(
+    source.serviceEndMinutes,
+    DEFAULT_ORDER_RULES.serviceEndMinutes,
+    0,
+    (24 * 60) - 1
+  ));
+
   return {
-    serviceStartMinutes: Math.max(0, Math.round(Number(source.serviceStartMinutes ?? DEFAULT_ORDER_RULES.serviceStartMinutes))),
-    serviceEndMinutes: Math.max(0, Math.round(Number(source.serviceEndMinutes ?? DEFAULT_ORDER_RULES.serviceEndMinutes))),
-    slotStepMinutes: Math.max(1, Math.round(Number(source.slotStepMinutes ?? DEFAULT_ORDER_RULES.slotStepMinutes))),
-    maxLookaheadDays: Math.max(1, Math.round(Number(source.maxLookaheadDays ?? DEFAULT_ORDER_RULES.maxLookaheadDays))),
-    collectionMinLeadMinutes: Math.max(0, Math.round(Number(
-      source.collectionMinLeadMinutes ?? DEFAULT_ORDER_RULES.collectionMinLeadMinutes
-    ))),
-    deliveryMinLeadMinutes: Math.max(0, Math.round(Number(
-      source.deliveryMinLeadMinutes ?? DEFAULT_ORDER_RULES.deliveryMinLeadMinutes
-    ))),
-    collectionEarliestScheduledMinutes: Math.max(0, Math.round(Number(
-      source.collectionEarliestScheduledMinutes ?? DEFAULT_ORDER_RULES.collectionEarliestScheduledMinutes
-    ))),
-    deliveryEarliestScheduledMinutes: Math.max(0, Math.round(Number(
-      source.deliveryEarliestScheduledMinutes ?? DEFAULT_ORDER_RULES.deliveryEarliestScheduledMinutes
-    ))),
+    serviceStartMinutes,
+    serviceEndMinutes,
+    slotStepMinutes: boundedRuleInteger(source.slotStepMinutes, DEFAULT_ORDER_RULES.slotStepMinutes, 1, 24 * 60),
+    maxLookaheadDays: boundedRuleInteger(source.maxLookaheadDays, DEFAULT_ORDER_RULES.maxLookaheadDays, 1, 365),
+    collectionMinLeadMinutes: boundedRuleInteger(
+      source.collectionMinLeadMinutes,
+      DEFAULT_ORDER_RULES.collectionMinLeadMinutes,
+      0,
+      7 * 24 * 60
+    ),
+    deliveryMinLeadMinutes: boundedRuleInteger(
+      source.deliveryMinLeadMinutes,
+      DEFAULT_ORDER_RULES.deliveryMinLeadMinutes,
+      0,
+      7 * 24 * 60
+    ),
+    collectionEarliestScheduledMinutes: boundedRuleInteger(
+      source.collectionEarliestScheduledMinutes,
+      DEFAULT_ORDER_RULES.collectionEarliestScheduledMinutes,
+      0,
+      (24 * 60) - 1
+    ),
+    deliveryEarliestScheduledMinutes: boundedRuleInteger(
+      source.deliveryEarliestScheduledMinutes,
+      DEFAULT_ORDER_RULES.deliveryEarliestScheduledMinutes,
+      0,
+      (24 * 60) - 1
+    ),
     openDayIndexes: openDayIndexes.length > 0 ? openDayIndexes : DEFAULT_ORDER_RULES.openDayIndexes
   };
 }
@@ -198,6 +279,7 @@ function normalizePaymentStatus(value) {
 }
 
 function normalizePaymentAmountTotal(value) {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
   const rounded = Math.round(parsed);
@@ -214,16 +296,23 @@ function normalizeRefundStatus(value) {
 }
 
 function normalizeRefundAmountTotal(value) {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
   const rounded = Math.round(parsed);
   return rounded >= 0 ? rounded : null;
 }
 
+function normalizeRefundAttempts(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.round(parsed));
+}
+
 function normalizeCartItemSelection(rawSelection) {
   const groupName = String(rawSelection?.groupName || "").trim();
   const optionName = String(rawSelection?.optionName || "").trim();
-  if (!groupName || !optionName) return null;
+  if (!groupName || !optionName || groupName.length > 120 || optionName.length > 120) return null;
 
   const selection = {
     groupName,
@@ -239,20 +328,25 @@ function normalizeCartItemSelection(rawSelection) {
   const posModifierOptionId = String(rawSelection?.posModifierOptionId || rawSelection?.optionId || "").trim();
   if (posModifierGroupId) selection.posModifierGroupId = posModifierGroupId;
   if (posModifierOptionId) selection.posModifierOptionId = posModifierOptionId;
+  const allergenCodes = normalizeMenuItemAllergenCodes({ codes: rawSelection?.allergenCodes });
+  const removesAllergenCodes = normalizeMenuItemAllergenCodes({ codes: rawSelection?.removesAllergenCodes });
+  if (allergenCodes.length > 0) selection.allergenCodes = allergenCodes;
+  if (removesAllergenCodes.length > 0) selection.removesAllergenCodes = removesAllergenCodes;
   return selection;
 }
 
 function normalizeCartItem(rawItem) {
   const itemName = String(rawItem?.itemName || rawItem?.name || "").trim();
   const quantity = Number(rawItem?.quantity);
-  if (!itemName || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) return null;
+  const rawSelections = Array.isArray(rawItem?.modifierSelections) ? rawItem.modifierSelections : [];
+  const modifierSelections = rawSelections.map(normalizeCartItemSelection).filter(Boolean);
+  if (!itemName || itemName.length > 160 || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) return null;
+  if (rawSelections.length > 20 || modifierSelections.length !== rawSelections.length) return null;
 
   const item = {
     itemName,
     quantity,
-    modifierSelections: Array.isArray(rawItem?.modifierSelections)
-      ? rawItem.modifierSelections.map(normalizeCartItemSelection).filter(Boolean)
-      : []
+    modifierSelections
   };
   const posItemId = String(rawItem?.posItemId || rawItem?.itemId || rawItem?.menuItemId || "").trim();
   const posCategoryId = String(rawItem?.posCategoryId || rawItem?.categoryId || "").trim();
@@ -421,7 +515,7 @@ function normalizeOrderRecord(raw) {
   const normalizedTime = String(raw.time || "").trim().toUpperCase();
   if (!orderType) return null;
   if (!isISODate(raw.date)) return null;
-  if (normalizedTime !== ASAP_VALUE && !/^\d{2}:\d{2}$/.test(normalizedTime)) return null;
+  if (normalizedTime !== ASAP_VALUE && !Number.isFinite(parseClockToMinutes(normalizedTime))) return null;
 
   const stableFallbackToken = `trk-${String(raw.id || "")
     .replace(/[^a-zA-Z0-9]/g, "")
@@ -440,6 +534,8 @@ function normalizeOrderRecord(raw) {
     specialOccasion: normalizeSpecialOccasion(raw.specialOccasion),
     itemsSummary: String(raw.itemsSummary || "").trim(),
     notes: String(raw.notes || "").trim(),
+    sensitiveInfoConsent: Boolean(raw.sensitiveInfoConsent),
+    sensitiveInfoConsentAt: String(raw.sensitiveInfoConsentAt || "").trim(),
     addressLine1: String(raw.addressLine1 || "").trim(),
     addressLine2: String(raw.addressLine2 || "").trim(),
     townCity: String(raw.townCity || "").trim(),
@@ -460,26 +556,18 @@ function normalizeOrderRecord(raw) {
     refundId: String(raw.refundId || "").trim(),
     refundAmountTotal: normalizeRefundAmountTotal(raw.refundAmountTotal),
     refundCreatedAt: String(raw.refundCreatedAt || "").trim(),
+    refundAttempts: normalizeRefundAttempts(raw.refundAttempts),
+    refundLastError: String(raw.refundLastError || "").trim(),
+    refundUpdatedAt: String(raw.refundUpdatedAt || "").trim(),
+    refundIdempotencyKey: String(raw.refundIdempotencyKey || "").trim(),
     cartItems: normalizeCartItems(raw.cartItems),
     source: String(raw.source || "Millers Cafe Website"),
     createdAt: String(raw.createdAt || nowISO())
   };
 }
 
-export async function loadOrders(env) {
-  let records = [];
-  if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.get === "function") {
-    const stored = await env.BOOKINGS_KV.get(STORAGE_KEY, "json");
-    records = Array.isArray(stored) ? stored : [];
-  } else {
-    records = getInMemoryStore();
-  }
-
-  return records.map(normalizeOrderRecord).filter(Boolean);
-}
-
-export async function saveOrders(env, orders) {
-  const records = orders.map((order) => ({
+function serializedOrderRecord(order) {
+  return {
     id: order.id,
     orderType: order.orderType,
     customerName: order.customerName,
@@ -490,6 +578,8 @@ export async function saveOrders(env, orders) {
     specialOccasion: normalizeSpecialOccasion(order.specialOccasion),
     itemsSummary: order.itemsSummary,
     notes: order.notes,
+    sensitiveInfoConsent: Boolean(order.sensitiveInfoConsent),
+    sensitiveInfoConsentAt: String(order.sensitiveInfoConsentAt || "").trim(),
     addressLine1: order.addressLine1,
     addressLine2: order.addressLine2,
     townCity: order.townCity,
@@ -510,10 +600,82 @@ export async function saveOrders(env, orders) {
     refundId: String(order.refundId || "").trim(),
     refundAmountTotal: normalizeRefundAmountTotal(order.refundAmountTotal),
     refundCreatedAt: String(order.refundCreatedAt || "").trim(),
+    refundAttempts: normalizeRefundAttempts(order.refundAttempts),
+    refundLastError: String(order.refundLastError || "").trim(),
+    refundUpdatedAt: String(order.refundUpdatedAt || "").trim(),
+    refundIdempotencyKey: String(order.refundIdempotencyKey || "").trim(),
     cartItems: normalizeCartItems(order.cartItems),
     source: order.source,
     createdAt: order.createdAt
-  }));
+  };
+}
+
+function orderFreshnessMillis(order) {
+  return Math.max(
+    Date.parse(String(order?.statusUpdatedAt || "")) || 0,
+    Date.parse(String(order?.refundUpdatedAt || "")) || 0,
+    Date.parse(String(order?.createdAt || "")) || 0
+  );
+}
+
+async function loadOrderEntities(env) {
+  if (!env.BOOKINGS_KV || typeof env.BOOKINGS_KV.list !== "function" || typeof env.BOOKINGS_KV.get !== "function") {
+    return [];
+  }
+
+  const entities = [];
+  let cursor = "";
+  for (let page = 0; page < 100; page += 1) {
+    const listed = await env.BOOKINGS_KV.list({
+      prefix: ORDER_ENTITY_PREFIX,
+      ...(cursor ? { cursor } : {})
+    });
+    const keys = Array.isArray(listed?.keys) ? listed.keys : [];
+    for (let offset = 0; offset < keys.length; offset += 50) {
+      const names = keys
+        .slice(offset, offset + 50)
+        .map((key) => String(key?.name || "").trim())
+        .filter(Boolean);
+      const pageEntities = await Promise.all(
+        names.map((keyName) => env.BOOKINGS_KV.get(keyName, "json"))
+      );
+      for (const rawEntity of pageEntities) {
+        const entity = normalizeOrderRecord(rawEntity);
+        if (entity) entities.push(entity);
+      }
+    }
+
+    cursor = String(listed?.cursor || "").trim();
+    if (listed?.list_complete === true || !cursor) break;
+  }
+  return entities;
+}
+
+export async function loadOrders(env) {
+  let records = [];
+  if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.get === "function") {
+    const stored = await env.BOOKINGS_KV.get(STORAGE_KEY, "json");
+    records = Array.isArray(stored) ? stored : [];
+  } else {
+    records = getInMemoryStore();
+  }
+
+  const storedRecords = records.map(normalizeOrderRecord).filter(Boolean);
+  const entityRecords = await loadOrderEntities(env);
+  if (entityRecords.length === 0) return storedRecords;
+
+  const merged = new Map(entityRecords.map((order) => [order.id, order]));
+  for (const order of storedRecords) {
+    const entity = merged.get(order.id);
+    if (!entity || orderFreshnessMillis(order) >= orderFreshnessMillis(entity)) {
+      merged.set(order.id, order);
+    }
+  }
+  return Array.from(merged.values());
+}
+
+export async function saveOrders(env, orders) {
+  const records = orders.map(serializedOrderRecord);
 
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.put === "function") {
     await env.BOOKINGS_KV.put(STORAGE_KEY, JSON.stringify(records));
@@ -521,6 +683,27 @@ export async function saveOrders(env, orders) {
   }
 
   globalThis.__millersCafeOrdersStore = records;
+}
+
+export async function saveOrdersAfterEntity(env, orders) {
+  try {
+    await saveOrders(env, orders);
+    return true;
+  } catch (error) {
+    if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.list === "function") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function saveOrderEntity(env, order) {
+  if (!env.BOOKINGS_KV || typeof env.BOOKINGS_KV.put !== "function") return;
+  const orderId = String(order?.id || "").trim();
+  if (!/^[a-zA-Z0-9-]{8,100}$/.test(orderId)) {
+    throw new Error("Order entity id is invalid.");
+  }
+  await env.BOOKINGS_KV.put(`${ORDER_ENTITY_PREFIX}${orderId}`, JSON.stringify(serializedOrderRecord(order)));
 }
 
 export function makeReference(orderId) {
@@ -542,6 +725,24 @@ export function findOrderIndexByPaymentSessionId(orders, sessionId) {
   return orders.findIndex((order) => String(order.paymentSessionId || "").trim() === target);
 }
 
+function validateStoredOrderWindow(isoDate, clock) {
+  if (!isISODate(isoDate)) {
+    return { ok: false, status: 400, error: "Date must be a real calendar date in yyyy-MM-dd format." };
+  }
+
+  const timeValue = String(clock || "").trim().toUpperCase();
+  if (timeValue === ASAP_VALUE) {
+    return { ok: true, minutes: null, normalizedTime: ASAP_VALUE, isAsap: true };
+  }
+
+  const minutes = parseClockToMinutes(timeValue);
+  if (!Number.isFinite(minutes)) {
+    return { ok: false, status: 400, error: "Time must be a real 24-hour time in HH:mm format or ASAP." };
+  }
+
+  return { ok: true, minutes, normalizedTime: minutesToClock(minutes), isAsap: false };
+}
+
 export function validateOrderPayload(payload, options = {}) {
   if (!payload || typeof payload !== "object") {
     return { ok: false, status: 400, error: "Invalid order payload." };
@@ -556,20 +757,32 @@ export function validateOrderPayload(payload, options = {}) {
   if (orderType !== "delivery" && customerName.length < 2) {
     return { ok: false, status: 400, error: "Customer name is required." };
   }
+  if (customerName.length > MAX_CUSTOMER_NAME_LENGTH) {
+    return { ok: false, status: 400, error: `Customer name must be ${MAX_CUSTOMER_NAME_LENGTH} characters or fewer.` };
+  }
 
   const phoneNumber = String(payload.phoneNumber || "").trim();
-  if (!/^\d{5}\s\d{6}$/.test(phoneNumber)) {
-    return { ok: false, status: 400, error: "Phone number must be in format XXXXX XXXXXX." };
+  const phoneDigits = normalizePhoneDigits(phoneNumber);
+  if (phoneNumber.length > MAX_PHONE_DISPLAY_LENGTH ||
+      !/^[+\d][\d ().-]*$/.test(phoneNumber) ||
+      phoneDigits.length < 7 ||
+      phoneDigits.length > 15) {
+    return { ok: false, status: 400, error: "Phone number must contain between 7 and 15 digits." };
   }
 
   const email = String(payload.email || "").trim();
   if (!isLikelyEmail(email)) {
     return { ok: false, status: 400, error: "A valid email address is required." };
   }
+  if (email.length > MAX_EMAIL_LENGTH) {
+    return { ok: false, status: 400, error: `Email address must be ${MAX_EMAIL_LENGTH} characters or fewer.` };
+  }
 
   const date = String(payload.date || "");
   const time = String(payload.time || "").trim().toUpperCase();
-  const windowCheck = validateOrderWindow(date, time, orderType, options.rules);
+  const windowCheck = options.skipWindowValidation
+    ? validateStoredOrderWindow(date, time)
+    : validateOrderWindow(date, time, orderType, options.rules);
   if (!windowCheck.ok) {
     return windowCheck;
   }
@@ -578,11 +791,47 @@ export function validateOrderPayload(payload, options = {}) {
   if (itemsSummary.length < 3) {
     return { ok: false, status: 400, error: "Order details are required." };
   }
+  if (itemsSummary.length > MAX_ITEMS_SUMMARY_LENGTH) {
+    return { ok: false, status: 400, error: "Order details are too long." };
+  }
 
   const addressLine1 = String(payload.addressLine1 || "").trim();
   const addressLine2 = String(payload.addressLine2 || "").trim();
   const townCity = String(payload.townCity || "").trim();
   const postcode = normalizePostcode(payload.postcode || "");
+  const notes = String(payload.notes || "").trim();
+
+  if (addressLine1.length > MAX_ADDRESS_LINE_LENGTH || addressLine2.length > MAX_ADDRESS_LINE_LENGTH) {
+    return { ok: false, status: 400, error: `Address lines must be ${MAX_ADDRESS_LINE_LENGTH} characters or fewer.` };
+  }
+  if (townCity.length > MAX_TOWN_CITY_LENGTH) {
+    return { ok: false, status: 400, error: `Town / City must be ${MAX_TOWN_CITY_LENGTH} characters or fewer.` };
+  }
+  if (postcode.length > MAX_POSTCODE_LENGTH) {
+    return { ok: false, status: 400, error: `Postcode must be ${MAX_POSTCODE_LENGTH} characters or fewer.` };
+  }
+  if (notes.length > MAX_ORDER_NOTES_LENGTH) {
+    return { ok: false, status: 400, error: `Notes must be ${MAX_ORDER_NOTES_LENGTH} characters or fewer.` };
+  }
+  const sensitiveInfoConsent = Boolean(notes) && payload.sensitiveInfoConsent === true;
+  if (notes && !sensitiveInfoConsent) {
+    return { ok: false, status: 400, error: "Explicit consent is required when optional notes are provided." };
+  }
+
+  if (payload.cartItems !== undefined && !Array.isArray(payload.cartItems)) {
+    return { ok: false, status: 400, error: "Order basket must be an array." };
+  }
+  if (Array.isArray(payload.cartItems) && payload.cartItems.length > MAX_CART_LINES) {
+    return { ok: false, status: 400, error: `Order basket cannot contain more than ${MAX_CART_LINES} lines.` };
+  }
+  const cartItems = normalizeCartItems(payload.cartItems);
+  if (Array.isArray(payload.cartItems) && cartItems.length !== payload.cartItems.length) {
+    return { ok: false, status: 400, error: "Order basket contains an invalid item." };
+  }
+  const totalQuantity = cartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  if (totalQuantity > MAX_CART_TOTAL_QUANTITY) {
+    return { ok: false, status: 400, error: `Order basket cannot contain more than ${MAX_CART_TOTAL_QUANTITY} items.` };
+  }
 
   if (orderType === "delivery") {
     if (!addressLine1) {
@@ -602,18 +851,19 @@ export function validateOrderPayload(payload, options = {}) {
       orderType,
       customerName,
       phoneNumber,
-      phoneDigits: normalizePhoneDigits(phoneNumber),
+      phoneDigits,
       email,
       date,
       time: windowCheck.normalizedTime || time,
       specialOccasion: normalizeSpecialOccasion(payload.specialOccasion),
       itemsSummary,
-      notes: String(payload.notes || "").trim(),
+      notes,
+      sensitiveInfoConsent,
       addressLine1,
       addressLine2,
       townCity,
       postcode,
-      cartItems: normalizeCartItems(payload.cartItems)
+      cartItems
     }
   };
 }
@@ -645,7 +895,12 @@ export function createOrderRecord(orders, payload, options = {}) {
     }
   }
 
-  const orderId = randomId();
+  const suppliedOrderId = String(options.recordId || "").trim();
+  const orderId = /^[a-zA-Z0-9-]{8,100}$/.test(suppliedOrderId) ? suppliedOrderId : randomId();
+  const suppliedTrackingToken = String(options.trackingToken || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
   const record = {
     id: orderId,
     orderType: data.orderType,
@@ -658,6 +913,8 @@ export function createOrderRecord(orders, payload, options = {}) {
     specialOccasion: data.specialOccasion,
     itemsSummary: data.itemsSummary,
     notes: data.notes,
+    sensitiveInfoConsent: data.sensitiveInfoConsent,
+    sensitiveInfoConsentAt: data.sensitiveInfoConsent ? nowISO() : "",
     addressLine1: data.addressLine1,
     addressLine2: data.addressLine2,
     townCity: data.townCity,
@@ -666,7 +923,9 @@ export function createOrderRecord(orders, payload, options = {}) {
     etaMinutes: null,
     decisionDate: "",
     decisionTime: "",
-    trackingToken: makeTrackingToken(),
+    trackingToken: suppliedTrackingToken.length >= 16 && suppliedTrackingToken.length <= 64
+      ? suppliedTrackingToken
+      : makeTrackingToken(),
     statusUpdatedAt: nowISO(),
     paymentProvider: normalizePaymentProvider(options.paymentProvider),
     paymentStatus: normalizePaymentStatus(options.paymentStatus),
@@ -678,6 +937,10 @@ export function createOrderRecord(orders, payload, options = {}) {
     refundId: String(options.refundId || "").trim(),
     refundAmountTotal: normalizeRefundAmountTotal(options.refundAmountTotal),
     refundCreatedAt: String(options.refundCreatedAt || "").trim(),
+    refundAttempts: normalizeRefundAttempts(options.refundAttempts),
+    refundLastError: String(options.refundLastError || "").trim(),
+    refundUpdatedAt: String(options.refundUpdatedAt || "").trim(),
+    refundIdempotencyKey: String(options.refundIdempotencyKey || "").trim(),
     cartItems: data.cartItems,
     source: "Millers Cafe Website",
     createdAt: nowISO()
@@ -688,6 +951,14 @@ export function createOrderRecord(orders, payload, options = {}) {
     record,
     reference: makeReference(orderId)
   };
+}
+
+export function createOrderRecordFromValidatedDraft(orders, payload, options = {}) {
+  return createOrderRecord(orders, payload, {
+    ...options,
+    skipDuplicateCheck: true,
+    skipWindowValidation: true
+  });
 }
 
 function todayISODateInLondon() {
@@ -749,10 +1020,11 @@ export function feedRows(orders, includePast = false) {
 
 function escapeCSVCell(value) {
   const text = String(value ?? "");
-  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
-    return `"${text.replace(/\"/g, "\"\"")}"`;
+  const safeText = /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+  if (safeText.includes(",") || safeText.includes("\"") || safeText.includes("\n")) {
+    return `"${safeText.replace(/\"/g, "\"\"")}"`;
   }
-  return text;
+  return safeText;
 }
 
 export function toCSV(rows) {

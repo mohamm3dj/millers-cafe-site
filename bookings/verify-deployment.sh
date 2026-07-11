@@ -2,7 +2,8 @@
 set -euo pipefail
 
 BASE_URL="${1:-https://millers.cafe}"
-DATE_SAMPLE="${2:-2026-02-18}"
+DATE_SAMPLE="${2:-$(date +%F)}"
+FEED_TOKEN="${BOOKINGS_FEED_TOKEN:-}"
 
 echo "Checking ${BASE_URL}"
 echo
@@ -16,12 +17,20 @@ curl -s -o /dev/null -w "status=%{http_code}\n" "${BASE_URL}/api/bookings/slots?
 echo
 
 echo "3) CSV feed endpoint"
-curl -s -o /dev/null -w "status=%{http_code} content-type=%{content_type}\n" "${BASE_URL}/bookings/feed.csv"
+if [[ -n "${FEED_TOKEN}" ]]; then
+  curl -sS -o /dev/null -w "status=%{http_code} content-type=%{content_type}\n" \
+    -H "Authorization: Bearer ${FEED_TOKEN}" \
+    "${BASE_URL}/bookings/feed.csv"
+else
+  curl -sS -o /dev/null -w "status=%{http_code} (expected 401 without BOOKINGS_FEED_TOKEN)\n" \
+    "${BASE_URL}/bookings/feed.csv"
+fi
 echo
 
 echo "4) CSV feed header preview"
-curl -s "${BASE_URL}/bookings/feed.csv" | sed -n '1,2p'
+if [[ -n "${FEED_TOKEN}" ]]; then
+  curl -sS -H "Authorization: Bearer ${FEED_TOKEN}" "${BASE_URL}/bookings/feed.csv" | sed -n '1,2p'
+else
+  echo "Skipped. Export BOOKINGS_FEED_TOKEN to inspect the protected feed."
+fi
 echo
-
-echo "If you enabled BOOKINGS_FEED_TOKEN, run:"
-echo "  ${BASE_URL}/bookings/feed.csv?token=YOUR_TOKEN"

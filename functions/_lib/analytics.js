@@ -11,7 +11,7 @@ function getInMemoryStore() {
 }
 
 function getLockStore() {
-  if (!globalThis.__millersCafeAnalyticsLocks || typeof globalThis.__millersCafeAnalyticsLocks !== "object") {
+  if (!(globalThis.__millersCafeAnalyticsLocks instanceof Map)) {
     globalThis.__millersCafeAnalyticsLocks = new Map();
   }
   return globalThis.__millersCafeAnalyticsLocks;
@@ -98,19 +98,12 @@ function incrementMapCount(mapObject, key, amount = 1) {
 async function withAnalyticsLock(lockKey, work) {
   const locks = getLockStore();
   const previous = locks.get(lockKey) || Promise.resolve();
-
-  let release;
-  const current = new Promise((resolve) => {
-    release = resolve;
-  });
-
-  locks.set(lockKey, previous.catch(() => {}).then(() => current));
+  const current = previous.catch(() => {}).then(work);
+  locks.set(lockKey, current);
 
   try {
-    await previous.catch(() => {});
-    return await work();
+    return await current;
   } finally {
-    release();
     if (locks.get(lockKey) === current) {
       locks.delete(lockKey);
     }

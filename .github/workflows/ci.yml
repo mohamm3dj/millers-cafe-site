@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check JavaScript syntax
+        run: npm run check:js
+
+      - name: Build public Pages assets
+        run: npm run build
+
+      - name: Validate site and deploy boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for required in \
+            dist/index.html \
+            dist/404.html \
+            dist/offline.html \
+            dist/sw.js \
+            dist/robots.txt \
+            dist/sitemap.xml \
+            dist/_headers \
+            dist/.well-known/security.txt; do
+            test -f "$required"
+          done
+
+          for excluded in \
+            dist/functions \
+            dist/tests \
+            dist/.dev.vars.example \
+            dist/README.md \
+            dist/SECURITY.md \
+            dist/DEPLOY-BOOKINGS-CLOUDFLARE.md \
+            dist/package.json \
+            dist/wrangler.toml \
+            dist/bookings/SETUP.md; do
+            test ! -e "$excluded"
+          done
+
+          if find dist -type f \( \
+            -name '*.md' -o \
+            -name '*.test.js' -o \
+            -name '.dev.vars*' \
+          \) -print -quit | grep -q .; then
+            echo "Non-public source material entered dist" >&2
+            exit 1
+          fi
+
+          while IFS= read -r page; do
+            grep -Eqi '<title>[^<]+</title>' "$page"
+          done < <(find dist -type f -name '*.html' -print)
+
+          node -e "JSON.parse(require('fs').readFileSync('dist/manifest.webmanifest', 'utf8'))"
+          grep -Fq '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' dist/sitemap.xml
+          grep -Fq 'Sitemap: https://millers.cafe/sitemap.xml' dist/robots.txt
+          grep -Fq '"/offline.html"' dist/sw.js
+          grep -Fq 'event.waitUntil(refresh.catch' dist/sw.js
+          grep -Fq '{ ignoreSearch: true }' dist/sw.js
+
+          if grep -Eq '^Disallow: /(account|admin|collection|delivery)/' dist/robots.txt; then
+            echo "robots.txt blocks a page that relies on an HTML noindex directive" >&2
+            exit 1
+          fi
+
+          if grep -Eq '<loc>https://millers\.cafe/(account|admin|collection|delivery|404|offline)' dist/sitemap.xml; then
+            echo "A noindex or utility page entered sitemap.xml" >&2
+            exit 1
+          fi
+
+          if grep -Eq 'feed\.(csv|json)\?token=' DEPLOY-BOOKINGS-CLOUDFLARE.md bookings/SETUP.md; then
+            echo "Deployment documentation contains a query-token feed URL" >&2
+            exit 1
+          fi
+
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+
+          const root = path.resolve("dist");
+          const htmlFiles = [];
+          const missing = [];
+
+          function walk(directory) {
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              const target = path.join(directory, entry.name);
+              if (entry.isDirectory()) walk(target);
+              else if (entry.name.endsWith(".html")) htmlFiles.push(target);
+            }
+          }
+
+          walk(root);
+          for (const file of htmlFiles) {
+            const source = fs.readFileSync(file, "utf8");
+            for (const match of source.matchAll(/(?:href|src)="([^"]+)"/g)) {
+              const value = match[1];
+              if (/^(?:https?:|mailto:|tel:|data:|#)/.test(value)) continue;
+
+              const clean = value.split(/[?#]/, 1)[0];
+              if (!clean) continue;
+
+              let target = clean.startsWith("/")
+                ? path.join(root, clean)
+                : path.resolve(path.dirname(file), clean);
+              if (clean.endsWith("/")) target = path.join(target, "index.html");
+              if (!fs.existsSync(target)) {
+                missing.push(`${path.relative(root, file)} -> ${value}`);
+              }
+            }
+          }
+
+          if (missing.length) {
+            console.error(missing.join("\n"));
+            process.exit(1);
+          }
+          NODE

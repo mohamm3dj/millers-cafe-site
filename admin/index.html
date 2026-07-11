@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +10,7 @@
   <meta name="description" content="Admin controls for Millers Café site configuration, menu catalog and analytics.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/admin/">
-  <link rel="stylesheet" href="../styles.css?v=20260429c">
+  <link rel="stylesheet" href="../styles.css?v=20260710f">
 </head>
 <body>
   <main class="adminPage">
@@ -40,7 +40,7 @@
         <form id="adminAuthForm" class="accountForm" novalidate>
           <label class="bookingField bookingFieldWide">
             <span class="bookingLabel">Admin token</span>
-            <input id="adminToken" type="password" maxlength="200" autocomplete="off" placeholder="Paste ADMIN_API_TOKENS value or fallback admin token">
+            <input id="adminToken" type="password" maxlength="200" autocomplete="off" spellcheck="false" required placeholder="Paste an admin API token">
           </label>
           <div class="accountActionRow">
             <button id="adminLoadBtn" class="bookingSubmitBtn accountPrimaryBtn" type="submit">Load admin data</button>
@@ -240,10 +240,15 @@
       </article>
     </section>
 
-    <div class="footer">
+    <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
-    </div>
+      <nav class="footerPolicies" aria-label="Policies">
+        <a href="../privacy/">Privacy</a>
+        <a href="../terms/">Terms</a>
+        <a href="../refunds/">Cancellations &amp; refunds</a>
+      </nav>
+    </footer>
   </main>
-  <script type="module" src="./admin.js?v=20260429c"></script>
+  <script type="module" src="./admin.js?v=20260710b"></script>
 </body>
 </html>

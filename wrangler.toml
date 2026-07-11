@@ -1,8 +1,9 @@
 name = "millers-cafe-site"
 compatibility_date = "2026-02-17"
-pages_build_output_dir = "."
+pages_build_output_dir = "dist"
 
-# Static site at repository root, with Pages Functions in /functions.
+# `npm run build` creates an allowlisted static site in /dist.
+# Pages Functions remain in the repository-level /functions directory.
 
 [[kv_namespaces]]
 binding = "BOOKINGS_KV"
@@ -10,7 +11,45 @@ id = "03f49e1de7d4404192bfe6856f518157"
 preview_id = "2777eb98b74e45e3a6edf8c953836da2"
 
 [vars]
+SITE_ORIGIN = "https://millers.cafe"
+MAINTENANCE_MODE = "true"
+ONLINE_ORDERING_ENABLED = "false"
+TURNSTILE_SITE_KEY = "0x4AAAAAADzlry50yNTZeuO9"
+REQUIRE_TURNSTILE = "true"
+REQUIRE_DISTRIBUTED_RATE_LIMIT = "true"
+TURNSTILE_TIMEOUT_MS = "8000"
 BOOKINGS_NOTIFICATION_EMAIL = "help@millers.cafe"
 BOOKINGS_REPLY_TO = "help@millers.cafe"
 BOOKINGS_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+ORDERS_NOTIFICATION_EMAIL = "help@millers.cafe"
+ORDERS_REPLY_TO = "help@millers.cafe"
+ORDERS_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+ACCOUNT_REPLY_TO = "help@millers.cafe"
+ACCOUNT_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+EMAIL_ACTION_DEFAULT_ETA_MINUTES = "35"
+ORDER_DELIVERY_FEE_GBP = "2.00"
+
+# Preview deployments use an isolated data store and a stable branch alias.
+[[env.preview.kv_namespaces]]
+binding = "BOOKINGS_KV"
+id = "2777eb98b74e45e3a6edf8c953836da2"
+
+# `vars` are non-inheritable, so the complete safe Preview set is repeated.
+[env.preview.vars]
+SITE_ORIGIN = "https://codex-full-site-remediation.millers-cafe-site.pages.dev"
+ONLINE_ORDERING_ENABLED = "true"
+MAINTENANCE_MODE = "false"
+TURNSTILE_SITE_KEY = "0x4AAAAAADzlry50yNTZeuO9"
+REQUIRE_TURNSTILE = "true"
+REQUIRE_DISTRIBUTED_RATE_LIMIT = "true"
+TURNSTILE_TIMEOUT_MS = "8000"
+BOOKINGS_NOTIFICATION_EMAIL = "help@millers.cafe"
+BOOKINGS_REPLY_TO = "help@millers.cafe"
+BOOKINGS_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+ORDERS_NOTIFICATION_EMAIL = "help@millers.cafe"
+ORDERS_REPLY_TO = "help@millers.cafe"
+ORDERS_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+ACCOUNT_REPLY_TO = "help@millers.cafe"
+ACCOUNT_EMAIL_FROM = "Millers Cafe <bookings@millers.cafe>"
+EMAIL_ACTION_DEFAULT_ETA_MINUTES = "35"
 ORDER_DELIVERY_FEE_GBP = "2.00"
