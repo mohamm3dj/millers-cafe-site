@@ -139,8 +139,10 @@ const stickyCheckoutBtn = document.getElementById("stickyCheckoutBtn");
 const turnstileContainer = document.getElementById("orderTurnstile");
 const orderStepBadge1 = document.getElementById("orderStepBadge1");
 const orderStepBadge2 = document.getElementById("orderStepBadge2");
+const orderStepBadge3 = document.getElementById("orderStepBadge3");
 const orderCheckoutFields = [...document.querySelectorAll(".orderCheckoutField")];
 const orderItemsField = document.querySelector(".orderItemsField");
+const orderCheckoutSummaryList = document.getElementById("orderCheckoutSummaryList");
 const orderReviewRow = document.getElementById("orderReviewRow");
 const orderReviewText = document.getElementById("orderReviewText");
 const orderEditItemsBtn = document.getElementById("orderEditItemsBtn");
@@ -199,7 +201,6 @@ function checkoutIdempotencyKey(payload, cartPayload) {
   }
   return checkoutAttemptKey;
 }
-let restoredBasketOpen = false;
 let restoredDraftHadCart = false;
 let checkoutFinalizeTimer = null;
 let orderTurnstileToken = "";
@@ -691,6 +692,31 @@ function ensureInlineErrorElement(input) {
   return errorEl;
 }
 
+function visibleValidationProxy(input) {
+  if (input === dateSelect) return orderDateToggle;
+  if (input === timeSelect) return orderSlotCards;
+  return input;
+}
+
+function mirrorInlineErrorToVisibleProxy(input, errorEl, hasError) {
+  const proxy = visibleValidationProxy(input);
+  if (!proxy || proxy === input) return;
+
+  if (proxy === orderSlotCards && !proxy.hasAttribute("tabindex")) {
+    proxy.setAttribute("tabindex", "-1");
+  }
+
+  proxy.setAttribute("aria-invalid", hasError ? "true" : "false");
+  if (!("baseValidationDescribedby" in proxy.dataset)) {
+    proxy.dataset.baseValidationDescribedby = String(proxy.getAttribute("aria-describedby") || "").trim();
+  }
+  const describedBy = [proxy.dataset.baseValidationDescribedby, hasError ? errorEl?.id : ""]
+    .filter(Boolean)
+    .join(" ");
+  if (describedBy) proxy.setAttribute("aria-describedby", describedBy);
+  else proxy.removeAttribute("aria-describedby");
+}
+
 function setInlineError(input, message) {
   if (!input) return false;
   const field = input.closest(".bookingField");
@@ -711,6 +737,7 @@ function setInlineError(input, message) {
     errorEl.hidden = !hasError;
     errorEl.textContent = hasError ? message : "";
   }
+  mirrorInlineErrorToVisibleProxy(input, errorEl, hasError);
   return !hasError;
 }
 
@@ -802,6 +829,27 @@ function runCheckoutFieldValidation() {
   return checks.every(Boolean);
 }
 
+function focusFirstInvalidCheckoutField() {
+  const field = form?.querySelector(".bookingField.hasFieldError");
+  if (!(field instanceof HTMLElement)) return;
+
+  let focusTarget = field.querySelector('[aria-invalid="true"]');
+  if (dateSelect && field.contains(dateSelect)) {
+    focusTarget = orderDateToggle;
+  } else if (timeSelect && field.contains(timeSelect)) {
+    focusTarget = orderSlotCards;
+  } else {
+    focusTarget = visibleValidationProxy(focusTarget);
+  }
+
+  field.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
+  window.requestAnimationFrame(() => {
+    if (focusTarget instanceof HTMLElement) {
+      focusTarget.focus({ preventScroll: true });
+    }
+  });
+}
+
 function clearInlineValidation() {
   [
     nameInput,
@@ -836,19 +884,53 @@ function updateOrderReviewRow() {
 }
 
 function updateOrderFlowStepLabels() {
-  const stepOneText = "Step 1 of 2 · Select dishes";
-  const stepTwoText = "Step 2 of 2 · Confirm order";
+  const paymentStageActive = currentOrderStep === 2 && isSubmitting;
+  const stages = [
+    {
+      element: orderStepBadge1,
+      number: "1",
+      text: "Menu",
+      label: "Step 1 of 3: Browse menu",
+      active: currentOrderStep === 1,
+      complete: currentOrderStep === 2
+    },
+    {
+      element: orderStepBadge2,
+      number: "2",
+      text: "Details",
+      label: "Step 2 of 3: Your details",
+      active: currentOrderStep === 2 && !paymentStageActive,
+      complete: paymentStageActive,
+      locked: cartItems.length === 0 && currentOrderStep === 1
+    },
+    {
+      element: orderStepBadge3,
+      number: "3",
+      text: "Payment",
+      label: "Step 3 of 3: Secure payment",
+      active: paymentStageActive,
+      complete: false,
+      locked: !paymentStageActive
+    }
+  ];
 
-  if (orderStepBadge1) {
-    orderStepBadge1.textContent = stepOneText;
-    orderStepBadge1.setAttribute("aria-current", currentOrderStep === 1 ? "step" : "false");
-  }
-
-  if (orderStepBadge2) {
-    orderStepBadge2.textContent = stepTwoText;
-    orderStepBadge2.setAttribute("aria-current", currentOrderStep === 2 ? "step" : "false");
-    orderStepBadge2.classList.toggle("isLocked", cartItems.length === 0 && currentOrderStep === 1);
-  }
+  stages.forEach((stage) => {
+    if (!stage.element) return;
+    const number = document.createElement("span");
+    number.className = "orderFlowStepNumber";
+    number.textContent = stage.number;
+    number.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.className = "orderFlowStepLabel";
+    label.textContent = stage.text;
+    stage.element.replaceChildren(number, label);
+    stage.element.setAttribute("aria-label", stage.label);
+    stage.element.classList.toggle("isActive", Boolean(stage.active));
+    stage.element.classList.toggle("isComplete", Boolean(stage.complete));
+    stage.element.classList.toggle("isLocked", Boolean(stage.locked));
+    if (stage.active) stage.element.setAttribute("aria-current", "step");
+    else stage.element.removeAttribute("aria-current");
+  });
 }
 
 function setOrderStep(step, options = {}) {
@@ -860,6 +942,8 @@ function setOrderStep(step, options = {}) {
   }
 
   currentOrderStep = nextStep;
+  form?.classList.toggle("isOrderMenuStep", currentOrderStep === 1);
+  form?.classList.toggle("isOrderCheckoutStep", currentOrderStep === 2);
   orderCheckoutFields.forEach((el) => {
     el.hidden = currentOrderStep !== 2;
   });
@@ -868,8 +952,6 @@ function setOrderStep(step, options = {}) {
     orderItemsField.hidden = currentOrderStep !== 1;
   }
 
-  orderStepBadge1?.classList.toggle("isActive", currentOrderStep === 1);
-  orderStepBadge2?.classList.toggle("isActive", currentOrderStep === 2);
   updateOrderFlowStepLabels();
   const shouldMoveFocus = options.moveFocus !== false && !options.silent;
 
@@ -912,6 +994,7 @@ function setOrderStep(step, options = {}) {
       });
     }
   } else if (!options.silent) {
+    setBasketOpen(isDesktopBasketLayout());
     const orderType = String(orderTypeField?.value || "collection").toLowerCase();
     const label = orderType === "delivery" ? "Delivery" : "Collection";
     setNotice(`${label} hours: ${orderOpenDaySummary()}, ${orderHoursSummary()}. ${label} slots are in ${orderIntervalSummary()}.`, false);
@@ -1179,6 +1262,14 @@ function updateStickyCheckoutBar() {
   const totals = cartPricingTotals();
   const hasItems = totals.totalQuantity > 0;
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
+  const isMobileCheckout = isMobileOrderMenuLayout() && currentOrderStep === 2;
+  const isDesktopMenu = isDesktopBasketLayout() && currentOrderStep === 1;
+
+  const stickyHost = isMobileCheckout ? form?.parentElement : (basketColumn || orderHub);
+  if (stickyHost && stickyCheckoutBar.parentElement !== stickyHost) {
+    stickyHost.appendChild(stickyCheckoutBar);
+  }
+  stickyCheckoutBar.classList.toggle("isCheckoutStep", isMobileCheckout);
 
   const selectedDate = String(dateSelect?.value || "");
   const selectedTime = String(timeSelect?.value || "");
@@ -1188,23 +1279,50 @@ function updateStickyCheckoutBar() {
   if (stickyCheckoutDateTime) {
     stickyCheckoutDateTime.textContent = isMobileMenu
       ? `${totals.totalQuantity} item${totals.totalQuantity === 1 ? "" : "s"} in cart`
-      : `${dateLabel} · ${timeLabel}`;
+      : (isMobileCheckout ? "Secure Stripe checkout" : `${dateLabel} · ${timeLabel}`);
   }
   if (stickyCheckoutOrder) {
     const adjustmentText = currentOrderType() === "delivery" && totals.deliveryFee > 0
       ? ` total · includes ${formatGBP(totals.deliveryFee)} delivery`
       : (totals.collectionDiscount > 0 ? " total · after 10% off" : " total");
     stickyCheckoutOrder.textContent = isMobileMenu
-      ? `${formatGBP(totals.total)}${adjustmentText}`
-      : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`;
+      ? `${formatGBP(totals.total)} total`
+      : (isMobileCheckout
+        ? `${formatGBP(totals.total)} due`
+        : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`);
   }
   if (stickyCheckoutBtn) {
-    stickyCheckoutBtn.textContent = onlineOrderingEnabled
-      ? (isMobileMenu ? "Cart" : "Continue")
-      : "Ordering paused";
+    const totalLabel = formatGBP(totals.total);
+    stickyCheckoutBtn.textContent = !onlineOrderingEnabled
+      ? "Ordering paused"
+      : (isMobileMenu
+        ? (hasItems ? "View basket" : "Add dishes")
+        : (isMobileCheckout
+          ? "Pay securely"
+          : (isDesktopMenu
+            ? (hasItems ? `Checkout details · ${totalLabel}` : "Add dishes to continue")
+            : "Continue")));
+    stickyCheckoutBtn.setAttribute("aria-label", !onlineOrderingEnabled
+      ? "Online ordering is paused"
+      : (isMobileMenu
+        ? (hasItems ? `View basket, total ${totalLabel}` : "Add dishes to continue")
+        : (isMobileCheckout
+          ? `Continue to secure payment, total ${totalLabel}`
+          : (isDesktopMenu
+            ? (hasItems ? `Continue to checkout details, total ${totalLabel}` : "Add dishes to continue")
+            : "Continue"))));
     stickyCheckoutBtn.disabled = !onlineOrderingEnabled || (isMobileMenu
-      ? isSubmitting
-      : !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting));
+      ? isSubmitting || !hasItems
+      : (isMobileCheckout
+        ? isSubmitting || !hasItems || !hasSelectableTime
+        : !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting)));
+    if (isMobileMenu) {
+      stickyCheckoutBtn.setAttribute("aria-controls", "orderBasketPanel");
+      stickyCheckoutBtn.setAttribute("aria-expanded", basketPanel?.hidden ? "false" : "true");
+    } else {
+      stickyCheckoutBtn.removeAttribute("aria-controls");
+      stickyCheckoutBtn.removeAttribute("aria-expanded");
+    }
   }
   if (basketCheckoutBtn) {
     basketCheckoutBtn.disabled = !onlineOrderingEnabled || !canAdvanceToCheckoutDetails(totals.totalQuantity, isSubmitting);
@@ -1215,7 +1333,8 @@ function updateStickyCheckoutBar() {
       : (hasSelectableTime ? "Checkout details" : "Choose another date"));
   }
 
-  const showBar = currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting);
+  const showBar = (currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting))
+    || (isMobileCheckout && hasItems);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
   queueActiveCategoryPillSync();
 }
@@ -1748,6 +1867,7 @@ function setSubmitting(submitting) {
   if (!submitBtn) return;
   isSubmitting = Boolean(submitting);
   updateSubmitButtonState();
+  updateOrderFlowStepLabels();
 }
 
 function updateSubmitButtonState() {
@@ -2102,6 +2222,17 @@ function createMenuActionButton(label, actionType, entry, secondary = false, sin
   button.dataset.itemId = entry.item.id;
   button.dataset.baseLabel = label;
 
+  if (actionType === "add") {
+    const icon = document.createElement("img");
+    icon.className = "orderMenuAddIcon";
+    icon.src = "../assets/icon-plus.svg";
+    icon.alt = "";
+    icon.width = 17;
+    icon.height = 17;
+    icon.setAttribute("aria-hidden", "true");
+    button.appendChild(icon);
+  }
+
   const text = document.createElement("span");
   text.className = "orderMenuAddText";
   text.textContent = label;
@@ -2344,6 +2475,7 @@ function showModifierError(message) {
 }
 
 function hideModifierPanel(options = {}) {
+  document.body.classList.remove("isModifierOpen");
   if (!modifierPanel) return;
 
   const restoreTarget = activeDraftAnchor?.querySelector("button.orderMenuActionBtn")
@@ -2373,13 +2505,51 @@ function hideModifierPanel(options = {}) {
 function positionModifierPanel() {
   if (!modifierPanel) return;
 
-  if (activeDraftAnchor && activeDraftAnchor.parentElement) {
-    activeDraftAnchor.insertAdjacentElement("afterend", modifierPanel);
+  if (modifierPanel.parentElement !== document.body) {
+    document.body.appendChild(modifierPanel);
+  }
+}
+
+function modifierFocusableControls() {
+  if (!modifierPanel || modifierPanel.hidden) return [];
+  const selector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(",");
+  return [...modifierPanel.querySelectorAll(selector)].filter((element) => (
+    element instanceof HTMLElement && !element.closest("[hidden]")
+  ));
+}
+
+function handleModifierPanelKeydown(event) {
+  if (!modifierPanel || modifierPanel.hidden) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    hideModifierPanel({ restoreFocus: true });
     return;
   }
 
-  if (orderHub) {
-    orderHub.appendChild(modifierPanel);
+  if (event.key !== "Tab") return;
+  const controls = modifierFocusableControls();
+  if (controls.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
@@ -2493,7 +2663,7 @@ function startItemDraft(item, quantity = 1, anchorCard = null) {
 
   const groups = item.modifierGroups || [];
   if (groups.length === 0) {
-    addItemToCart(item, [], activeDraft.quantity, true);
+    addItemToCart(item, [], activeDraft.quantity, false);
     activeDraft = null;
     activeDraftAnchor = null;
     return;
@@ -2513,6 +2683,7 @@ function startItemDraft(item, quantity = 1, anchorCard = null) {
   positionModifierPanel();
   if (modifierPanel) {
     modifierPanel.hidden = false;
+    document.body.classList.add("isModifierOpen");
     window.requestAnimationFrame(() => {
       const firstControl = modifierPanel.querySelector("input, select, textarea, button:not([disabled])");
       if (firstControl instanceof HTMLElement) firstControl.focus({ preventScroll: true });
@@ -2710,9 +2881,7 @@ function persistOrderDraft() {
     nextCartId,
     selectedCategory,
     searchQuery,
-    basketOpen: currentOrderStep === 1 &&
-      cartItems.length > 0 &&
-      basketToggleBtn?.getAttribute("aria-expanded") === "true",
+    basketOpen: false,
     schedules: {
       ...persistedOrderDraft.schedules,
       [orderType]: {
@@ -2734,7 +2903,6 @@ function restoreOrderDraft() {
   nextCartId = persistedOrderDraft.nextCartId;
   selectedCategory = persistedOrderDraft.selectedCategory;
   searchQuery = persistedOrderDraft.searchQuery;
-  restoredBasketOpen = persistedOrderDraft.basketOpen;
   restoredDraftHadCart = restoredDraftMeta.sourceLineCount > 0;
 
   if (menuSearchInput) {
@@ -2766,7 +2934,6 @@ function applyRestoredScheduleDraft() {
 }
 
 function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
-  const wasEmpty = cartItems.length === 0;
   const cleanQty = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(quantity || 1)));
   const signature = cartLineSignature(item.id || item.name, modifierSelections);
 
@@ -2796,7 +2963,9 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
   }
 
   renderCart();
-  if (openBasket || wasEmpty) {
+  const totals = cartPricingTotals();
+  announceCartStatus(`${item.name} added to basket. ${totals.totalQuantity} ${totals.totalQuantity === 1 ? "item" : "items"}, ${formatGBP(totals.total)} total.`);
+  if (openBasket) {
     setBasketOpen(true, { focusPanel: true });
   }
 }
@@ -2808,6 +2977,76 @@ function modifierSummary(selection) {
 
   const sign = adjustment > 0 ? "+" : "-";
   return `${base} (${sign}${formatGBP(Math.abs(adjustment))})`;
+}
+
+function renderCheckoutSummaryList(totals = cartPricingTotals()) {
+  if (!orderCheckoutSummaryList) return;
+  orderCheckoutSummaryList.textContent = "";
+
+  if (cartItems.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "orderCheckoutSummaryEmpty";
+    empty.textContent = "Your selected dishes will appear here.";
+    orderCheckoutSummaryList.appendChild(empty);
+    return;
+  }
+
+  cartItems.forEach((item) => {
+    const row = document.createElement("li");
+    row.className = "orderCheckoutSummaryItem";
+
+    const details = document.createElement("div");
+    details.className = "orderCheckoutSummaryItemDetails";
+
+    const name = document.createElement("strong");
+    name.className = "orderCheckoutSummaryItemName";
+    name.textContent = `${item.quantity} × ${item.itemName}`;
+    details.appendChild(name);
+
+    const modifierText = (item.modifierSelections || [])
+      .map(modifierSummary)
+      .filter(Boolean)
+      .join(" · ");
+    if (modifierText) {
+      const modifiers = document.createElement("span");
+      modifiers.className = "orderCheckoutSummaryItemModifiers";
+      modifiers.textContent = modifierText;
+      details.appendChild(modifiers);
+    }
+
+    const price = document.createElement("strong");
+    price.className = "orderCheckoutSummaryItemPrice";
+    price.textContent = formatGBP(item.linePrice);
+
+    row.appendChild(details);
+    row.appendChild(price);
+    orderCheckoutSummaryList.appendChild(row);
+  });
+
+  const pricing = document.createElement("li");
+  pricing.className = "orderCheckoutSummaryPricing";
+
+  const appendPriceRow = (label, value, className = "") => {
+    const row = document.createElement("div");
+    row.className = `orderCheckoutSummaryPriceRow${className ? ` ${className}` : ""}`;
+    const labelEl = document.createElement("span");
+    labelEl.textContent = label;
+    const valueEl = document.createElement("strong");
+    valueEl.textContent = value;
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    pricing.appendChild(row);
+  };
+
+  appendPriceRow("Subtotal", formatGBP(totals.subtotal));
+  if (totals.collectionDiscount > 0) {
+    appendPriceRow("Collection discount (10%)", `−${formatGBP(totals.collectionDiscount)}`, "isDiscount");
+  }
+  if (currentOrderType() === "delivery" && totals.deliveryFee > 0) {
+    appendPriceRow("Delivery fee", formatGBP(totals.deliveryFee));
+  }
+  appendPriceRow("Total due at Stripe", formatGBP(totals.total), "isTotal");
+  orderCheckoutSummaryList.appendChild(pricing);
 }
 
 function lineSummary(item) {
@@ -2868,8 +3107,24 @@ function setBasketOpen(open, options = {}) {
   const nextState = canOpen && (forceOpen || Boolean(open));
   basketPanel.hidden = !nextState;
   basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+  basketColumn?.classList.toggle("isBasketOpen", nextState);
+  const mobileDialog = isMobileOrderMenuLayout() && currentOrderStep === 1 && nextState;
+  if (mobileDialog) {
+    basketPanel.setAttribute("role", "dialog");
+    basketPanel.setAttribute("aria-modal", "true");
+  } else {
+    basketPanel.setAttribute("role", "region");
+    basketPanel.removeAttribute("aria-modal");
+  }
+  if (stickyCheckoutBtn && isMobileOrderMenuLayout() && currentOrderStep === 1) {
+    stickyCheckoutBtn.setAttribute("aria-controls", "orderBasketPanel");
+    stickyCheckoutBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
+  }
   if (nextState && options.focusPanel && !forceOpen) {
-    window.requestAnimationFrame(() => basketCloseBtn?.focus({ preventScroll: true }));
+    window.requestAnimationFrame(() => {
+      basketPanel.scrollTop = 0;
+      basketCloseBtn?.focus({ preventScroll: true });
+    });
   } else if (!nextState && options.restoreFocus) {
     window.requestAnimationFrame(() => {
       const returnTarget = isMobileOrderMenuLayout() ? stickyCheckoutBtn : basketToggleBtn;
@@ -2877,6 +3132,48 @@ function setBasketOpen(open, options = {}) {
     });
   }
   persistOrderDraft();
+}
+
+function basketFocusableControls() {
+  if (!basketPanel || basketPanel.hidden || !isMobileOrderMenuLayout()) return [];
+  const selector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(",");
+  return [...basketPanel.querySelectorAll(selector)].filter((element) => (
+    element instanceof HTMLElement && !element.closest("[hidden]")
+  ));
+}
+
+function handleBasketPanelKeydown(event) {
+  if (!basketPanel || basketPanel.hidden || !isMobileOrderMenuLayout()) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setBasketOpen(false, { restoreFocus: true });
+    return;
+  }
+
+  if (event.key !== "Tab") return;
+  const controls = basketFocusableControls();
+  if (controls.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function updateBasketSummary(totalPrice, totalQuantity) {
@@ -3118,6 +3415,7 @@ function renderCart() {
 
   const totals = cartPricingTotals();
   const hasItems = cartItems.length > 0;
+  renderCheckoutSummaryList(totals);
 
   cartEmpty.hidden = hasItems;
   cartList.hidden = !hasItems;
@@ -3290,6 +3588,7 @@ async function handleSubmit(event) {
 
   if (!runCheckoutFieldValidation()) {
     showError("Please correct the highlighted fields.");
+    focusFirstInvalidCheckoutField();
     return;
   }
 
@@ -3390,13 +3689,6 @@ function initializeMenuInteractions() {
     return false;
   }
 
-  if (stickyCheckoutBar) {
-    const checkoutHost = basketColumn || orderHub;
-    if (checkoutHost && stickyCheckoutBar.parentElement !== checkoutHost) {
-      checkoutHost.appendChild(stickyCheckoutBar);
-    }
-  }
-
   if (!selectedCategory) selectedCategory = defaultCategoryName();
   if (menuSearchInput) {
     menuSearchInput.value = searchQuery;
@@ -3404,9 +3696,7 @@ function initializeMenuInteractions() {
   renderCategoryChips();
   renderMenuItems();
   renderCart();
-  if (restoredBasketOpen && cartItems.length > 0) {
-    setBasketOpen(true);
-  }
+  setBasketOpen(isDesktopBasketLayout());
 
   menuCategoryChips.addEventListener("click", (event) => {
     const target = event.target;
@@ -3432,6 +3722,16 @@ function initializeMenuInteractions() {
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
     queueActiveCategoryPillSync();
+    persistOrderDraft();
+  });
+
+  menuSearchInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    searchQuery = normalizeText(menuSearchInput.value || "");
+    renderMenuItems();
+    queueActiveCategoryPillSync();
+    menuSearchInput.focus();
     persistOrderDraft();
   });
 
@@ -3484,7 +3784,7 @@ function initializeMenuInteractions() {
     const card = button.closest(".orderMenuCard");
 
     if (actionType === "add") {
-      addItemToCart(item, [], 1, true);
+      addItemToCart(item, [], 1, false);
       return;
     }
 
@@ -3503,11 +3803,7 @@ function initializeMenuInteractions() {
     setBasketOpen(false, { restoreFocus: true });
   });
 
-  basketPanel?.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || isDesktopBasketLayout()) return;
-    event.preventDefault();
-    setBasketOpen(false, { restoreFocus: true });
-  });
+  basketPanel?.addEventListener("keydown", handleBasketPanelKeydown);
 
   basketCheckoutBtn?.addEventListener("click", () => {
     if (!form || basketCheckoutBtn.disabled) return;
@@ -3539,6 +3835,12 @@ function initializeMenuInteractions() {
 
   modifierCancelBtn?.addEventListener("click", () => hideModifierPanel({ restoreFocus: true }));
 
+  modifierPanel?.addEventListener("click", (event) => {
+    if (event.target !== modifierPanel) return;
+    hideModifierPanel({ restoreFocus: true });
+  });
+  modifierPanel?.addEventListener("keydown", handleModifierPanelKeydown);
+
   modifierConfirmBtn?.addEventListener("click", () => {
     clearModifierError();
     const result = selectedModifiersFromDraft();
@@ -3548,7 +3850,7 @@ function initializeMenuInteractions() {
     }
 
     if (!activeDraft) return;
-    addItemToCart(activeDraft.item, result.selections, activeDraft.quantity, true);
+    addItemToCart(activeDraft.item, result.selections, activeDraft.quantity, false);
     hideModifierPanel({ restoreFocus: true });
   });
 
@@ -3684,19 +3986,36 @@ async function initialize() {
   orderEditItemsBtn?.addEventListener("click", () => setOrderStep(1));
   orderBackToItemsBtn?.addEventListener("click", () => setOrderStep(1));
   stickyCheckoutBtn?.addEventListener("click", () => {
+    if (!form || stickyCheckoutBtn.disabled) return;
     if (isMobileOrderMenuLayout() && currentOrderStep === 1) {
       setBasketOpen(true, { focusPanel: true });
       return;
     }
-    if (!form || stickyCheckoutBtn.disabled) return;
+    if (isMobileOrderMenuLayout() && currentOrderStep === 2) {
+      if (typeof form.requestSubmit === "function") form.requestSubmit();
+      else submitBtn?.click();
+      return;
+    }
     setOrderStep(2);
   });
   DESKTOP_BASKET_MEDIA?.addEventListener?.("change", () => {
-    const isOpen = basketToggleBtn?.getAttribute("aria-expanded") === "true";
+    const focusWasInBasket = basketColumn?.contains(document.activeElement);
+    const focusWasInMenu = menuItemsList?.contains(document.activeElement);
     renderCategoryChips();
     renderMenuItems();
-    setBasketOpen(isOpen || isDesktopBasketLayout());
+    const desktopLayout = isDesktopBasketLayout();
+    setBasketOpen(desktopLayout);
     updateStickyCheckoutBar();
+    window.requestAnimationFrame(() => {
+      if (focusWasInBasket) {
+        const target = desktopLayout
+          ? basketPanel?.querySelector("button.orderCartBtn:not([disabled])")
+          : stickyCheckoutBtn;
+        target?.focus({ preventScroll: true });
+      } else if (focusWasInMenu) {
+        menuSearchInput?.focus({ preventScroll: true });
+      }
+    });
   });
   resultEl?.addEventListener("click", (event) => {
     const target = event.target;

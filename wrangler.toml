@@ -12,8 +12,8 @@ preview_id = "2777eb98b74e45e3a6edf8c953836da2"
 
 [vars]
 SITE_ORIGIN = "https://millers.cafe"
-MAINTENANCE_MODE = "true"
-ONLINE_ORDERING_ENABLED = "false"
+MAINTENANCE_MODE = "false"
+ONLINE_ORDERING_ENABLED = "true"
 TURNSTILE_SITE_KEY = "0x4AAAAAADzlry50yNTZeuO9"
 REQUIRE_TURNSTILE = "true"
 REQUIRE_DISTRIBUTED_RATE_LIMIT = "true"
@@ -36,7 +36,7 @@ id = "2777eb98b74e45e3a6edf8c953836da2"
 
 # `vars` are non-inheritable, so the complete safe Preview set is repeated.
 [env.preview.vars]
-SITE_ORIGIN = "https://codex-full-site-remediation.millers-cafe-site.pages.dev"
+SITE_ORIGIN = "https://codex-order-flow-redesign.millers-cafe-site.pages.dev"
 ONLINE_ORDERING_ENABLED = "true"
 MAINTENANCE_MODE = "false"
 TURNSTILE_SITE_KEY = "0x4AAAAAADzlry50yNTZeuO9"

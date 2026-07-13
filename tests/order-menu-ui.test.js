@@ -168,6 +168,96 @@ test("collection and delivery markup expose a complete price breakdown", () => {
   });
 });
 
+test("collection and delivery expose the polished three-stage checkout structure", () => {
+  ["collection/index.html", "delivery/index.html"].forEach((path) => {
+    const html = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+    assert.match(
+      html,
+      /id="orderStepBadge3"[^>]*>[\s\S]*?class="orderFlowStepNumber">3<\/span>[\s\S]*?class="orderFlowStepLabel">Payment<\/span><\/li>/
+    );
+    assert.match(html, /<aside[^>]*id="orderCheckoutSidebar"[^>]*aria-label="Order review"/);
+    assert.match(html, /<ul[^>]*id="orderCheckoutSummaryList"[^>]*><\/ul>/);
+    assert.match(
+      html,
+      /class="orderMenuLead"[\s\S]*?class="orderMenuLeadEyebrow">Order online<\/p>[\s\S]*?<h2 class="orderMenuLeadTitle">Choose your favourites<span aria-hidden="true">\.<\/span><\/h2>/
+    );
+
+    const modifierTag = html.match(/<div[^>]*id="orderModifierPanel"[^>]*>/)?.[0] || "";
+    assert.match(modifierTag, /role="dialog"/);
+    assert.match(modifierTag, /aria-modal="true"/);
+    assert.match(modifierTag, /aria-labelledby="orderModifierTitle"/);
+  });
+});
+
+test("direct add actions use the real plus icon without replacing their accessible text", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /if \(actionType === "add"\) \{[\s\S]*?icon\.src = "\.\.\/assets\/icon-plus\.svg";/);
+  assert.match(source, /text\.className = "orderMenuAddText";[\s\S]*?text\.textContent = label;/);
+});
+
+test("the streamlined basket flow stays explicit across desktop and mobile", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /const isDesktopMenu = isDesktopBasketLayout\(\) && currentOrderStep === 1;/);
+  assert.match(source, /Checkout details · \$\{totalLabel\}/);
+  assert.match(source, /hasItems \? "View basket" : "Add dishes"/);
+  assert.match(source, /\? isSubmitting \|\| !hasItems/);
+  assert.match(source, /setBasketOpen\(isDesktopBasketLayout\(\)\);/);
+  assert.match(source, /basketOpen: false/);
+  assert.match(source, /basketColumn\?\.classList\.toggle\("isBasketOpen", nextState\);/);
+  assert.match(source, /basketPanel\.scrollTop = 0;/);
+  assert.match(source, /basketPanel\.setAttribute\("role", "dialog"\)/);
+  assert.match(source, /basketPanel\.setAttribute\("aria-modal", "true"\)/);
+  assert.match(source, /stickyCheckoutBtn\.setAttribute\("aria-controls", "orderBasketPanel"\)/);
+  assert.match(source, /function handleBasketPanelKeydown\(event\)/);
+  assert.match(source, /announceCartStatus\(`\$\{item\.name\} added to basket\./);
+  assert.match(source, /const focusWasInBasket = basketColumn\?\.contains\(document\.activeElement\)/);
+  assert.match(source, /addItemToCart\(item, \[\], 1, false\);/);
+  assert.match(source, /addItemToCart\(activeDraft\.item, result\.selections, activeDraft\.quantity, false\);/);
+});
+
+test("pressing Enter in menu search filters instead of submitting checkout", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(
+    source,
+    /menuSearchInput\.addEventListener\("keydown", \(event\) => \{[\s\S]*?if \(event\.key !== "Enter"\) return;[\s\S]*?event\.preventDefault\(\);[\s\S]*?renderMenuItems\(\);/
+  );
+});
+
+test("order pages reuse the homepage Aurora glass design tokens", () => {
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+
+  assert.match(css, /Millers Aurora Glass order workspace/);
+  assert.match(css, /--order-ink: var\(--text\);/);
+  assert.match(css, /--order-jade: var\(--accent\);/);
+  assert.match(css, /--order-mint: var\(--accent-soft\);/);
+  assert.match(css, /radial-gradient\(72% 62% at 7% 4%, rgba\(125, 211, 252, \.20\), transparent 70%\)/);
+  assert.match(css, /linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
+  assert.ok(
+    css.lastIndexOf("Millers Aurora Glass order workspace") > css.lastIndexOf("Editorial Kitchen order workspace"),
+    "the Aurora Glass visual layer must follow the layout foundation"
+  );
+  assert.ok(
+    css.lastIndexOf(".orderBasketColumn.isBasketOpen .stickyCheckoutBar") > css.lastIndexOf("Millers Aurora Glass order workspace"),
+    "the mobile fixed-overlay guard must remain in the active final cascade"
+  );
+  assert.match(css, /left: max\(8px, env\(safe-area-inset-left\)\)/);
+  assert.match(css, /max-height: calc\(100dvh - 60px\)/);
+});
+
+test("checkout validation moves customers to the first invalid field", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /function focusFirstInvalidCheckoutField\s*\(/);
+  assert.match(
+    source,
+    /if \(!runCheckoutFieldValidation\(\)\) \{[\s\S]*?focusFirstInvalidCheckoutField\(\);[\s\S]*?return;/
+  );
+});
+
 test("browser checkout retries reuse an idempotency key for unchanged order details", () => {
   const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
   assert.match(source, /checkoutIdempotencyKey\(payload, cartPayload\)/);
