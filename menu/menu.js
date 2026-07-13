@@ -39,6 +39,12 @@
   const jumpMenuToggle = document.getElementById("jumpMenuToggle");
   const legendSection = document.querySelector(".menuLegend");
   const main = document.querySelector("main");
+  const menuSections = Array.from(document.querySelectorAll(".menuSection.menuGroup"));
+  const contentSections = menuSections.filter((section) => !section.classList.contains("menuLegend"));
+  const searchIndex = new Map();
+
+  let activeJumpChipId = "";
+  let searchTimer = 0;
 
   let prefersReducedMotion = false;
   try {
@@ -103,11 +109,11 @@
   }
 
   function allSections() {
-    return Array.from(document.querySelectorAll(".menuSection.menuGroup"));
+    return menuSections;
   }
 
   function searchableSections() {
-    return allSections().filter((section) => !section.classList.contains("menuLegend"));
+    return contentSections;
   }
 
   function applyToggles() {
@@ -179,21 +185,12 @@
       body.removeAttribute("inert");
     }
 
-    const immediate = Boolean(options.immediate);
-
     if (collapsed) {
-      if (!immediate) {
-        if (body.style.maxHeight === "none" || !body.style.maxHeight) {
-          body.style.maxHeight = `${body.scrollHeight}px`;
-          body.getBoundingClientRect();
-        }
-      }
       body.style.maxHeight = "0px";
       body.style.opacity = "0";
     } else {
       body.style.opacity = "1";
-      body.style.maxHeight = `${body.scrollHeight}px`;
-      if (immediate) body.style.maxHeight = "none";
+      body.style.maxHeight = "none";
     }
   }
 
@@ -223,12 +220,6 @@
       toggle.setAttribute("aria-controls", body.id);
       title.replaceChildren(toggle);
 
-      body.addEventListener("transitionend", (event) => {
-        if (event.propertyName === "max-height" && !section.classList.contains("collapsed")) {
-          body.style.maxHeight = "none";
-        }
-      });
-
       const toggleSection = () => setCollapsed(section, !section.classList.contains("collapsed"));
       toggle.addEventListener("click", toggleSection);
 
@@ -244,12 +235,8 @@
   }
 
   function refreshExpandedSectionsHeight() {
-    searchableSections().forEach((section) => {
-      if (section.classList.contains("collapsed")) return;
-      const body = getAccordionBody(section);
-      if (!body || body.style.maxHeight === "none") return;
-      body.style.maxHeight = `${body.scrollHeight}px`;
-    });
+    // Accordion bodies use content-driven height. Avoid scrollHeight reads that
+    // force layout across the entire menu during resize and search.
   }
 
   function scrollToSection(section) {
@@ -263,6 +250,8 @@
 
   function setActiveJumpChip(id) {
     if (!menuJumpChips) return;
+    if (activeJumpChipId === id) return;
+    activeJumpChipId = id;
     menuJumpChips.querySelectorAll(".jumpChip").forEach((button) => {
       const active = button.dataset.targetSection === id;
       button.classList.toggle("isActive", active);
@@ -272,7 +261,10 @@
 
   function buildJumpChips() {
     if (!menuJumpChips) return;
+    const previousActiveId = activeJumpChipId;
+    activeJumpChipId = "";
     menuJumpChips.innerHTML = "";
+    const fragment = document.createDocumentFragment();
 
     searchableSections()
       .filter((section) => !section.classList.contains("noSearchMatch"))
@@ -293,8 +285,13 @@
           setActiveJumpChip(section.id);
         });
 
-        menuJumpChips.appendChild(chip);
+        fragment.appendChild(chip);
       });
+
+    menuJumpChips.appendChild(fragment);
+    if (previousActiveId && document.getElementById(previousActiveId)?.classList.contains("noSearchMatch") === false) {
+      setActiveJumpChip(previousActiveId);
+    }
   }
 
   function syncActiveJumpChipFromViewport() {
@@ -361,7 +358,7 @@
       sections.forEach((section) => {
         section.classList.remove("noSearchMatch");
         section.querySelectorAll(".menuItem.hiddenBySearch").forEach((item) => item.classList.remove("hiddenBySearch"));
-        setCollapsed(section, true);
+        setCollapsed(section, true, { immediate: true });
       });
       if (menuSearchMeta) menuSearchMeta.textContent = "";
       buildJumpChips();
@@ -373,15 +370,16 @@
     let matchedItems = 0;
 
     sections.forEach((section) => {
-      const headingText = (section.querySelector(".tileTitle")?.textContent || "").toLowerCase();
+      const indexedSection = searchIndex.get(section);
+      const headingText = indexedSection?.headingText || "";
       const sectionTitleMatch = headingText.includes(query);
-      const items = Array.from(section.querySelectorAll(".menuItem"));
+      const items = indexedSection?.items || [];
       let sectionHasMatch = false;
       let localMatches = 0;
 
-      items.forEach((item) => {
-        const itemMatch = sectionTitleMatch || item.textContent.toLowerCase().includes(query);
-        item.classList.toggle("hiddenBySearch", !itemMatch);
+      items.forEach(({ element, text }) => {
+        const itemMatch = sectionTitleMatch || text.includes(query);
+        element.classList.toggle("hiddenBySearch", !itemMatch);
         if (itemMatch) {
           sectionHasMatch = true;
           localMatches += 1;
@@ -392,9 +390,9 @@
       if (sectionHasMatch) {
         matchedSections += 1;
         matchedItems += localMatches;
-        setCollapsed(section, false);
+        setCollapsed(section, false, { immediate: true });
       } else {
-        setCollapsed(section, true);
+        setCollapsed(section, true, { immediate: true });
       }
     });
 
@@ -413,34 +411,20 @@
   }
 
   function setupSectionReveal() {
-    allSections().forEach((section) => section.classList.add("sectionPreReveal"));
-
-    if (prefersReducedMotion || !("IntersectionObserver" in window)) {
-      allSections().forEach((section) => section.classList.add("isVisible"));
-      return;
-    }
-
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add("isVisible");
-        obs.unobserve(entry.target);
-      });
-    }, {
-      threshold: 0.16,
-      rootMargin: "0px 0px -8% 0px"
-    });
-
-    allSections().forEach((section) => observer.observe(section));
+    allSections().forEach((section) => section.classList.add("sectionPreReveal", "isVisible"));
   }
 
   function setupTracking() {
     let ticking = false;
+    let lastSync = 0;
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
-      window.requestAnimationFrame(() => {
-        syncActiveJumpChipFromViewport();
+      window.requestAnimationFrame((timestamp) => {
+        if (timestamp - lastSync >= 120) {
+          syncActiveJumpChipFromViewport();
+          lastSync = timestamp;
+        }
         ticking = false;
       });
     };
@@ -456,12 +440,28 @@
   function setupControls() {
     labelsToggle?.addEventListener("change", applyToggles);
     legendToggle?.addEventListener("change", applyToggles);
-    menuSearchInput?.addEventListener("input", applySearch);
+    menuSearchInput?.addEventListener("input", () => {
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(applySearch, 120);
+    });
     clearMenuSearch?.addEventListener("click", () => {
       if (!menuSearchInput) return;
+      window.clearTimeout(searchTimer);
       menuSearchInput.value = "";
       applySearch();
       menuSearchInput.focus();
+    });
+  }
+
+  function buildSearchIndex() {
+    searchableSections().forEach((section) => {
+      searchIndex.set(section, {
+        headingText: normalizeText(section.dataset.jumpTitle || "").toLowerCase(),
+        items: Array.from(section.querySelectorAll(".menuItem"), (element) => ({
+          element,
+          text: normalizeText(element.textContent).toLowerCase()
+        }))
+      });
     });
   }
 
@@ -469,11 +469,11 @@
     decorateLabels(main || document.body);
     ensureSectionIds();
     setupAccordions();
+    buildSearchIndex();
     setupSectionReveal();
     applyToggles();
     setupJumpMenuToggle();
     applySectionScrollMargins();
-    buildJumpChips();
     applySearch();
     setupTracking();
     setupControls();

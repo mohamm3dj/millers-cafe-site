@@ -5,3 +5,5 @@ _backups/
 .autopush.pid
 .dev.vars
 dist/
+node_modules/
+.pnpm-store/

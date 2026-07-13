@@ -1,6 +1,9 @@
 "use strict";
 
 import { normalizeMenuItemAllergenCodes } from "./menu-catalog.js";
+import { createEmptyOrderDraftState } from "./order-draft-state.js";
+
+export { createEmptyOrderDraftState };
 
 const DEFAULT_MAX_ITEM_QUANTITY = 20;
 const DEFAULT_ORDER_DRAFT_VERSION = 2;
@@ -92,25 +95,6 @@ export function createEmptyOrderDraftMeta() {
     removedItems: 0,
     updatedItems: 0,
     mergedLines: 0
-  };
-}
-
-export function createEmptyOrderDraftState(options = {}) {
-  const orderDraftVersion = Number.isInteger(options.orderDraftVersion)
-    ? options.orderDraftVersion
-    : DEFAULT_ORDER_DRAFT_VERSION;
-
-  return {
-    version: orderDraftVersion,
-    cartItems: [],
-    nextCartId: 1,
-    selectedCategory: "",
-    searchQuery: "",
-    basketOpen: false,
-    schedules: {
-      collection: { date: "", time: "" },
-      delivery: { date: "", time: "" }
-    }
   };
 }
 

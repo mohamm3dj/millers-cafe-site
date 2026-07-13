@@ -105,3 +105,44 @@ An additional crop was not required: the 1440 × 1024 source and implementation 
 - P3: add individual menu photography only after the live catalogue gains approved per-item image assets and mappings.
 
 final result: passed
+
+## Unified public-site QA — 13 July 2026
+
+Reference: the existing Millers Café desktop homepage at 1440 × 900.
+
+Implementation reviewed:
+
+- Menu at 1440 × 900 and 390 × 844.
+- Collection ordering at 1440 × 900 and 390 × 844.
+- Bookings at 1440 × 900.
+- Account at 1440 × 900 and 390 × 844.
+- Privacy at 1440 × 900.
+- Desktop and mobile overflow checks across all public routes.
+
+Comparison evidence:
+
+- `/private/tmp/millers-design-evidence/qa-home-menu.png`
+- `/private/tmp/millers-design-evidence/qa-home-bookings.png`
+- `/private/tmp/millers-design-evidence/qa-home-collection.png`
+- `/private/tmp/millers-design-evidence/qa-home-account.png`
+
+Resolved findings:
+
+- P0: Removed route-level design drift by reusing the homepage navigation, canvas, typography, mint/ink palette, white glass surfaces, radii, and CTA treatment.
+- P1: Fixed the account sign-in and summary overlap at desktop widths.
+- P1: Replaced the dark navy/gold order basket and checkout sidebar with the homepage light Aurora hierarchy.
+- P1: Removed repeated backdrop blur from cards, fields, menu sections, order results, basket content, and modals. Browser inspection reports one active blur surface per desktop page: the shared navigation.
+- P1: Removed horizontal overflow at 1440px and 390px across every public route.
+- P2: Compacted the menu tools and jump navigation, widened form workspaces, normalized headings, and restored 44px minimum targets on small navigation/calendar controls.
+- P2: Added active-route navigation states and skip links to all customer-facing pages.
+
+Functional checks:
+
+- Menu search returns the expected filtered items and sections after the new debounce.
+- Order search returns the expected filtered cards and live status message.
+- No duplicate element IDs were found on any public route.
+- Browser diagnostics reported no JavaScript console errors during the reviewed states.
+- Automated suite: 129/129 passed.
+- JavaScript syntax, build, `git diff --check`, and service-worker cache versioning: passed.
+
+final result: passed

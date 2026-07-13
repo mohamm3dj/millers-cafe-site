@@ -12,7 +12,7 @@ import {
   createEmptyOrderDraftState,
   reconcileOrderDraftState,
   scrollBehaviorForPreference
-} from "./order-draft.js?v=20260710a";
+} from "./order-draft.js?v=20260713a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
@@ -178,6 +178,7 @@ let lastRenderedTimeRows = [];
 let currentOrderStep = 1;
 let menuCardElements = [];
 let activeCategorySyncRaf = null;
+let menuSearchTimer = null;
 let lastActiveCategoryPillText = "";
 let pendingRemovedCartLine = null;
 let removeUndoTimer = null;
@@ -1998,6 +1999,8 @@ function normalizeMenuCatalog(rawCatalog) {
 
           const itemId = normalizeText(item?.id || item?.posItemId || item?.itemId) ||
             createMenuItemId(categoryKey, itemName, itemIndex);
+          const allergens = getMenuItemAllergenLabels({ codes });
+          const dietarySuitability = normalizeText(item?.dietarySuitability).toLowerCase();
           return {
             id: itemId,
             posItemId: normalizeText(item?.posItemId || itemId),
@@ -2011,8 +2014,17 @@ function normalizeMenuCatalog(rawCatalog) {
             modifierGroups,
             tags,
             codes,
-            allergens: getMenuItemAllergenLabels({ codes }),
-            dietarySuitability: normalizeText(item?.dietarySuitability).toLowerCase()
+            allergens,
+            dietarySuitability,
+            searchText: normalizeText([
+              itemName,
+              item?.description,
+              categoryName,
+              dietarySuitability,
+              ...allergens,
+              ...tags,
+              ...codes
+            ].join(" ")).toLowerCase()
           };
         })
         .filter(Boolean);
@@ -2069,17 +2081,7 @@ function menuItemForCartItem(cartItem) {
 
 function menuEntryMatchesQuery(entry, query) {
   if (!query) return true;
-  const dietary = getMenuItemDietaryDisplay(entry.item)?.label || "";
-  const allergens = getMenuItemAllergenLabels(entry.item);
-  const haystack = [
-    entry.item.name,
-    entry.item.description,
-    entry.categoryName,
-    dietary,
-    ...allergens,
-    ...(entry.item.tags || [])
-  ].join(" ").toLowerCase();
-  return haystack.includes(query);
+  return String(entry.item.searchText || "").includes(query);
 }
 
 function menuEntriesForView() {
@@ -2355,6 +2357,7 @@ function renderMobileMenuSections() {
   const query = searchQuery.toLowerCase();
   menuItemsList.innerHTML = "";
   menuCardElements = [];
+  const fragment = document.createDocumentFragment();
 
   let renderedSections = 0;
   let renderedItems = 0;
@@ -2412,15 +2415,17 @@ function renderMobileMenuSections() {
       section.appendChild(items);
     }
 
-    menuItemsList.appendChild(section);
+    fragment.appendChild(section);
   });
 
   if (renderedSections === 0) {
     const empty = document.createElement("div");
     empty.className = "orderMenuEmpty";
     empty.textContent = "No menu items match this search.";
-    menuItemsList.appendChild(empty);
+    fragment.appendChild(empty);
   }
+
+  menuItemsList.appendChild(fragment);
 
   syncMenuItemSelectionState();
   updateActiveCategoryPill(true);
@@ -2451,11 +2456,13 @@ function renderMenuItems() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   entries.forEach((entry) => {
     const card = buildMenuCard(entry);
     menuCardElements.push(card);
-    menuItemsList.appendChild(card);
+    fragment.appendChild(card);
   });
+  menuItemsList.appendChild(fragment);
 
   syncMenuItemSelectionState();
   updateActiveCategoryPill(true);
@@ -3719,15 +3726,19 @@ function initializeMenuInteractions() {
   });
 
   menuSearchInput.addEventListener("input", () => {
-    searchQuery = normalizeText(menuSearchInput.value || "");
-    renderMenuItems();
-    queueActiveCategoryPillSync();
-    persistOrderDraft();
+    window.clearTimeout(menuSearchTimer);
+    menuSearchTimer = window.setTimeout(() => {
+      searchQuery = normalizeText(menuSearchInput.value || "");
+      renderMenuItems();
+      queueActiveCategoryPillSync();
+      persistOrderDraft();
+    }, 120);
   });
 
   menuSearchInput.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    window.clearTimeout(menuSearchTimer);
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
     queueActiveCategoryPillSync();
@@ -3736,6 +3747,7 @@ function initializeMenuInteractions() {
   });
 
   menuSearchSubmitBtn?.addEventListener("click", () => {
+    window.clearTimeout(menuSearchTimer);
     searchQuery = normalizeText(menuSearchInput.value || "");
     renderMenuItems();
     queueActiveCategoryPillSync();
@@ -3924,13 +3936,14 @@ function handleCheckoutReturnState() {
 async function initialize() {
   if (!form) return;
 
-  await loadLiveOrderData();
+  const liveOrderDataPromise = loadLiveOrderData();
   restoreOrderDraft();
+  initializeMenuInteractions();
+  await liveOrderDataPromise;
   setOrderCalendarOpen(false);
   renderDateOptions();
   applyRestoredScheduleDraft();
-  initializeMenuInteractions();
-  await setupOrderTurnstile();
+  void setupOrderTurnstile();
 
   if (!onlineOrderingEnabled) {
     setNotice("Online ordering is paused while we verify the full allergen catalogue. You can still browse the menu.", true);

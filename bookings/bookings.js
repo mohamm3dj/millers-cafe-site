@@ -725,6 +725,8 @@ function closeBookingSuccessFx(host) {
     overlay.setAttribute("aria-hidden", "true");
     const main = document.querySelector("main");
     if (main instanceof HTMLElement) main.removeAttribute("inert");
+    const siteHeader = document.querySelector(".desktopSiteHeader");
+    if (siteHeader instanceof HTMLElement) siteHeader.removeAttribute("inert");
     if (bookingSuccessReturnFocus instanceof HTMLElement && bookingSuccessReturnFocus.isConnected) {
       bookingSuccessReturnFocus.focus({ preventScroll: true });
     }
@@ -754,6 +756,8 @@ function playBookingSuccessAnimation(details) {
 
   const main = document.querySelector("main");
   if (main instanceof HTMLElement) main.setAttribute("inert", "");
+  const siteHeader = document.querySelector(".desktopSiteHeader");
+  if (siteHeader instanceof HTMLElement) siteHeader.setAttribute("inert", "");
   host.hidden = false;
   host.setAttribute("aria-hidden", "false");
   host.classList.remove("isVisible", "isHiding", "isConfirm");
@@ -1113,7 +1117,7 @@ async function initialize() {
   renderTimeOptions(slotTimes().map((time) => ({ time, available: true })));
   syncCalendarToSelectedDate();
   void loadAvailability();
-  await setupBookingTurnstile();
+  void setupBookingTurnstile();
 
   form.addEventListener("submit", handleSubmit);
   dateInput?.addEventListener("change", () => {
@@ -1131,7 +1135,7 @@ async function initialize() {
   });
   phoneInput?.addEventListener("input", normalizePhoneField);
   phoneInput?.addEventListener("blur", normalizePhoneField);
-  await preloadAccountProfile();
+  void preloadAccountProfile();
 
   void trackClientEvent("booking_form_view", {
     page: "bookings",

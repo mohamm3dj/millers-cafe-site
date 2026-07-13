@@ -26,8 +26,8 @@
   --line: rgba(15, 23, 42, .10);
   --radius: 18px;
   --shadow: 0 10px 28px rgba(2, 6, 23, .08);
-  --font-body: "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Urbanist", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Manrope Desktop", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Urbanist Desktop", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .desktopHome{
@@ -9865,5 +9865,876 @@ body.orderBody{
       radial-gradient(120% 80% at 100% 0%, rgba(31, 155, 140, .17), transparent 54%),
       linear-gradient(155deg, rgba(11, 34, 50, .92), rgba(7, 25, 39, .89));
     box-shadow: 0 28px 76px rgba(7, 25, 39, .3), inset 0 1px 0 rgba(255, 255, 255, .17);
+  }
+}
+
+/* =========================
+   Unified homepage design language
+   Shared by every customer-facing route.
+   ========================= */
+
+body.publicBody{
+  --site-ink: #0f172a;
+  --site-copy: #536175;
+  --site-muted: #64748b;
+  --site-jade: #0f766e;
+  --site-jade-bright: #0d9488;
+  --site-mint: #e5f7f4;
+  --site-line: rgba(15, 23, 42, .09);
+  --site-glass: rgba(255, 255, 255, .76);
+  --site-glass-strong: rgba(255, 255, 255, .92);
+  min-height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+  background:
+    radial-gradient(72% 62% at 7% 4%, rgba(125, 211, 252, .20), transparent 70%),
+    radial-gradient(58% 52% at 96% 7%, rgba(45, 212, 191, .15), transparent 72%),
+    linear-gradient(180deg, #f8fbfe 0%, #f4f8fb 54%, #f7f9fc 100%);
+  color: var(--site-ink);
+  font-family: var(--font-body);
+  animation: none !important;
+  transform: none !important;
+}
+
+body.publicBody::before{
+  inset: 0;
+  opacity: .72;
+  background:
+    radial-gradient(36% 28% at 74% 30%, rgba(129, 140, 248, .10), transparent 76%),
+    radial-gradient(34% 25% at 20% 68%, rgba(45, 212, 191, .08), transparent 78%);
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Repeated translucent cards no longer trigger a separate blur render pass. */
+body.publicBody *{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.publicBody main:focus{
+  outline: none;
+}
+
+.publicBody .desktopNav{
+  background: rgba(255, 255, 255, .88);
+}
+
+.desktopNavLinks a[aria-current="page"]{
+  color: var(--site-jade, #0f766e);
+}
+
+.desktopNavLinks a[aria-current="page"] img{
+  opacity: .9;
+}
+
+.desktopNavLinks a[aria-current="page"]::after{
+  transform: scaleX(1);
+}
+
+.desktopAccountLink[aria-current="page"]{
+  border-color: rgba(15, 118, 110, .22);
+  background: var(--site-mint, #e5f7f4);
+  color: var(--site-jade, #0f766e);
+}
+
+.publicBody:not(.homeBody) .tile,
+.publicBody:not(.homeBody) .simplePanel,
+.publicBody:not(.homeBody) .glassHero{
+  border-color: rgba(255, 255, 255, .9);
+  background:
+    radial-gradient(240px 170px at 8% 0%, rgba(125, 211, 252, .08), transparent 72%),
+    linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .66));
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .065), inset 0 1px 0 rgba(255, 255, 255, .98);
+}
+
+.publicBody:not(.homeBody) .tile:hover{
+  border-color: rgba(15, 118, 110, .18);
+  background: rgba(255, 255, 255, .94);
+}
+
+.publicBody:not(.homeBody) .bookingsPanel::before{
+  display: none;
+}
+
+.publicBody:not(.homeBody) .bookingSubmitBtn,
+.publicBody:not(.homeBody) .accountPrimaryBtn{
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+  box-shadow: 0 13px 25px rgba(15, 118, 110, .2), inset 0 1px 0 rgba(255, 255, 255, .24);
+  font-weight: 800;
+}
+
+.publicBody:not(.homeBody) .bookingSubmitBtn:hover,
+.publicBody:not(.homeBody) .accountPrimaryBtn:hover{
+  background: linear-gradient(135deg, #0d6f68 0%, #0b8f84 100%);
+  box-shadow: 0 16px 29px rgba(15, 118, 110, .25), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+.publicPageEyebrow{
+  margin: 0 0 8px;
+  color: var(--site-jade, #0f766e);
+  font-size: 12px;
+  font-weight: 820;
+  letter-spacing: .15em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.publicPageLead{
+  max-width: 650px;
+  margin: 12px 0 0;
+  color: var(--site-copy, #536175);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.publicHeroCopy{
+  display: grid;
+  gap: 6px;
+}
+
+.publicBody:not(.homeBody) .footer{
+  color: var(--site-muted, #64748b);
+}
+
+.publicBody:not(.homeBody) .footer a{
+  color: #475569;
+}
+
+.publicBody:not(.homeBody) .footer a:hover{
+  color: var(--site-jade, #0f766e);
+}
+
+.publicBody .bookingDateToggle,
+.publicBody .bookingCalendarNav,
+.publicBody .bookingCalendarDay,
+.publicBody .jumpChip{
+  min-height: 44px;
+}
+
+.publicBody .bookingCalendarNav{
+  width: 44px;
+  height: 44px;
+}
+
+.publicBody .turnstileSlot{
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.publicBody .menuSection.menuGroup.sectionPreReveal,
+.publicBody .menuSection.menuGroup.sectionPreReveal.isVisible{
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: none;
+}
+
+.publicBody .menuSection.accordion .accordionBody{
+  transition: none;
+}
+
+/* Light Aurora order surfaces replace the previous dark/gold sub-theme. */
+body.publicBody.orderBody{
+  --order-gold: var(--site-jade);
+  --order-panel: var(--site-glass-strong);
+  --order-on-dark: var(--site-ink);
+  --order-mint: var(--site-jade);
+  background-attachment: scroll;
+}
+
+.orderPage .orderFlowStep.isActive,
+.orderPage .orderFlowStep.isComplete{
+  border-color: rgba(15, 118, 110, .14);
+  background: var(--site-mint);
+  box-shadow: none;
+  color: var(--site-jade);
+}
+
+.orderPage .orderFlowStep.isActive .orderFlowStepNumber{
+  border-color: transparent;
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+  box-shadow: 0 7px 16px rgba(15, 118, 110, .18);
+  color: #fff;
+}
+
+.orderPage .orderMenuAddCount{
+  background: var(--site-jade);
+}
+
+.orderPage .orderBasketPanel,
+.orderPage .orderBasketColumn,
+.orderCheckoutSidebar{
+  border-color: rgba(255, 255, 255, .9);
+  background:
+    radial-gradient(120% 75% at 100% 0%, rgba(45, 212, 191, .09), transparent 58%),
+    linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(247, 251, 253, .91));
+  box-shadow: 0 22px 54px rgba(15, 23, 42, .1), inset 0 1px 0 rgba(255, 255, 255, .98);
+  color: var(--site-ink);
+}
+
+.orderPage .orderBasketHead,
+.orderPage .orderCartBreakdown,
+.orderCheckoutSidebarHead,
+.orderCheckoutSummaryPricing,
+.orderCheckoutSidebar .orderReviewRow{
+  border-color: var(--site-line);
+}
+
+.orderPage .orderBasketHead strong,
+.orderPage .orderCartName,
+.orderPage .orderCartPrice,
+.orderPage .orderCartTotal,
+.orderCheckoutSidebarHead strong,
+.orderCheckoutSummaryList li,
+.orderCheckoutSummaryItemName,
+.orderCheckoutSummaryItemPrice,
+.orderCheckoutSummaryPriceRow.isTotal{
+  color: var(--site-ink);
+}
+
+.orderPage .orderCartUnit,
+.orderPage .orderCartModifiers,
+.orderPage .orderCartDietaryAllergens,
+.orderPage .orderCartBreakdownRow,
+.orderPage .orderCartBreakdownRow strong,
+.orderCheckoutSummaryItemModifiers,
+.orderCheckoutSummaryPriceRow,
+.orderCheckoutSummaryPriceRow strong,
+.orderCheckoutSidebar .orderReviewText,
+.orderCheckoutSidebar .policyConsentNote,
+.orderCheckoutSidebar .tileSub{
+  color: var(--site-muted);
+}
+
+.orderPage .orderCartDiscountRow,
+.orderPage .orderCartDiscountRow strong,
+.orderPage .orderCartTotal strong,
+.orderCheckoutSummaryPriceRow.isDiscount,
+.orderCheckoutSummaryPriceRow.isDiscount strong,
+.orderCheckoutSummaryPriceRow.isTotal strong,
+.orderCheckoutSidebarHead span,
+.orderCheckoutSidebar .policyConsentNote a,
+.orderCheckoutSidebar .tileSub a{
+  color: var(--site-jade);
+}
+
+.orderPage .orderCartEmpty,
+.orderPage .orderCartItem,
+.orderPage .orderCartTotal{
+  border-color: var(--site-line);
+  background: rgba(255, 255, 255, .72);
+  box-shadow: none;
+}
+
+.orderPage .orderCartBtn,
+.orderPage .orderCartQty,
+.orderPage .orderBasketClose,
+.orderCheckoutSidebar .orderReviewEditBtn,
+.orderCheckoutSidebar .orderBackToItemsBtn{
+  border-color: rgba(15, 23, 42, .12);
+  background: rgba(255, 255, 255, .86);
+  color: #334155;
+}
+
+.orderPage .orderCartBtnDanger{
+  color: #b42318;
+}
+
+.orderCheckoutSidebar .orderBackToItemsBtn img{
+  filter: none;
+}
+
+.orderPage .stickyCheckoutBar{
+  border-color: rgba(255, 255, 255, .9);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 -10px 30px rgba(15, 23, 42, .12);
+}
+
+.orderPage .stickyCheckoutDateTime,
+.orderPage .stickyCheckoutOrder{
+  color: var(--site-ink);
+}
+
+.orderModifierPanel{
+  background: rgba(15, 23, 42, .46);
+}
+
+.orderModifierDialog{
+  border-color: rgba(255, 255, 255, .9);
+  background: #f8fbfd;
+  box-shadow: 0 32px 86px rgba(15, 23, 42, .24);
+}
+
+@media (min-width: 960px){
+  body.publicBody .desktopNav{
+    backdrop-filter: blur(14px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+  }
+
+  body.publicBody:not(.homeBody) main{
+    display: block;
+    width: min(1500px, 100%);
+    min-height: calc(100vh - 116px);
+    margin: 0 auto;
+    padding: 22px clamp(30px, 4vw, 64px) 30px;
+  }
+
+  body.publicBody:not(.homeBody) main > .bookingsTopBar,
+  body.publicBody:not(.homeBody) main > .backBtn,
+  .menuBody .publicPageHeader > .backBtn,
+  .orderPage .orderHeader > .backBtn{
+    display: none;
+  }
+
+  .publicBody:not(.homeBody) .footer{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 28px;
+    padding: 18px 4px 4px;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .publicBody:not(.homeBody) .footerPolicies{
+    display: flex;
+    gap: 18px;
+    margin-top: 0;
+  }
+
+  .publicPageHeader{
+    min-height: 170px;
+    padding: 30px 4px 24px;
+  }
+
+  .publicPageHeader .headerStack{
+    display: block;
+  }
+
+  .publicPageHeader .headerTitleNoMargin{
+    color: var(--site-ink);
+    font-family: var(--font-display);
+    font-size: clamp(46px, 4.1vw, 62px);
+    font-weight: 790;
+    letter-spacing: -.052em;
+    line-height: .94;
+  }
+
+  /* Menu */
+  .menuBody .menuPage > .publicPageHeader,
+  .menuBody .menuPage > .menuTools,
+  .menuBody .menuPage > .menuSection,
+  .menuBody .menuPage > .footer{
+    width: min(1180px, 100%);
+    margin-inline: auto;
+  }
+
+  .menuBody .menuTools{
+    top: 12px;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px 24px;
+    padding: 20px 22px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 16px 38px rgba(15, 23, 42, .08), inset 0 1px 0 #fff;
+  }
+
+  .menuBody .menuTools .toolsRow{
+    grid-column: 1 / -1;
+  }
+
+  .menuBody .menuSearchRow{
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+
+  .menuBody .menuSearchInput{
+    min-height: 54px;
+    padding-inline: 17px;
+    border-radius: 17px;
+    background: rgba(248, 251, 253, .98);
+    font-size: 15px;
+  }
+
+  .menuBody .searchClearBtn{
+    min-height: 54px;
+    padding-inline: 18px;
+    border-radius: 17px;
+  }
+
+  .menuBody .menuJumpWrap{
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+
+  .menuBody .menuJumpChips{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 3px;
+  }
+
+  .menuBody .jumpChip{
+    min-width: 108px;
+    padding-inline: 14px;
+    border-radius: 14px;
+  }
+
+  .menuBody .menuSearchMeta{
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .menuBody .menuSection{
+    min-height: 0;
+    margin-top: 14px;
+    padding: 0;
+    border-radius: 24px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 420px;
+  }
+
+  .menuBody .menuLegend{
+    padding: 24px;
+  }
+
+  .menuBody .menuSection.accordion > .tileTitle{
+    margin: 0;
+    padding: 0 24px;
+  }
+
+  .menuBody .menuAccordionToggle{
+    min-height: 68px;
+    padding-right: 34px;
+    font-size: 24px;
+    font-weight: 790;
+  }
+
+  .menuBody .menuSection.accordion .accordionBody{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 18px 18px;
+  }
+
+  .menuBody .menuSection.accordion:not(.collapsed) .accordionBody{
+    display: grid;
+    max-height: none !important;
+  }
+
+  .menuBody .menuSection.accordion.collapsed .accordionBody{
+    max-height: 0 !important;
+    padding-bottom: 0;
+  }
+
+  .menuBody .accordionBody > .menuDesc,
+  .menuBody .accordionBody > .menuSubhead{
+    grid-column: 1 / -1;
+  }
+
+  .menuBody .menuItem{
+    min-height: 68px;
+    align-items: center;
+    padding: 13px 14px;
+    border: 1px solid rgba(15, 23, 42, .07);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .7);
+  }
+
+  .menuBody .menuName,
+  .menuBody .menuPrice{
+    font-size: 15px;
+  }
+
+  /* Bookings */
+  .bookingsBody .bookingsHero,
+  .accountBody .accountHero{
+    min-height: 190px;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: 0;
+    padding: 34px 38px;
+    text-align: left;
+    border-radius: 28px;
+  }
+
+  .bookingsBody .bookingsHero .logo,
+  .accountBody .accountHero .logo{
+    display: none;
+  }
+
+  .bookingsBody .publicHeroCopy,
+  .accountBody .publicHeroCopy{
+    justify-items: start;
+  }
+
+  .bookingsBody .bookingsHero h1,
+  .accountBody .accountHero h1{
+    color: var(--site-ink);
+    font-family: var(--font-display);
+    font-size: clamp(46px, 4vw, 60px);
+    font-weight: 790;
+    letter-spacing: -.052em;
+    line-height: .95;
+    text-shadow: none;
+  }
+
+  .bookingsBody .bookingsHero .subtitle,
+  .accountBody .accountHero .subtitle{
+    max-width: 680px;
+    margin-top: 10px;
+    color: var(--site-copy);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .accountBody .accountHero .heroMeta{
+    margin-top: 14px;
+    border-color: rgba(15, 118, 110, .12);
+    background: var(--site-mint);
+    color: #475569;
+  }
+
+  .bookingsBody .bookingsWorkspace{
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 22px;
+    margin-top: 20px;
+  }
+
+  .bookingsBody .bookingsPanel,
+  .bookingsBody .bookingsInfoCard{
+    padding: 26px;
+    border-radius: 24px;
+  }
+
+  .bookingsBody .bookingsInfoCard{
+    position: sticky;
+    top: 18px;
+  }
+
+  .bookingsBody .bookingPanelTitle,
+  .accountBody .bookingPanelTitle{
+    font-size: 34px;
+    font-weight: 790;
+    letter-spacing: -.035em;
+  }
+
+  /* Account */
+  .accountBody .accountWorkspace{
+    margin-top: 20px;
+  }
+
+  .accountBody .accountPanel{
+    gap: 22px;
+    padding: 28px;
+    border-radius: 28px;
+    background:
+      radial-gradient(280px 200px at 94% 0%, rgba(45, 212, 191, .08), transparent 72%),
+      linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .68));
+  }
+
+  .accountBody .accountAuthGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .accountBody .accountHistoryGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .accountBody .accountCard,
+  .accountBody .accountHistoryCard{
+    min-width: 0;
+    padding: 22px;
+    border-color: rgba(15, 23, 42, .07);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .78);
+  }
+
+  /* Policies and utility pages */
+  .policyBody .policyPage,
+  .utilityBody .utilityPage{
+    padding-top: 30px;
+  }
+
+  .policyBody .policyCard{
+    width: min(980px, 100%);
+    margin: 0 auto;
+    padding: clamp(30px, 4vw, 52px);
+    border-radius: 28px;
+  }
+
+  .policyBody .policyCard h1{
+    font-size: clamp(46px, 4vw, 60px);
+    font-weight: 790;
+    letter-spacing: -.052em;
+  }
+
+  .policyBody .policyCard h2{
+    margin-top: 34px;
+    font-size: 25px;
+    font-weight: 780;
+    letter-spacing: -.025em;
+  }
+
+  .utilityBody .utilityPage{
+    width: min(1080px, 100%);
+  }
+
+  .utilityBody .utilityPage > .header,
+  .utilityBody .utilityPage > .simplePanel,
+  .utilityBody .utilityPage > .grid,
+  .utilityBody .utilityPage > .footer{
+    width: min(960px, 100%);
+    margin-inline: auto;
+  }
+
+  .utilityBody .utilityPage > .header{
+    min-height: 130px;
+  }
+
+  .utilityBody .utilityPage > .header .backBtn{
+    display: none;
+  }
+
+  /* Ordering */
+  .orderPage .orderHeader{
+    min-height: 154px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    margin: 0;
+    padding: 28px 4px 20px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .orderBrand{
+    display: none;
+  }
+
+  .orderPage .headerStack{
+    display: grid;
+    gap: 3px;
+  }
+
+  .orderPage .orderEyebrow,
+  .orderPage .subtitle{
+    display: block;
+  }
+
+  .orderPage .orderEyebrow{
+    color: var(--site-jade);
+    font-size: 12px;
+    font-weight: 820;
+    letter-spacing: .15em;
+  }
+
+  .orderPage .headerTitleNoMargin{
+    color: var(--site-ink);
+    font-family: var(--font-display);
+    font-size: clamp(46px, 4.1vw, 62px);
+    font-weight: 790;
+    letter-spacing: -.052em;
+    line-height: .94;
+  }
+
+  .orderPage .subtitle{
+    margin-top: 8px;
+    color: var(--site-copy);
+    font-size: 15px;
+  }
+
+  .orderPage .orderServiceSwitch{
+    align-self: center;
+    gap: 5px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .72);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+  }
+
+  .orderPage .orderServiceLink,
+  .orderPage .orderServiceLink.isActive{
+    min-height: 48px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: 13px;
+  }
+
+  .orderPage .orderServiceLink::after{
+    display: none;
+  }
+
+  .orderPage .orderServiceLink.isActive{
+    background: var(--site-mint);
+    box-shadow: none;
+    color: var(--site-jade);
+  }
+
+  .orderPage .bookingsPanel{
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .bookingsNotice{
+    border: 1px solid rgba(15, 118, 110, .14);
+    border-left: 3px solid var(--site-jade);
+    background: rgba(255, 255, 255, .76);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+  }
+
+  .orderMenuLeadTitle{
+    font-size: clamp(48px, 4.3vw, 66px);
+    letter-spacing: -.052em;
+  }
+
+  .orderPage .orderFlowHeader,
+  .orderPage .orderCategoryChips,
+  .orderPage .orderSearchWrap input,
+  .orderPage .orderMenuCard,
+  .orderPage .bookingField{
+    background: rgba(255, 255, 255, .78);
+  }
+
+  .orderPage .orderFlowHeader,
+  .orderPage .orderCategoryChips{
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .055), inset 0 1px 0 #fff;
+  }
+
+  .orderPage .orderMenuCard{
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .055), inset 0 1px 0 #fff;
+  }
+
+  .orderPage .orderMenuCard:hover{
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .08), inset 0 1px 0 #fff;
+  }
+
+  .orderPage .orderHub{
+    row-gap: 14px;
+    column-gap: clamp(28px, 3vw, 46px);
+  }
+
+  .orderPage .orderBasketColumn{
+    border-radius: 28px;
+  }
+
+  .orderPage .orderBasketPanel{
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .stickyCheckoutBar,
+  .orderPage .stickyCheckoutBar.isVisible{
+    border-top-color: var(--site-line);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .orderPage .bookingForm.isOrderCheckoutStep .orderCheckoutSidebar{
+    max-height: calc(100dvh - 60px);
+  }
+}
+
+@media (min-width: 960px) and (max-width: 1160px){
+  .bookingsBody .bookingsWorkspace{
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .orderPage .orderHeader{
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 959px){
+  body.publicBody:not(.homeBody) main{
+    width: min(720px, 100%);
+  }
+
+  .publicPageHeader .headerStack{
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .menuBody .publicPageHeader{
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .menuBody .publicPageHeader .headerTitleNoMargin,
+  .menuBody .publicPageHeader .publicPageLead{
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .publicPageHeader .publicPageEyebrow{
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+
+  .publicPageHeader .publicPageLead{
+    margin-top: 6px;
+    font-size: 13px;
+  }
+
+  .menuBody .menuTools{
+    background: rgba(255, 255, 255, .96);
+  }
+
+  .menuBody .menuSection{
+    content-visibility: auto;
+    contain-intrinsic-size: auto 360px;
+  }
+
+  .menuBody .menuAccordionToggle{
+    min-height: 48px;
+  }
+
+  .bookingsBody .publicHeroCopy,
+  .accountBody .publicHeroCopy{
+    justify-items: center;
+    text-align: center;
+  }
+
+  .orderPage .orderBasketPanel,
+  .orderPage .stickyCheckoutBar{
+    background: rgba(255, 255, 255, .97);
+  }
+
+  .orderPage .stickyCheckoutBar{
+    border-color: rgba(255, 255, 255, .92);
+    box-shadow: 0 -10px 30px rgba(15, 23, 42, .13);
+  }
+
+  .orderPage .orderMobileCategorySection,
+  .orderPage .orderMenuCard,
+  .orderPage .bookingField{
+    background: rgba(255, 255, 255, .84);
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .publicBody *,
+  .publicBody *::before,
+  .publicBody *::after{
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
 }

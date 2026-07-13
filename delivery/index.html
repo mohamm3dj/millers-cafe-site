@@ -12,10 +12,29 @@
   <link rel="canonical" href="https://millers.cafe/delivery/">
   <link rel="preload" href="../assets/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="../assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="../styles.css?v=20260711o">
+  <link rel="stylesheet" href="../styles.css?v=20260713a">
 </head>
-<body class="orderBody">
-  <main class="orderPage">
+<body class="publicBody orderBody">
+  <a class="skipLink" href="#mainContent">Skip to main content</a>
+
+  <header class="desktopSiteHeader">
+    <nav class="desktopNav" aria-label="Primary navigation">
+      <a class="desktopBrand" href="../" aria-label="Millers Café home">
+        <img src="../assets/millers-logo.webp" alt="" width="116" height="78">
+      </a>
+      <div class="desktopNavLinks">
+        <a href="../menu/"><img src="../assets/icon-book.svg" alt="" width="17" height="17">Menu</a>
+        <a href="../collection/"><img src="../assets/icon-bag.svg" alt="" width="17" height="17">Collection</a>
+        <a href="./" aria-current="page"><img src="../assets/icon-delivery.svg" alt="" width="17" height="17">Delivery</a>
+        <a href="../bookings/"><img src="../assets/icon-calendar.svg" alt="" width="17" height="17">Bookings</a>
+      </div>
+      <a class="desktopAccountLink" href="../account/">
+        <img src="../assets/icon-user.svg" alt="" width="20" height="20"><span>My account</span>
+      </a>
+    </nav>
+  </header>
+
+  <main id="mainContent" class="orderPage" tabindex="-1">
     <header class="header orderHeader">
       <a href="../" class="tile backBtn"><img src="../assets/icon-arrow-left.svg" alt="" width="19" height="19">Home</a>
       <a href="../" class="orderBrand" aria-label="Millers Café home">
@@ -263,6 +282,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script type="module" src="../orders/order-form.js?v=20260711o"></script>
+  <script type="module" src="../orders/order-form.js?v=20260713a"></script>
 </body>
 </html>

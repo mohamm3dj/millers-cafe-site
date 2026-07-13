@@ -1,9 +1,9 @@
-const CACHE_NAME = "millers-static-v76";
+const CACHE_NAME = "millers-static-v77";
 const CORE_ASSETS = [
   "/",
   "/index.html",
   "/offline.html",
-  "/styles.css",
+  "/styles.css?v=20260713a",
   "/assets/millers-logo.webp",
   "/manifest.webmanifest",
   "/icon-192.png",
@@ -75,6 +75,18 @@ async function staleWhileRevalidate(request, refresh) {
   }
 }
 
+async function cachedNavigation(request, refresh) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  try {
+    return (await refresh) || Response.error();
+  } catch (error) {
+    return (await cache.match("/offline.html")) || Response.error();
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
@@ -85,9 +97,14 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     // Query strings can contain short-lived payment/session credentials. Never
     // persist query-bearing navigation URLs or their responses in Cache Storage.
-    event.respondWith(networkFirst(event.request, {
-      cacheResponse: requestUrl.search.length === 0
-    }));
+    if (requestUrl.search.length > 0) {
+      event.respondWith(networkFirst(event.request, { cacheResponse: false }));
+      return;
+    }
+
+    const refresh = refreshCachedAsset(event.request);
+    event.waitUntil(refresh.catch(() => undefined));
+    event.respondWith(cachedNavigation(event.request, refresh));
     return;
   }
 

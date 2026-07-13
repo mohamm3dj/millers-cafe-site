@@ -6,13 +6,32 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="robots" content="noindex, follow">
-  <meta name="theme-color" content="#0b0b0c">
+  <meta name="theme-color" content="#f6f8fb">
   <title>Page Not Found | Millers Café</title>
   <meta name="description" content="The requested Millers Café page could not be found.">
-  <link rel="stylesheet" href="/styles.css?v=20260710f">
+  <link rel="stylesheet" href="/styles.css?v=20260713a">
 </head>
-<body>
-  <main>
+<body class="publicBody utilityBody">
+  <a class="skipLink" href="#mainContent">Skip to main content</a>
+
+  <header class="desktopSiteHeader">
+    <nav class="desktopNav" aria-label="Primary navigation">
+      <a class="desktopBrand" href="/" aria-label="Millers Café home">
+        <img src="/assets/millers-logo.webp" alt="" width="116" height="78">
+      </a>
+      <div class="desktopNavLinks">
+        <a href="/menu/"><img src="/assets/icon-book.svg" alt="" width="17" height="17">Menu</a>
+        <a href="/collection/"><img src="/assets/icon-bag.svg" alt="" width="17" height="17">Collection</a>
+        <a href="/delivery/"><img src="/assets/icon-delivery.svg" alt="" width="17" height="17">Delivery</a>
+        <a href="/bookings/"><img src="/assets/icon-calendar.svg" alt="" width="17" height="17">Bookings</a>
+      </div>
+      <a class="desktopAccountLink" href="/account/">
+        <img src="/assets/icon-user.svg" alt="" width="20" height="20"><span>My account</span>
+      </a>
+    </nav>
+  </header>
+
+  <main id="mainContent" class="utilityPage" tabindex="-1">
     <header class="header">
       <a class="tile backBtn" href="/">&larr; Home</a>
       <div class="headerStack">

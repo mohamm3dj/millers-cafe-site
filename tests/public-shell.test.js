@@ -31,7 +31,9 @@ test("service worker respects versioned asset URLs before using an offline fallb
   assert.match(serviceWorker, /millers-static-v\d+/);
   assert.match(serviceWorker, /const cached = await cache\.match\(request\);/);
   assert.match(serviceWorker, /cache\.match\(request, \{ ignoreSearch: true \}\)\) \|\| Response\.error\(\)/);
-  assert.match(serviceWorker, /cacheResponse:\s*requestUrl\.search\.length === 0/);
+  assert.match(serviceWorker, /requestUrl\.search\.length > 0/);
+  assert.match(serviceWorker, /networkFirst\(event\.request, \{ cacheResponse: false \}\)/);
+  assert.match(serviceWorker, /cachedNavigation\(event\.request, refresh\)/);
 });
 
 test("privacy notice identifies separate explicit consent and limits vital interests", () => {

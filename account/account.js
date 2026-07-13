@@ -1,4 +1,4 @@
-import { createEmptyOrderDraftState } from "../orders/order-draft.js";
+import { createEmptyOrderDraftState } from "../orders/order-draft-state.js";
 
 const ACCOUNT_ME_API = "/api/account/me";
 const ACCOUNT_REQUEST_CODE_API = "/api/account/request-code";
@@ -483,6 +483,7 @@ function closeReschedulePanel() {
     reschedulePanel.setAttribute("aria-hidden", "true");
   }
   document.querySelectorAll("main > [inert]").forEach((element) => element.removeAttribute("inert"));
+  document.querySelector(".desktopSiteHeader")?.removeAttribute("inert");
   if (rescheduleReturnFocus instanceof HTMLElement && rescheduleReturnFocus.isConnected) {
     rescheduleReturnFocus.focus({ preventScroll: true });
   }
@@ -494,6 +495,7 @@ function openReschedulePanel() {
   if (!reschedulePanel) return;
   rescheduleReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   document.querySelectorAll("main > :not(#accountReschedulePanel)").forEach((element) => element.setAttribute("inert", ""));
+  document.querySelector(".desktopSiteHeader")?.setAttribute("inert", "");
   reschedulePanel.hidden = false;
   reschedulePanel.setAttribute("aria-hidden", "false");
   window.requestAnimationFrame(() => rescheduleDateInput?.focus({ preventScroll: true }));
@@ -1232,7 +1234,7 @@ function initialize() {
 
   void (async () => {
     await loadSiteConfig();
-    await setupAccountTurnstile();
+    void setupAccountTurnstile();
     await loadAccountState();
     void trackClientEvent("account_page_view", {
       page: "account",
