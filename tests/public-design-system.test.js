@@ -34,7 +34,7 @@ test("every customer-facing page uses the shared homepage shell", () => {
 test("public pages share one stylesheet cache version", () => {
   PUBLIC_PAGES.forEach((relativePath) => {
     const html = read(relativePath);
-    assert.match(html, /styles\.css\?v=20260713a/, relativePath);
+    assert.match(html, /styles\.css\?v=20260713c/, relativePath);
   });
 });
 
@@ -46,6 +46,19 @@ test("the final public layer keeps homepage tokens and removes repeated blur pas
   assert.match(css, /--font-display: "Urbanist Desktop"/);
   assert.match(css.slice(unifiedLayer), /body\.publicBody \*\{[\s\S]*?backdrop-filter: none !important;/);
   assert.match(css.slice(unifiedLayer), /body\.publicBody \.desktopNav\{[\s\S]*?backdrop-filter: blur\(14px\)/);
+});
+
+test("the selected order redesign remains the final scoped cascade layer", () => {
+  const css = read("../styles.css");
+  const unifiedLayer = css.lastIndexOf("Unified homepage design language");
+  const quickOrderLayer = css.lastIndexOf("Millers quick-order workspace — option 2");
+  const activeCss = css.slice(quickOrderLayer);
+
+  assert.ok(quickOrderLayer > unifiedLayer, "legacy public rules must not override the selected order workspace");
+  assert.match(activeCss, /body\.publicBody\.orderBody \.bookingForm\.isOrderMenuStep \.orderHub\{/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderCategoryChips\{/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderBasketColumn\{/);
+  assert.match(activeCss, /body\.publicBody\.orderBody\.isOrderBasketDialogOpen\{\s*overflow: hidden;/);
 });
 
 test("menu-heavy interactions are debounced and account avoids the full order catalogue", () => {

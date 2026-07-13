@@ -13,6 +13,11 @@ import {
   reconcileOrderDraftState,
   scrollBehaviorForPreference
 } from "./order-draft.js?v=20260713a";
+import {
+  POPULAR_ITEM_NAMES,
+  getOrderItemDescription,
+  getOrderItemImage
+} from "./order-media.js?v=20260713d";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
@@ -69,6 +74,75 @@ const FORCE_CUSTOMIZE_CATEGORY_KEYS = new Set([
   "kiddies corner"
 ]);
 
+const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
+  {
+    label: "Millers favourites",
+    intro: "A quick route to the dishes our homepage regulars know best.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    itemNames: POPULAR_ITEM_NAMES
+  },
+  {
+    label: "Shakes & Chillers",
+    intro: "Cold coffees, smoothies, lassi and made-to-order milkshakes.",
+    icon: "../assets/icon-glass-full.svg",
+    categories: ["Shakes and Chillers"]
+  },
+  {
+    label: "Hot Drinks",
+    intro: "Coffee, tea and warming house favourites.",
+    icon: "../assets/icon-coffee.svg",
+    categories: ["Hot Drinks"]
+  },
+  {
+    label: "Desserts & Cakes",
+    intro: "Cakes, puddings and something sweet to finish.",
+    icon: "../assets/icon-cake.svg",
+    categories: ["Desserts and Cakes"]
+  },
+  {
+    label: "Starters · Veg",
+    intro: "Vegetarian small plates and Indian café classics.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Starters - Vegetarian"]
+  },
+  {
+    label: "Starters · Non-Veg",
+    intro: "Chicken, lamb, seafood and mixed starters.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Starters - Mixed", "Starters - Lamb", "Starters - Seafood", "Starters - Chicken"]
+  },
+  {
+    label: "Mains & Curries",
+    intro: "Tandoori dishes, vegetarian mains and curries from mild to fiery.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Curry Sauce", "Tandoori", "Vegetarian Mains", "Mild Curries", "Medium Curries", "Hot Curries", "Very Hot Curries"]
+  },
+  {
+    label: "Biryani & Rice",
+    intro: "Layered biryanis and rice sides for every main.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Biryani", "Rice"]
+  },
+  {
+    label: "Breads",
+    intro: "Fresh naan, chapati and paratha.",
+    icon: "../assets/icon-book.svg",
+    categories: ["Bread & Snacks"]
+  },
+  {
+    label: "Burgers, Wraps & More",
+    intro: "Millers specials, wraps, wings and build-your-own favourites.",
+    icon: "../assets/icon-bag.svg",
+    categories: ["Salad Bowls", "Wraps", "Jacket Potato", "Omelettes", "Wings", "Mumbai Sizzle Burgers", "Desi Crust"]
+  },
+  {
+    label: "Sides & Soft Drinks",
+    intro: "Sides, chips and chilled drinks to complete your order.",
+    icon: "../assets/icon-bottle.svg",
+    categories: ["Soft Drinks", "Side Dishes"]
+  }
+]);
+
 const form = document.getElementById("orderForm");
 const noticeEl = document.getElementById("orderNotice");
 const resultEl = document.getElementById("orderResult");
@@ -103,6 +177,7 @@ const menuSearchInput = document.getElementById("menuSearch");
 const menuSearchSubmitBtn = document.getElementById("menuSearchSubmit");
 const menuCategoryChips = document.getElementById("menuCategoryChips");
 const orderActiveCategoryPill = document.getElementById("orderActiveCategoryPill");
+const orderActiveCategoryIntro = document.getElementById("orderActiveCategoryIntro");
 const menuItemsList = document.getElementById("menuItemsList");
 const orderMenuStatus = document.getElementById("orderMenuStatus");
 const orderCartStatus = document.getElementById("orderCartStatus");
@@ -113,6 +188,7 @@ const basketCountEl = document.getElementById("orderBasketCount");
 const basketInlineTotalEl = document.getElementById("orderBasketTotalInline");
 const basketPanel = document.getElementById("orderBasketPanel");
 const basketCloseBtn = document.getElementById("orderBasketClose");
+const basketClearBtn = document.getElementById("orderBasketClear");
 const basketColumn = document.querySelector(".orderBasketColumn");
 const basketCheckoutBtn = document.getElementById("orderBasketCheckout");
 
@@ -147,6 +223,9 @@ const orderReviewRow = document.getElementById("orderReviewRow");
 const orderReviewText = document.getElementById("orderReviewText");
 const orderEditItemsBtn = document.getElementById("orderEditItemsBtn");
 const orderBackToItemsBtn = document.getElementById("orderBackToItems");
+const orderContextDestination = document.getElementById("orderContextDestination");
+const orderContextTiming = document.getElementById("orderContextTiming");
+const orderContextPricing = document.getElementById("orderContextPricing");
 
 const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -1192,6 +1271,45 @@ function formatOrderSlotTime(value) {
   return `${hours12}:${pad2(mins)} ${suffix}`;
 }
 
+function updateOrderContextStrip() {
+  if (!orderContextDestination && !orderContextTiming && !orderContextPricing) return;
+
+  const orderType = currentOrderType();
+  const isDelivery = orderType === "delivery";
+  const selectedDate = String(dateSelect?.value || "");
+  const selectedTime = String(timeSelect?.value || "");
+  const dateLabel = selectedDate
+    ? (selectedDate === ukTodayISODate() ? "Today" : displayDateLabel(selectedDate))
+    : "Choose a date";
+  const timeLabel = selectedTime ? formatOrderSlotTime(selectedTime) : "Choose a time";
+  const businessAddress = normalizeText(
+    siteConfigState?.business?.address || "55 Brigsley Road, Waltham, Grimsby, DN37 0JZ"
+  );
+
+  if (orderContextDestination) {
+    const deliveryAddress = [
+      normalizeText(address1Input?.value),
+      normalizeText(townInput?.value),
+      normalizeText(postcodeInput?.value)
+    ].filter(Boolean).join(", ");
+    orderContextDestination.textContent = isDelivery
+      ? (deliveryAddress || "Add your address at checkout")
+      : businessAddress;
+  }
+
+  if (orderContextTiming) {
+    orderContextTiming.textContent = `${dateLabel} · ${timeLabel}`;
+  }
+
+  if (orderContextPricing) {
+    const etaMin = Math.round(Number(siteConfigState?.delivery?.etaMinMinutes ?? 35));
+    const etaMax = Math.round(Number(siteConfigState?.delivery?.etaMaxMinutes ?? 55));
+    orderContextPricing.textContent = isDelivery
+      ? `${formatGBP(DELIVERY_FEE_GBP)} fee · ${etaMin}–${etaMax} min typical`
+      : "10% off automatically";
+  }
+}
+
 function renderOrderSlotCards(rows) {
   if (!orderSlotCards || !timeSelect) return;
   orderSlotCards.innerHTML = "";
@@ -1260,6 +1378,8 @@ function renderOrderSlotCards(rows) {
 function updateStickyCheckoutBar() {
   if (!stickyCheckoutBar) return;
 
+  updateOrderContextStrip();
+
   const totals = cartPricingTotals();
   const hasItems = totals.totalQuantity > 0;
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
@@ -1301,7 +1421,7 @@ function updateStickyCheckoutBar() {
         : (isMobileCheckout
           ? "Pay securely"
           : (isDesktopMenu
-            ? (hasItems ? `Checkout details · ${totalLabel}` : "Add dishes to continue")
+            ? (hasItems ? `Continue to checkout · ${totalLabel}` : "Add dishes to continue")
             : "Continue")));
     stickyCheckoutBtn.setAttribute("aria-label", !onlineOrderingEnabled
       ? "Online ordering is paused"
@@ -1331,10 +1451,10 @@ function updateStickyCheckoutBar() {
       ? "Online ordering paused"
       : (isSubmitting
       ? "Redirecting..."
-      : (hasSelectableTime ? "Checkout details" : "Choose another date"));
+      : (hasSelectableTime ? "Continue to checkout" : "Choose another date"));
   }
 
-  const showBar = (currentOrderStep === 1 && (isMobileMenu || hasItems || isSubmitting))
+  const showBar = (currentOrderStep === 1 && (isMobileMenu || isDesktopMenu || hasItems || isSubmitting))
     || (isMobileCheckout && hasItems);
   stickyCheckoutBar.classList.toggle("isVisible", showBar);
   queueActiveCategoryPillSync();
@@ -2042,14 +2162,6 @@ function normalizeMenuCatalog(rawCatalog) {
     .filter(Boolean);
 }
 
-function categoryNames() {
-  return normalizedMenu.map((category) => category.name);
-}
-
-function defaultCategoryName() {
-  return categoryNames()[0] || "";
-}
-
 function allMenuEntries() {
   const entries = [];
   normalizedMenu.forEach((category, categoryIndex) => {
@@ -2064,6 +2176,53 @@ function allMenuEntries() {
     });
   });
   return entries;
+}
+
+function entriesForDesktopMenuGroup(group, entries = allMenuEntries()) {
+  const itemNameOrder = (group?.itemNames || []).map((name) => normalizeKey(name));
+  const itemNames = new Set(itemNameOrder);
+  const categories = new Set((group?.categories || []).map((name) => normalizeKey(name)));
+  const matched = entries.filter((entry) => (
+    itemNames.has(normalizeKey(entry.item.name))
+    || categories.has(normalizeKey(entry.categoryName))
+  ));
+  if (itemNameOrder.length === 0) return matched;
+  return itemNameOrder
+    .map((itemName) => matched.find((entry) => normalizeKey(entry.item.name) === itemName))
+    .filter(Boolean);
+}
+
+function desktopMenuGroups() {
+  const entries = allMenuEntries();
+  return DESKTOP_ORDER_MENU_GROUPS
+    .map((group) => ({
+      ...group,
+      entries: entriesForDesktopMenuGroup(group, entries)
+    }))
+    .filter((group) => group.entries.length > 0);
+}
+
+function menuNavigationItems() {
+  if (isMobileOrderMenuLayout()) {
+    return normalizedMenu.map((category) => ({
+      label: category.name,
+      intro: "",
+      icon: "../assets/icon-tools-kitchen.svg"
+    }));
+  }
+  return desktopMenuGroups();
+}
+
+function categoryNames() {
+  return menuNavigationItems().map((item) => item.label);
+}
+
+function defaultCategoryName() {
+  return categoryNames()[0] || "";
+}
+
+function activeDesktopMenuGroup() {
+  return desktopMenuGroups().find((group) => group.label === selectedCategory) || null;
 }
 
 function menuItemForCartItem(cartItem) {
@@ -2092,7 +2251,12 @@ function menuEntriesForView() {
   }
 
   const activeCategory = selectedCategory || defaultCategoryName();
-  return entries.filter((entry) => entry.categoryName === activeCategory);
+  if (isMobileOrderMenuLayout()) {
+    return entries.filter((entry) => entry.categoryName === activeCategory);
+  }
+
+  const group = desktopMenuGroups().find((entry) => entry.label === activeCategory);
+  return group ? group.entries : [];
 }
 
 function entryRequiresCustomize(entry) {
@@ -2144,6 +2308,10 @@ function updateActiveCategoryPill(force = false) {
   if (isMobileOrderMenuLayout() && !searchQuery) {
     orderActiveCategoryPill.hidden = true;
     orderActiveCategoryPill.textContent = "";
+    if (orderActiveCategoryIntro) {
+      orderActiveCategoryIntro.hidden = true;
+      orderActiveCategoryIntro.textContent = "";
+    }
     lastActiveCategoryPillText = "";
     return;
   }
@@ -2158,16 +2326,27 @@ function updateActiveCategoryPill(force = false) {
   if (!category) {
     orderActiveCategoryPill.hidden = true;
     orderActiveCategoryPill.textContent = "";
+    if (orderActiveCategoryIntro) {
+      orderActiveCategoryIntro.hidden = true;
+      orderActiveCategoryIntro.textContent = "";
+    }
     lastActiveCategoryPillText = "";
     return;
   }
 
-  const text = searchQuery ? `Showing: ${category}` : `Section: ${category}`;
+  const text = searchQuery ? `Search results · ${category}` : category;
   if (!force && text === lastActiveCategoryPillText) return;
 
   lastActiveCategoryPillText = text;
   orderActiveCategoryPill.hidden = false;
   orderActiveCategoryPill.textContent = text;
+  if (orderActiveCategoryIntro) {
+    const group = activeDesktopMenuGroup();
+    orderActiveCategoryIntro.hidden = false;
+    orderActiveCategoryIntro.textContent = searchQuery
+      ? "Matching dishes from across the Millers menu."
+      : (group?.intro || "Choose a dish and make it yours.");
+  }
 }
 
 function queueActiveCategoryPillSync() {
@@ -2182,7 +2361,8 @@ function queueActiveCategoryPillSync() {
 function renderCategoryChips() {
   if (!menuCategoryChips) return;
 
-  const names = categoryNames();
+  const navigationItems = menuNavigationItems();
+  const names = navigationItems.map((item) => item.label);
   if (names.length === 0) {
     selectedCategory = "";
     menuCategoryChips.innerHTML = "";
@@ -2193,7 +2373,8 @@ function renderCategoryChips() {
   }
 
   menuCategoryChips.innerHTML = "";
-  names.forEach((name) => {
+  navigationItems.forEach((item) => {
+    const name = item.label;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "orderCategoryChip";
@@ -2203,10 +2384,44 @@ function renderCategoryChips() {
     } else {
       button.setAttribute("aria-pressed", "false");
     }
+    button.tabIndex = name === selectedCategory ? 0 : -1;
     button.dataset.category = name;
-    button.textContent = name;
+    const icon = document.createElement("img");
+    icon.className = "orderCategoryChipIcon";
+    icon.src = item.icon || "../assets/icon-tools-kitchen.svg";
+    icon.alt = "";
+    icon.width = 20;
+    icon.height = 20;
+    icon.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = name;
+    button.append(icon, label);
     menuCategoryChips.appendChild(button);
   });
+}
+
+function handleMenuCategoryKeydown(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLButtonElement) || !target.matches("button[data-category]")) return;
+
+  const buttons = [...menuCategoryChips.querySelectorAll("button[data-category]")];
+  const currentIndex = buttons.indexOf(target);
+  if (currentIndex < 0 || buttons.length === 0) return;
+
+  const vertical = !isMobileOrderMenuLayout();
+  let nextIndex = currentIndex;
+  if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = buttons.length - 1;
+  else if ((vertical && event.key === "ArrowUp") || (!vertical && event.key === "ArrowLeft")) {
+    nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+  } else if ((vertical && event.key === "ArrowDown") || (!vertical && event.key === "ArrowRight")) {
+    nextIndex = (currentIndex + 1) % buttons.length;
+  } else {
+    return;
+  }
+
+  event.preventDefault();
+  buttons[nextIndex]?.click();
 }
 
 function createMenuActionButton(label, actionType, entry, secondary = false, single = false, countable = false) {
@@ -2255,8 +2470,28 @@ function createMenuActionButton(label, actionType, entry, secondary = false, sin
 function buildMenuCard(entry) {
   const article = document.createElement("article");
   article.className = "orderMenuCard";
-  article.dataset.category = entry.categoryName;
+  article.dataset.category = searchQuery || isMobileOrderMenuLayout()
+    ? entry.categoryName
+    : (selectedCategory || entry.categoryName);
   article.dataset.itemId = entry.item.id;
+  article.dataset.itemName = entry.item.name;
+
+  const imageSource = getOrderItemImage(entry.item.name);
+  if (imageSource) {
+    article.classList.add("hasMedia");
+    const media = document.createElement("div");
+    media.className = "orderMenuMedia";
+    const image = document.createElement("img");
+    image.src = imageSource;
+    image.alt = "";
+    image.width = 112;
+    image.height = 112;
+    image.loading = "lazy";
+    image.decoding = "async";
+    if (entry.item.name === "Chicken Tikka Starter") image.classList.add("isTikka");
+    media.appendChild(image);
+    article.appendChild(media);
+  }
 
   const main = document.createElement("div");
   main.className = "orderMenuMain";
@@ -2296,10 +2531,11 @@ function buildMenuCard(entry) {
     main.appendChild(badgeWrap);
   }
 
-  if (entry.item.description) {
+  const descriptionText = getOrderItemDescription(entry.item.name, entry.item.description);
+  if (descriptionText) {
     const description = document.createElement("p");
     description.className = "orderMenuDescription";
-    description.textContent = entry.item.description;
+    description.textContent = descriptionText;
     main.appendChild(description);
   }
 
@@ -3052,7 +3288,7 @@ function renderCheckoutSummaryList(totals = cartPricingTotals()) {
   if (currentOrderType() === "delivery" && totals.deliveryFee > 0) {
     appendPriceRow("Delivery fee", formatGBP(totals.deliveryFee));
   }
-  appendPriceRow("Total due at Stripe", formatGBP(totals.total), "isTotal");
+  appendPriceRow("Total", formatGBP(totals.total), "isTotal");
   orderCheckoutSummaryList.appendChild(pricing);
 }
 
@@ -3106,6 +3342,35 @@ function isMobileOrderMenuLayout() {
   return Boolean(MOBILE_ORDER_MENU_MEDIA?.matches);
 }
 
+function setMobileBasketBackgroundInert(inert) {
+  const shouldInert = Boolean(inert);
+  document.body.classList.toggle("isOrderBasketDialogOpen", shouldInert);
+
+  const roots = [
+    document.querySelector(".desktopSiteHeader"),
+    document.querySelector(".orderHeader"),
+    document.querySelector(".orderContextStrip"),
+    noticeEl,
+    form?.querySelector(".orderFlowHeader"),
+    form?.querySelector(".orderTrustStrip"),
+    form?.querySelector(".orderMenuLead"),
+    document.querySelector(".orderPage > .footer"),
+    ...[...(orderHub?.children || [])].filter((element) => (
+      element !== basketColumn && element !== modifierPanel
+    ))
+  ].filter((element) => element instanceof HTMLElement);
+
+  roots.forEach((element) => {
+    if (shouldInert) {
+      element.dataset.orderBasketInert = "true";
+      element.inert = true;
+    } else if (element.dataset.orderBasketInert === "true") {
+      element.inert = false;
+      delete element.dataset.orderBasketInert;
+    }
+  });
+}
+
 function setBasketOpen(open, options = {}) {
   if (!basketPanel || !basketToggleBtn) return;
 
@@ -3116,6 +3381,7 @@ function setBasketOpen(open, options = {}) {
   basketToggleBtn.setAttribute("aria-expanded", nextState ? "true" : "false");
   basketColumn?.classList.toggle("isBasketOpen", nextState);
   const mobileDialog = isMobileOrderMenuLayout() && currentOrderStep === 1 && nextState;
+  setMobileBasketBackgroundInert(mobileDialog);
   if (mobileDialog) {
     basketPanel.setAttribute("role", "dialog");
     basketPanel.setAttribute("aria-modal", "true");
@@ -3358,6 +3624,27 @@ function renderCart() {
     li.className = "orderCartItem";
     li.dataset.cartId = String(item.id);
 
+    const catalogItem = menuItemForCartItem(item);
+    const imageSource = getOrderItemImage(item.itemName);
+    if (imageSource) {
+      li.classList.add("hasMedia");
+      const media = document.createElement("div");
+      media.className = "orderCartMedia";
+      const image = document.createElement("img");
+      image.src = imageSource;
+      image.alt = "";
+      image.width = 72;
+      image.height = 72;
+      image.loading = "lazy";
+      image.decoding = "async";
+      if (item.itemName === "Chicken Tikka Starter") image.classList.add("isTikka");
+      media.appendChild(image);
+      li.appendChild(media);
+    }
+
+    const body = document.createElement("div");
+    body.className = "orderCartItemBody";
+
     const top = document.createElement("div");
     top.className = "orderCartTop";
 
@@ -3365,12 +3652,8 @@ function renderCart() {
     title.className = "orderCartName";
     title.textContent = item.itemName;
 
-    const linePrice = document.createElement("span");
-    linePrice.className = "orderCartPrice";
-    linePrice.textContent = formatGBP(item.linePrice);
-
     top.appendChild(title);
-    top.appendChild(linePrice);
+    top.appendChild(createActionButton("remove", "×", item, true));
 
     const unit = document.createElement("div");
     unit.className = "orderCartUnit";
@@ -3381,27 +3664,33 @@ function renderCart() {
     const actions = document.createElement("div");
     actions.className = "orderCartActionsRow";
 
-    actions.appendChild(createActionButton("decrease", "−", item));
+    const stepper = document.createElement("div");
+    stepper.className = "orderCartStepper";
+    stepper.appendChild(createActionButton("decrease", "−", item));
 
     const qtyPill = document.createElement("span");
     qtyPill.className = "orderCartQty";
     qtyPill.textContent = String(item.quantity);
     qtyPill.setAttribute("aria-label", `${item.itemName} quantity: ${item.quantity}`);
-    actions.appendChild(qtyPill);
+    stepper.appendChild(qtyPill);
 
-    actions.appendChild(createActionButton("increase", "+", item));
-    actions.appendChild(createActionButton("remove", "Remove", item, true));
+    stepper.appendChild(createActionButton("increase", "+", item));
+    actions.appendChild(stepper);
 
-    li.appendChild(top);
-    li.appendChild(unit);
+    const linePrice = document.createElement("span");
+    linePrice.className = "orderCartPrice";
+    linePrice.textContent = formatGBP(item.linePrice);
+    actions.appendChild(linePrice);
+
+    body.appendChild(top);
+    body.appendChild(unit);
     if (lines.length > 0) {
       const modifiers = document.createElement("div");
       modifiers.className = "orderCartModifiers";
       modifiers.textContent = lines.join(" | ");
-      li.appendChild(modifiers);
+      body.appendChild(modifiers);
     }
 
-    const catalogItem = menuItemForCartItem(item);
     if (catalogItem) {
       const dietary = getMenuItemDietaryDisplay(catalogItem, item.modifierSelections || []);
       const allergens = getMenuItemAllergenLabels(catalogItem, item.modifierSelections || []);
@@ -3412,10 +3701,11 @@ function renderCart() {
         const dietaryAndAllergens = document.createElement("p");
         dietaryAndAllergens.className = "orderCartDietaryAllergens";
         dietaryAndAllergens.textContent = details.join(" · ");
-        li.appendChild(dietaryAndAllergens);
+        body.appendChild(dietaryAndAllergens);
       }
     }
-    li.appendChild(actions);
+    body.appendChild(actions);
+    li.appendChild(body);
 
     cartList.appendChild(li);
   });
@@ -3426,6 +3716,7 @@ function renderCart() {
 
   cartEmpty.hidden = hasItems;
   cartList.hidden = !hasItems;
+  if (basketClearBtn) basketClearBtn.hidden = !hasItems;
   if (orderSubtotalEl) orderSubtotalEl.textContent = formatGBP(totals.subtotal);
   if (orderDiscountRowEl) orderDiscountRowEl.hidden = totals.collectionDiscount <= 0;
   if (orderDiscountEl) orderDiscountEl.textContent = `−${formatGBP(totals.collectionDiscount)}`;
@@ -3724,6 +4015,7 @@ function initializeMenuInteractions() {
     queueActiveCategoryPillSync();
     persistOrderDraft();
   });
+  menuCategoryChips.addEventListener("keydown", handleMenuCategoryKeydown);
 
   menuSearchInput.addEventListener("input", () => {
     window.clearTimeout(menuSearchTimer);
@@ -3813,6 +4105,17 @@ function initializeMenuInteractions() {
 
   basketCloseBtn?.addEventListener("click", () => {
     setBasketOpen(false, { restoreFocus: true });
+  });
+
+  basketClearBtn?.addEventListener("click", () => {
+    if (cartItems.length === 0) return;
+    const removedQuantity = cartItems.reduce((total, item) => total + Number(item.quantity || 0), 0);
+    dismissUndoToast();
+    cartItems = [];
+    nextCartId = 1;
+    renderCart();
+    announceCartStatus(`${removedQuantity} item${removedQuantity === 1 ? "" : "s"} cleared from basket.`);
+    menuSearchInput?.focus({ preventScroll: true });
   });
 
   basketPanel?.addEventListener("keydown", handleBasketPanelKeydown);
@@ -3974,9 +4277,15 @@ async function initialize() {
   });
   emailInput?.addEventListener("input", validateEmailField);
   emailInput?.addEventListener("blur", validateEmailField);
-  address1Input?.addEventListener("input", validateAddress1Field);
+  address1Input?.addEventListener("input", () => {
+    validateAddress1Field();
+    updateOrderContextStrip();
+  });
   address1Input?.addEventListener("blur", validateAddress1Field);
-  townInput?.addEventListener("input", validateTownField);
+  townInput?.addEventListener("input", () => {
+    validateTownField();
+    updateOrderContextStrip();
+  });
   townInput?.addEventListener("blur", validateTownField);
   timeSelect?.addEventListener("change", () => {
     renderOrderSlotCards(lastRenderedTimeRows);
@@ -3988,6 +4297,7 @@ async function initialize() {
     normalizePostcodeField();
     updateDeliveryAreaHint();
     validatePostcodeField();
+    updateOrderContextStrip();
   });
   postcodeInput?.addEventListener("blur", () => {
     normalizePostcodeField();

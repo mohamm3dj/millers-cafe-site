@@ -16,12 +16,67 @@ import {
   cartQuantityActionLabel,
   scrollBehaviorForPreference
 } from "../orders/order-draft.js";
+import {
+  POPULAR_ITEM_NAMES,
+  getOrderItemImage
+} from "../orders/order-media.js";
+
+const ORDER_PAGE_PATHS = ["collection/index.html", "delivery/index.html"];
+const EXPECTED_FAVOURITES = [
+  "Chilli Paneer",
+  "Chicken Tikka Starter",
+  "Chicken Biryani",
+  "Garlic Naan",
+  "Mango Lassi"
+];
+
+function read(relativePath) {
+  return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
+}
+
+function extractBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0, `missing start marker: ${startMarker}`);
+  assert.ok(end > start, `missing end marker: ${endMarker}`);
+  return source.slice(start, end);
+}
 
 function allMenuItems() {
   return MILLERS_ORDER_MENU.flatMap((category) =>
     (category.items || []).map((item) => ({ category: category.name, item }))
   );
 }
+
+test("the five Millers favourites are real catalogue dishes with local raster food media", () => {
+  assert.deepEqual(POPULAR_ITEM_NAMES, EXPECTED_FAVOURITES);
+
+  const catalogueNames = new Set(allMenuItems().map(({ item }) => item.name));
+  EXPECTED_FAVOURITES.forEach((name) => {
+    assert.equal(catalogueNames.has(name), true, `${name} must be a real catalogue item`);
+
+    const imagePath = getOrderItemImage(name);
+    assert.match(
+      imagePath,
+      /^\.\.\/assets\/[a-z0-9][a-z0-9._-]*\.(?:avif|jpe?g|png|webp)$/i,
+      `${name} must use a local raster asset`
+    );
+    assert.doesNotMatch(imagePath, /(?:https?:|data:|\\|\?|#)/i);
+
+    const imageBytes = readFileSync(new URL(imagePath, new URL("../orders/order-media.js", import.meta.url)));
+    assert.ok(imageBytes.length > 1_000, `${name} food media should not be an empty placeholder`);
+    const header = imageBytes.subarray(0, 12);
+    const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    const isPng = header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isWebp = header.subarray(0, 4).toString("ascii") === "RIFF"
+      && header.subarray(8, 12).toString("ascii") === "WEBP";
+    assert.equal(isJpeg || isPng || isWebp, true, `${name} must resolve to a genuine raster image`);
+  });
+
+  ORDER_PAGE_PATHS.forEach((path) => {
+    assert.match(read(path), /img-src 'self' data:/, `${path} must keep images on the site origin`);
+  });
+});
 
 test("catalogue keeps dietary suitability and allergens out of generic tags", () => {
   const forbiddenTags = new Set(["vegan", "vegetarian", "veg", "dairy", "nuts", "nut"]);
@@ -154,12 +209,13 @@ test("cart action labels and scripted scrolling are accessible", () => {
 });
 
 test("collection and delivery markup expose a complete price breakdown", () => {
-  ["collection/index.html", "delivery/index.html"].forEach((path) => {
-    const html = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+  ORDER_PAGE_PATHS.forEach((path) => {
+    const html = read(path);
     assert.match(html, /id="orderSubtotal"/);
     assert.match(html, /id="orderDiscountRow"/);
     assert.match(html, /id="orderDeliveryFeeRow"/);
-    assert.match(html, /Total due at Stripe/);
+    assert.match(html, /class="orderCartTotal">\s*<span>Total<\/span>/);
+    assert.doesNotMatch(html, /Total due at Stripe/);
     assert.doesNotMatch(html, /id="menuItemsList"[^>]*aria-live/);
     assert.match(html, /id="orderMenuStatus"[^>]*role="status"/);
     assert.match(html, /id="orderCartStatus"[^>]*role="status"/);
@@ -169,8 +225,8 @@ test("collection and delivery markup expose a complete price breakdown", () => {
 });
 
 test("collection and delivery expose the polished three-stage checkout structure", () => {
-  ["collection/index.html", "delivery/index.html"].forEach((path) => {
-    const html = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+  ORDER_PAGE_PATHS.forEach((path) => {
+    const html = read(path);
 
     assert.match(
       html,
@@ -190,6 +246,68 @@ test("collection and delivery expose the polished three-stage checkout structure
   });
 });
 
+test("collection and delivery expose truthful semantic context strips", () => {
+  const expectations = {
+    "collection/index.html": ["Collection details", "Collect from", "Ready", "Collection saving"],
+    "delivery/index.html": ["Delivery details", "Deliver to", "Delivery time", "Delivery"]
+  };
+
+  ORDER_PAGE_PATHS.forEach((path) => {
+    const html = read(path);
+    const context = extractBetween(
+      html,
+      '<section class="orderContextStrip"',
+      '<section class="tile simplePanel bookingsPanel">'
+    );
+    const [ariaLabel, ...labels] = expectations[path];
+
+    assert.match(context, new RegExp(`aria-label="${ariaLabel}"`));
+    assert.equal((context.match(/class="orderContextItem"/g) || []).length, 3);
+    assert.match(context, /id="orderContextDestination"/);
+    assert.match(context, /id="orderContextTiming"/);
+    assert.match(context, /id="orderContextPricing"/);
+    assert.equal((context.match(/<img[^>]+alt=""/g) || []).length, 3);
+    labels.forEach((label) => assert.match(context, new RegExp(`<small>${label}<\\/small>`)));
+    assert.doesNotMatch(context, /minimum order|£15/i, `${path} must not invent an ordering rule`);
+  });
+});
+
+test("collection and delivery share an identical ordering workspace", () => {
+  const start = '<div class="bookingField bookingFieldWide orderItemsField">';
+  const end = '<div class="bookingField bookingFieldWide orderCheckoutField">';
+  const collection = read("collection/index.html");
+  const delivery = read("delivery/index.html");
+
+  assert.equal(extractBetween(collection, start, end), extractBetween(delivery, start, end));
+
+  ["orderAddress1", "orderAddress2", "orderTown", "orderPostcode", "deliveryAreaHint"].forEach((id) => {
+    assert.doesNotMatch(collection, new RegExp(`id="${id}"`), `${id} is delivery-only`);
+    assert.match(delivery, new RegExp(`id="${id}"`), `${id} must remain available for delivery`);
+  });
+});
+
+test("the desktop category rail has icons and roving keyboard navigation", () => {
+  const collection = read("collection/index.html");
+  const source = read("orders/order-form.js");
+  const groupDefinitions = extractBetween(
+    source,
+    "const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([",
+    "]);\n\nconst form"
+  );
+
+  assert.match(collection, /id="menuCategoryChips"[^>]*role="group"[^>]*aria-label="Menu categories"/);
+  assert.ok((groupDefinitions.match(/icon: "\.\.\/assets\//g) || []).length >= 10);
+  assert.match(source, /icon\.className = "orderCategoryChipIcon";/);
+  assert.match(source, /icon\.setAttribute\("aria-hidden", "true"\);/);
+  assert.match(source, /button\.tabIndex = name === selectedCategory \? 0 : -1;/);
+  assert.match(source, /function handleMenuCategoryKeydown\(event\)/);
+  ["Home", "End", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].forEach((key) => {
+    assert.match(source, new RegExp(`event\\.key === "${key}"`), `${key} should move through categories`);
+  });
+  assert.match(source, /event\.preventDefault\(\);\s*buttons\[nextIndex\]\?\.click\(\);/);
+  assert.match(source, /menuCategoryChips\.addEventListener\("keydown", handleMenuCategoryKeydown\);/);
+});
+
 test("direct add actions use the real plus icon without replacing their accessible text", () => {
   const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
 
@@ -198,10 +316,11 @@ test("direct add actions use the real plus icon without replacing their accessib
 });
 
 test("the streamlined basket flow stays explicit across desktop and mobile", () => {
-  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+  const source = read("orders/order-form.js");
 
   assert.match(source, /const isDesktopMenu = isDesktopBasketLayout\(\) && currentOrderStep === 1;/);
-  assert.match(source, /Checkout details · \$\{totalLabel\}/);
+  assert.match(source, /Continue to checkout · \$\{totalLabel\}/);
+  assert.doesNotMatch(source, /Checkout details · \$\{totalLabel\}/);
   assert.match(source, /hasItems \? "View basket" : "Add dishes"/);
   assert.match(source, /\? isSubmitting \|\| !hasItems/);
   assert.match(source, /setBasketOpen\(isDesktopBasketLayout\(\)\);/);
@@ -218,6 +337,44 @@ test("the streamlined basket flow stays explicit across desktop and mobile", () 
   assert.match(source, /addItemToCart\(activeDraft\.item, result\.selections, activeDraft\.quantity, false\);/);
 });
 
+test("basket copy uses a simple Total and Continue hierarchy", () => {
+  const source = read("orders/order-form.js");
+
+  ORDER_PAGE_PATHS.forEach((path) => {
+    const html = read(path);
+    assert.match(html, /<strong>Your basket<\/strong>/);
+    assert.match(html, /id="orderBasketClear"[^>]*>Clear all<\/button>/);
+    assert.match(html, /id="orderBasketCheckout"[^>]*>Continue to checkout<\/button>/);
+    assert.match(html, /id="stickyCheckoutBtn"[^>]*>Continue<\/button>/);
+    assert.match(
+      html,
+      /class="orderBasketProgress"[^>]*>[\s\S]*?>Basket<\/li>[\s\S]*?>Details<\/li>[\s\S]*?>Payment<\/li>/
+    );
+  });
+
+  assert.match(source, /appendPriceRow\("Total", formatGBP\(totals\.total\), "isTotal"\);/);
+  assert.doesNotMatch(source, /Total due at Stripe/);
+  assert.doesNotMatch(source, /Checkout details ·/);
+});
+
+test("mobile basket dialogs lock page scroll and make the background inert", () => {
+  const source = read("orders/order-form.js");
+  const css = read("styles.css");
+
+  assert.match(source, /function setMobileBasketBackgroundInert\(inert\)/);
+  assert.match(source, /document\.body\.classList\.toggle\("isOrderBasketDialogOpen", shouldInert\);/);
+  assert.match(source, /document\.querySelector\("\.desktopSiteHeader"\)/);
+  assert.match(source, /document\.querySelector\("\.orderContextStrip"\)/);
+  assert.match(source, /element !== basketColumn && element !== modifierPanel/);
+  assert.match(source, /element\.dataset\.orderBasketInert = "true";\s*element\.inert = true;/);
+  assert.match(source, /element\.inert = false;\s*delete element\.dataset\.orderBasketInert;/);
+  assert.match(source, /const mobileDialog = isMobileOrderMenuLayout\(\) && currentOrderStep === 1 && nextState;/);
+  assert.match(source, /setMobileBasketBackgroundInert\(mobileDialog\);/);
+  assert.match(source, /basketPanel\.setAttribute\("role", "dialog"\);/);
+  assert.match(source, /basketPanel\.setAttribute\("aria-modal", "true"\);/);
+  assert.match(css, /body\.isOrderBasketDialogOpen\{\s*overflow: hidden;/);
+});
+
 test("pressing Enter in menu search filters instead of submitting checkout", () => {
   const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
 
@@ -227,25 +384,20 @@ test("pressing Enter in menu search filters instead of submitting checkout", () 
   );
 });
 
-test("order pages reuse the homepage Aurora glass design tokens", () => {
-  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+test("the final quick-order layer owns the responsive three-column workspace", () => {
+  const css = read("styles.css");
+  const quickOrderLayer = css.lastIndexOf("Millers quick-order workspace — option 2");
+  const unifiedLayer = css.lastIndexOf("Unified homepage design language");
+  assert.ok(quickOrderLayer > unifiedLayer, "the selected option must be the active final cascade layer");
 
-  assert.match(css, /Millers Aurora Glass order workspace/);
-  assert.match(css, /--order-ink: var\(--text\);/);
-  assert.match(css, /--order-jade: var\(--accent\);/);
-  assert.match(css, /--order-mint: var\(--accent-soft\);/);
-  assert.match(css, /radial-gradient\(72% 62% at 7% 4%, rgba\(125, 211, 252, \.20\), transparent 70%\)/);
-  assert.match(css, /linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
-  assert.ok(
-    css.lastIndexOf("Millers Aurora Glass order workspace") > css.lastIndexOf("Editorial Kitchen order workspace"),
-    "the Aurora Glass visual layer must follow the layout foundation"
-  );
-  assert.ok(
-    css.lastIndexOf(".orderBasketColumn.isBasketOpen .stickyCheckoutBar") > css.lastIndexOf("Millers Aurora Glass order workspace"),
-    "the mobile fixed-overlay guard must remain in the active final cascade"
-  );
-  assert.match(css, /left: max\(8px, env\(safe-area-inset-left\)\)/);
-  assert.match(css, /max-height: calc\(100dvh - 60px\)/);
+  const activeCss = css.slice(quickOrderLayer);
+  assert.match(activeCss, /@media \(min-width: 960px\)[\s\S]*?body\.publicBody\.orderBody \.bookingForm\.isOrderMenuStep \.orderHub\{[\s\S]*?grid-template-columns: clamp\(190px, 15vw, 228px\) minmax\(360px, 1fr\) clamp\(300px, 25vw, 360px\);/);
+  assert.match(activeCss, /grid-template-areas:\s*"rail search basket"\s*"rail heading basket"\s*"rail intro basket"\s*"rail menu basket";/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuCard\.hasMedia\{\s*grid-template-columns: 104px minmax\(0, 1fr\) auto;/);
+  assert.match(activeCss, /@media \(max-width: 959px\)[\s\S]*?\.orderPage \.orderHub\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(activeCss, /\.orderPage \.orderMenuCard\.hasMedia\{[\s\S]*?grid-template-columns: 84px minmax\(0, 1fr\);/);
+  assert.match(activeCss, /\.orderPage \.orderMenuCard\.hasMedia \.orderMenuActions\{\s*grid-column: 1 \/ -1;/);
+  assert.match(activeCss, /linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
 });
 
 test("checkout validation moves customers to the first invalid field", () => {

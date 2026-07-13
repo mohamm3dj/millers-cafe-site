@@ -12,7 +12,7 @@
   <link rel="canonical" href="https://millers.cafe/collection/">
   <link rel="preload" href="../assets/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="../assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="../styles.css?v=20260713a">
+  <link rel="stylesheet" href="../styles.css?v=20260713c">
 </head>
 <body class="publicBody orderBody">
   <a class="skipLink" href="#mainContent">Skip to main content</a>
@@ -50,6 +50,21 @@
         <a class="orderServiceLink" href="../delivery/"><img src="../assets/icon-delivery.svg" alt="" width="19" height="19">Delivery</a>
       </nav>
     </header>
+
+    <section class="orderContextStrip" aria-label="Collection details">
+      <div class="orderContextItem">
+        <img src="../assets/icon-map-pin.svg" alt="" width="22" height="22">
+        <span><small>Collect from</small><strong id="orderContextDestination">55 Brigsley Road, Waltham</strong></span>
+      </div>
+      <div class="orderContextItem">
+        <img src="../assets/icon-clock.svg" alt="" width="22" height="22">
+        <span><small>Ready</small><strong id="orderContextTiming">Today · ASAP</strong></span>
+      </div>
+      <div class="orderContextItem">
+        <img src="../assets/icon-bag.svg" alt="" width="22" height="22">
+        <span><small>Collection saving</small><strong id="orderContextPricing">10% off automatically</strong></span>
+      </div>
+    </section>
 
     <section class="tile simplePanel bookingsPanel">
       <div class="bookingsNotice" id="orderNotice" role="status" aria-live="polite">
@@ -146,7 +161,8 @@
               </div>
 
               <div id="menuCategoryChips" class="orderCategoryChips" role="group" aria-label="Menu categories"></div>
-              <p id="orderActiveCategoryPill" class="orderActiveCategoryPill"></p>
+              <h2 id="orderActiveCategoryPill" class="orderActiveCategoryPill"></h2>
+              <p id="orderActiveCategoryIntro" class="orderActiveCategoryIntro"></p>
               <div id="menuItemsList" class="orderMenuList"></div>
               <p id="orderMenuStatus" class="visuallyHidden" role="status" aria-live="polite" aria-atomic="true"></p>
               <p id="orderCartStatus" class="visuallyHidden" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -159,8 +175,11 @@
 
                 <div id="orderBasketPanel" class="orderBasketPanel" role="region" aria-label="Basket" hidden>
                   <div class="orderBasketHead">
-                    <strong>Basket</strong>
-                    <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
+                    <strong>Your basket</strong>
+                    <span class="orderBasketHeadActions">
+                      <button id="orderBasketClear" class="orderBasketClear" type="button" hidden>Clear all</button>
+                      <button id="orderBasketClose" class="orderBasketClose" type="button">Close</button>
+                    </span>
                   </div>
 
                   <div id="orderCartEmpty" class="orderCartEmpty">No dishes added yet.</div>
@@ -180,12 +199,12 @@
                       <strong id="orderDeliveryFee">£0.00</strong>
                     </div>
                     <div class="orderCartTotal">
-                      <span>Total due at Stripe</span>
+                      <span>Total</span>
                       <strong id="orderTotal">£0.00</strong>
                     </div>
                   </div>
 
-                  <button id="orderBasketCheckout" class="orderBasketCheckout" type="button">Checkout</button>
+                  <button id="orderBasketCheckout" class="orderBasketCheckout" type="button">Continue to checkout</button>
                   <p id="orderSummaryPreview" class="bookingMeta">Add dishes to begin.</p>
                   <input id="orderItems" name="itemsSummary" type="hidden">
                 </div>
@@ -249,6 +268,11 @@
           <p id="stickyCheckoutDateTime" class="stickyCheckoutDateTime">Today · ASAP</p>
           <p id="stickyCheckoutOrder" class="stickyCheckoutOrder">0 items · £0.00</p>
         </div>
+        <ol class="orderBasketProgress" aria-label="Checkout progress">
+          <li class="isActive"><span>1</span>Basket</li>
+          <li><span>2</span>Details</li>
+          <li><span>3</span>Payment</li>
+        </ol>
         <button id="stickyCheckoutBtn" class="stickyCheckoutBtn" type="button">Continue</button>
       </div>
 
@@ -266,6 +290,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script type="module" src="../orders/order-form.js?v=20260713a"></script>
+  <script type="module" src="../orders/order-form.js?v=20260713d"></script>
 </body>
 </html>

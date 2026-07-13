@@ -106,6 +106,49 @@ An additional crop was not required: the 1440 × 1024 source and implementation 
 
 final result: passed
 
+## Quick-order option 2 QA — 13 July 2026
+
+Reference and implementation:
+
+- Selected source: `/Users/mo/.codex/generated_images/019f4da8-15c7-73e2-a6f3-36cdb5c78784/exec-82a1fa13-1919-443b-9623-cc5dabe901f9.png` at 1487 × 1058.
+- Final delivery implementation: `/private/tmp/order-redesign-delivery-final.png` at 1487 × 1058.
+- Required side-by-side comparison input: `/private/tmp/order-redesign-comparison-final.jpg`.
+- Additional states: `/private/tmp/order-redesign-collection-final.png`, `/private/tmp/order-redesign-basket-v2.png`, `/private/tmp/order-redesign-details.png`, `/private/tmp/order-redesign-mobile.png`, and `/private/tmp/order-redesign-mobile-basket-v2.png`.
+
+Fidelity review:
+
+- Layout: the final desktop state reproduces the source's status strip, persistent left category rail, single-column food rows, and right basket while retaining the accepted Millers floating homepage navigation and Aurora canvas.
+- Typography and spacing: Manrope/Urbanist, tight navy headings, compact supporting copy, 52px category targets, 56px search/checkout controls, 104px menu media, 24px basket radius, and restrained dividers match the selected density and hierarchy.
+- Color and surfaces: homepage navy, teal, mint, icy-blue canvas, white surfaces and low-contrast shadows replace the source's generic treatment without introducing a new palette.
+- Imagery: Chilli Paneer, Chicken Tikka Starter and Chicken Biryani use approved existing food assets. Dedicated 768 × 768 Garlic Naan and Mango Lassi photography was created and compressed to 271KB and 90KB. Every image uses an empty alt because its dish name is adjacent, plus explicit dimensions, lazy loading and async decoding.
+- Content truth: fictional London address, £15 minimum, target prices, fee and ETA were not copied. All names/prices come from the real catalogue; collection discount, delivery fee, dates, time, address and ETA remain configuration-driven. Chicken Biryani retains its required customisation action.
+- Icons: existing Millers Tabler-style assets are used throughout. No inline SVG, emoji, CSS-drawn illustration or placeholder imagery is present.
+
+Resolved findings:
+
+- P1: the first quick-order CSS pass sat before legacy order layers and was being overridden. Moved the complete option-2 layer to the final cascade position and added a regression that enforces this order.
+- P1: saved search state initially obscured the default favourites view during browser review. Cleared it through the real search interaction and verified the default five-item order.
+- P1: the mobile basket lacked full background inerting and scroll lock. Added reversible inert state, body locking, dialog semantics, Escape close, focus return and `aria-expanded` synchronization.
+- P1: the desktop basket footer exposed a cramped, truncated schedule/total sentence. Removed the redundant summary from the basket card; context remains in the top strip and progress/CTA now match the reference more closely.
+- P1: three fallback descriptions introduced unverified ingredient wording that was not present in the canonical catalogue. Removed every fallback so dish descriptions now render only when supplied by verified menu data.
+- P2: catalogue order initially placed Mango Lassi first. The virtual favourites group now follows the selected presentation order while resolving every item back to its real catalogue entry.
+- P2: the generated PNG food assets were 4.5MB combined. Converted them to 768px JPEGs at 361KB combined and removed the unreferenced source PNGs from the build.
+- P2: repeated legacy basket wording read “Total due at Stripe” and “Checkout details.” Simplified the visible hierarchy to “Total” and “Continue to checkout” while preserving secure Stripe language at the payment boundary.
+
+Functional, responsive and accessibility verification:
+
+- Collection desktop: favourites render in the intended order; direct add updates the basket, 10% discount, selected badge, count, total and amount-aware CTA; menu → details → Back to dishes works.
+- Delivery desktop: persisted basket recalculates with the live £2 fee; the context strip reports address-at-checkout, configured ETA and fee; details expose the required address fields and price summary.
+- Mobile at 390 × 844: original accordion menu remains usable, sticky View basket works, the basket opens as a modal dialog with 15 background roots inert, body scroll locked, and Escape closes it and restores the opener state.
+- Desktop at 1487 × 1058: no overlapping or clipped rail/menu/basket controls; all five curated dishes remain reachable; the basket stays viewport-contained.
+- Focus-visible, keyboard category navigation, roving tab stop, Home/End/arrow behavior, live regions, adjacent image labels, reduced motion and 44px mobile targets remain intact.
+- Browser console inspection, semantic snapshots and interaction checks completed without a product-code error.
+- Automated suite: 136/136 passed.
+- Focused order/design regressions: 31/31 passed.
+- JavaScript syntax and `git diff --check`: passed.
+
+final result: passed
+
 ## Unified public-site QA — 13 July 2026
 
 Reference: the existing Millers Café desktop homepage at 1440 × 900.
