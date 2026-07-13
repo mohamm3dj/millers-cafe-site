@@ -106,6 +106,72 @@ An additional crop was not required: the 1440 × 1024 source and implementation 
 
 final result: passed
 
+## Guided menu option 3 QA — 14 July 2026
+
+### Scope and evidence
+
+- Source visual truth: `/Users/mo/.codex/generated_images/019f4da8-15c7-73e2-a6f3-36cdb5c78784/exec-cb6c0022-2d04-4415-9ffd-e276f55fc0b0.png` at 1487 × 1058.
+- Final browser-rendered desktop implementation: `/private/tmp/millers-menu-option3-desktop-final-v3.png` at 1487 × 1058.
+- Final browser-rendered mobile implementation: `/private/tmp/millers-menu-option3-mobile-final-v3.png` at 390 × 844.
+- Required full-view side-by-side comparison: `/private/tmp/millers-menu-option3-comparison-final.jpg`.
+- Required focused centre-workspace comparison: `/private/tmp/millers-menu-option3-focus-comparison-final.jpg`.
+- Earlier comparison evidence: `/private/tmp/millers-menu-option3-comparison.jpg` and `/private/tmp/millers-menu-option3-mobile-before-fixes.png`.
+- Desktop state: default `Mains & Curries` group, `All` subcategory, no search query, safety rail visible.
+- Mobile state: default `Mains & Curries` group, horizontally centred selected category, collapsed subsections, fixed Collection/Delivery actions.
+
+### Findings
+
+- No actionable P0, P1, or P2 differences remain after the iterations below.
+- P3 accepted constraint: the concept's decorative star was omitted because the project has no approved matching star asset; no text glyph, CSS drawing, or handcrafted SVG substitute was introduced.
+- P3 accepted content deviation: the concept used illustrative combined curry prices and spice glyphs. The implementation intentionally renders the exact canonical 27-category, 177-item catalogue with its verified names, descriptions, base-price labels, and dietary/allergen data.
+
+### Required fidelity surfaces
+
+- Fonts and typography: the implementation reuses the homepage's bundled Manrope and Urbanist families. Display headings, search copy, tab labels, 14px item names/prices, 11.5px descriptions, and the safety copy were checked at original resolution. The final density remains compact but readable, with no unintended truncation of dish names or prices.
+- Spacing and layout rhythm: the desktop preserves the selected three-column composition, shallow hero, persistent left category rail, two-column flat dish rows, right ordering/safety rail, low-contrast borders, restrained shadows, and homepage radii. The 390px layout becomes a horizontal category rail plus single-column accordion list without page overflow.
+- Colors and visual tokens: the background, white glass panels, navy ink, jade active states, mint accents, subtle dividers, and shadow opacity are inherited from the live homepage rather than a new palette. Selected and focus states remain distinct.
+- Image quality and asset fidelity: the 1600 × 560, 159807-byte `menu-favourites-hero.jpg` is a real raster asset matched to the measured slot, with the curry and naan subject weighted right to preserve clean copy space. The crop stays sharp on desktop and mobile. Existing logo and SVG icon assets are used throughout; there is no emoji, inline SVG, CSS illustration, or placeholder imagery.
+- Copy and content: browsing, Collection/Delivery, favourites, empty-state, and allergy language are coherent and standalone. The always-visible safety notice states that symbols are a guide, no symbol is not an allergen-free claim, and customers must tell the team before ordering.
+- Icons: the existing Millers/Tabler-style icon family is used for the rail, search, ordering actions, and accordion state. The original text-glyph accordion marker was replaced with the real `icon-arrow-right.svg` asset.
+- Accessibility and states: semantic buttons/tabs, roving category focus, arrow/Home/End navigation, `aria-current`, `aria-selected`, live search status, explicit labels, descriptive hero alt text, reduced-motion support, focus-visible outlines, and 44px minimum mobile controls were verified.
+
+### Comparison history
+
+#### Iteration 1 — mobile navigation and icon fidelity
+
+- [P2] The selected `Mains & Curries` category initially loaded outside the visible portion of the horizontal mobile rail.
+  - Fix: centre the active category within the rail after group and hash state are applied, without moving the page vertically.
+  - Post-fix evidence: `/private/tmp/millers-menu-option3-mobile-final-v3.png`; browser metrics reported the active category fully inside the 348px rail and zero page overflow.
+- [P2] Mobile accordions inherited triangle text glyphs rather than a real project asset.
+  - Fix: use `assets/icon-arrow-right.svg` with a transform for collapsed/expanded state.
+  - Post-fix evidence: `/private/tmp/millers-menu-option3-mobile-final-v3.png`; the computed pseudo-element background resolves to the same-origin SVG asset.
+
+#### Iteration 2 — dense-menu readability
+
+- [P2] The first focused comparison showed item names, descriptions, prices, and safety copy materially smaller and lighter than the selected concept.
+  - Fix: raise dish names/prices to 14px, descriptions and menu notes to 11.5px, strengthen description colour to the homepage slate token, and increase right-rail supporting copy.
+  - Earlier evidence: `/private/tmp/millers-menu-option3-focus-comparison.jpg`.
+  - Post-fix evidence: `/private/tmp/millers-menu-option3-focus-comparison-final.jpg` and `/private/tmp/millers-menu-option3-desktop-final-v3.png`.
+
+### Functional, responsive, and browser verification
+
+- Category browsing: selecting `Biryani & Rice` updated the title, visible sections, selected state, and URL hash; ArrowDown moved roving focus and Home returned it to the first group without changing the active group.
+- Subcategory browsing: selecting the `Biryani` tab updated `aria-selected`, the visible section, and `#biryani` deep link.
+- Search: the 120ms tokenized search returned verified matches for `chicken garlic`; Clear restored the active Biryani state; an impossible query produced the designed empty state and Clear search recovery.
+- Dietary controls: opening Dietary key exposed both toggles; hiding the symbol key removed only the legend grid while the allergy notice remained present and visible.
+- Responsive ordering: Collection and Delivery links resolve correctly in the context strip, desktop rail, and fixed mobile action bar. The mobile bar is fixed with 48px actions and the page reserves 92px bottom clearance.
+- Mobile accordions: the Mild Curries control expanded to expose real menu rows, kept a 54px target, and rotated its real arrow asset.
+- Desktop at 1487 × 1058 and mobile at 390 × 844 both reported zero horizontal overflow. The smallest tested interactive height was 44px.
+- Browser console errors/warnings: none during the completed desktop and mobile interaction passes.
+- Automated suite: 142/142 passed.
+- JavaScript syntax, production build, `git diff --check`, cache version alignment, canonical catalogue parity, and the menu image budget: passed.
+
+### Follow-up polish
+
+- P3: add approved per-dish photography only if the canonical catalogue later gains stable image mappings; do not infer imagery from names.
+
+final result: passed
+
 ## Quick-order option 2 QA — 13 July 2026
 
 Reference and implementation:
@@ -187,5 +253,26 @@ Functional checks:
 - Browser diagnostics reported no JavaScript console errors during the reviewed states.
 - Automated suite: 129/129 passed.
 - JavaScript syntax, build, `git diff --check`, and service-worker cache versioning: passed.
+
+final result: passed
+
+## Guided menu option 3 QA — final handoff
+
+- Source visual truth: `/Users/mo/.codex/generated_images/019f4da8-15c7-73e2-a6f3-36cdb5c78784/exec-cb6c0022-2d04-4415-9ffd-e276f55fc0b0.png` at 1487 × 1058.
+- Browser-rendered implementation: `/private/tmp/millers-menu-option3-desktop-final-v3.png` at 1487 × 1058 and `/private/tmp/millers-menu-option3-mobile-final-v3.png` at 390 × 844.
+- State: default `Mains & Curries`, `All` subcategory, no query, visible allergy rail; mobile uses collapsed subsections and the fixed Collection/Delivery bar.
+- Full-view comparison: `/private/tmp/millers-menu-option3-comparison-final.jpg`.
+- Focused typography/menu comparison: `/private/tmp/millers-menu-option3-focus-comparison-final.jpg`; a focused crop was required because item typography and safety copy were too small to judge reliably in the scaled full view.
+- Fonts/typography: bundled Manrope/Urbanist, 14px dish names/prices, 11.5px descriptions, clear display hierarchy, and no dish-name or price truncation.
+- Spacing/layout: the selected three-column desktop composition and dense two-column rows are preserved; the 390px layout has no page overflow and keeps all persistent actions clear.
+- Colors/tokens: homepage navy, jade, mint, icy canvas, white panels, subtle dividers, and restrained shadows are reused without a new palette.
+- Image quality: the sharp 1600 × 560, 159807-byte curry-and-naan raster matches the measured hero crop. All other visible assets use the approved logo/SVG family; there is no fake SVG, CSS art, emoji, or placeholder imagery.
+- Copy/content: the exact 27-category, 177-item catalogue, verified base prices/descriptions, qualified dietary claims, and always-visible allergy warning replace the concept's illustrative data.
+- Comparison history: P2 mobile active-category visibility and text-glyph accordion markers were fixed by centring the selected rail item and using the real arrow asset. P2 dense-menu readability was fixed by increasing type size/contrast. Earlier evidence is `/private/tmp/millers-menu-option3-mobile-before-fixes.png` and `/private/tmp/millers-menu-option3-focus-comparison.jpg`; the final evidence paths above show the corrections.
+- Primary interactions tested: group selection/hash state, roving Arrow/Home navigation, subcategory tabs, token search, state-preserving Clear, no-results recovery, Dietary key toggles with persistent safety notice, mobile accordion expansion, and Collection/Delivery links.
+- Accessibility/responsiveness: semantic controls and labels, focus-visible treatment, reduced motion, live search status, descriptive image alt, zero tested horizontal overflow, and a 44px minimum tested control height.
+- Browser console errors/warnings: none in the final desktop and mobile passes.
+- Verification: 142/142 automated tests, JavaScript syntax, production build, `git diff --check`, cache alignment, catalogue parity, and asset budget all passed.
+- Remaining findings: no actionable P0/P1/P2 findings. P3 only: the concept's decorative star remains omitted because no approved matching asset exists.
 
 final result: passed

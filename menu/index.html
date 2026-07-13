@@ -22,7 +22,7 @@
   <meta name="twitter:description" content="Explore the Millers Café menu, from shakes and desserts to curries, wraps, grills and family favourites." />
   <meta name="twitter:image" content="https://millers.cafe/assets/millers-logo.png" />
   <meta name="twitter:image:alt" content="Millers Café logo" />
-  <link rel="stylesheet" href="../styles.css?v=20260713c" />
+  <link rel="stylesheet" href="../styles.css?v=20260713g" />
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -59,7 +59,7 @@
   </header>
 
   <main id="mainContent" class="menuPage" tabindex="-1">
-    <div class="header publicPageHeader">
+    <div class="header publicPageHeader menuPageIntro">
       <a class="tile backBtn" href="../">&larr; Back</a>
       <div class="headerStack">
         <p class="publicPageEyebrow">Fresh from the Millers kitchen</p>
@@ -68,45 +68,85 @@
       </div>
     </div>
 
-    <div class="tile menuTools">
-      <div class="toolsRow">
-        <label class="toggle">
-          <input id="labelsToggle" type="checkbox" checked />
-          <span class="toggleUi" aria-hidden="true"></span>
-          <span>Show dietary, allergen and spice symbols</span>
-        </label>
-        <label class="toggle">
-          <input id="legendToggle" type="checkbox" checked />
-          <span class="toggleUi" aria-hidden="true"></span>
-          <span>Show symbol key</span>
-        </label>
+    <section class="menuBrowseContext" aria-label="Menu ordering options">
+      <div class="menuBrowseContextTitle">
+        <img src="../assets/icon-book.svg" alt="" width="20" height="20">
+        <strong>Browse the full menu</strong>
       </div>
+      <nav class="menuBrowseContextActions" aria-label="Start an order">
+        <a href="../collection/">
+          <img src="../assets/icon-bag.svg" alt="" width="20" height="20">
+          <span>Collection</span>
+        </a>
+        <a href="../delivery/">
+          <img src="../assets/icon-delivery.svg" alt="" width="20" height="20">
+          <span>Delivery</span>
+        </a>
+      </nav>
+    </section>
+
+    <div class="menuWorkspace">
+      <aside class="menuCategoryRail" aria-label="Browse menu categories">
+        <p class="menuRailEyebrow">Browse by category</p>
+        <nav id="menuCategoryRailList" class="menuCategoryRailList" aria-label="Menu category groups"></nav>
+      </aside>
+
+      <div class="menuBrowseMain">
+    <div class="tile menuTools">
       <div class="menuSearchRow">
         <input
           id="menuSearchInput"
           class="menuSearchInput"
           type="search"
-          placeholder="Search dishes, ingredients, or sections..."
+          placeholder="Search dishes, descriptions, or sections..."
           aria-label="Search menu"
         />
-        <button id="clearMenuSearch" class="searchClearBtn" type="button">Clear</button>
+        <button id="clearMenuSearch" class="searchClearBtn" type="button" hidden>Clear</button>
       </div>
-      <div id="menuJumpWrap" class="menuJumpWrap">
-        <div class="menuJumpHeader">
-          <p class="menuJumpLabel">Jump to section</p>
-          <label class="toggle jumpToggleControl">
-            <input id="jumpMenuToggle" type="checkbox" checked aria-controls="menuJumpChips" />
+      <details class="menuDisplayControls">
+        <summary>Dietary key</summary>
+        <div class="toolsRow">
+          <label class="toggle">
+            <input id="labelsToggle" type="checkbox" checked />
             <span class="toggleUi" aria-hidden="true"></span>
-            <span>Show jump sections</span>
+            <span>Show dietary, allergen and spice symbols</span>
+          </label>
+          <label class="toggle">
+            <input id="legendToggle" type="checkbox" checked />
+            <span class="toggleUi" aria-hidden="true"></span>
+            <span>Show symbol key</span>
           </label>
         </div>
-        <div id="menuJumpChips" class="menuJumpChips" aria-label="Jump to menu section"></div>
-      </div>
+      </details>
       <p id="menuSearchMeta" class="menuSearchMeta" aria-live="polite"></p>
     </div>
 
+    <section class="menuFavouritesHero" aria-labelledby="menuFavouritesTitle">
+      <img class="menuFavouritesHeroImage" src="../assets/menu-favourites-hero.jpg" alt="A bowl of curry beside naan" width="1600" height="560" decoding="async">
+      <div class="menuFavouritesCopy">
+        <p class="menuFavouritesEyebrow">Millers favourites</p>
+        <h2 id="menuFavouritesTitle">Loved for a reason</h2>
+        <p>A quick route to the dishes our homepage regulars know best.</p>
+      </div>
+    </section>
+
+    <header class="menuActiveHeader">
+      <div>
+        <h2 id="menuActiveGroupTitle">Mains &amp; Curries</h2>
+        <p id="menuActiveGroupDescription">Rich curries and house favourites, made fresh in our kitchen.</p>
+      </div>
+      <div id="menuGroupTabs" class="menuGroupTabs" role="tablist" aria-label="Menu subcategories"></div>
+    </header>
+
+    <section id="menuNoResults" class="menuNoResults" aria-live="polite" hidden>
+      <img src="../assets/icon-search.svg" alt="" width="28" height="28">
+      <h2>No dishes found</h2>
+      <p>Try a dish name, a description, or a menu section.</p>
+      <button id="clearMenuSearchEmpty" type="button">Clear search</button>
+    </section>
+
     <section class="tile menuSection menuGroup menuLegend" data-menu="all">
-      <h2 class="tileTitle">Choices Made Simple</h2>
+      <h2 class="tileTitle">Allergy guidance</h2>
       <div class="legendGrid legendInline">
         <div><span class="label">VG</span> Suitable for vegans</div>
         <div><span class="label">V</span> Vegetarian</div>
@@ -420,6 +460,32 @@
   <div class="menuItem"><div class="menuLeft"><div class="menuName">Masala Chips</div><div class="menuDesc">Chips tossed in masala sauce.</div></div><div class="menuPrice">&pound;5</div></div>
 </section>
 
+      </div>
+
+      <aside class="menuOrderRail" aria-label="Ordering and allergy guidance">
+        <div class="menuOrderRailCard">
+          <h2>Ready to order?</h2>
+          <p>Choose how you’d like to enjoy Millers Café.</p>
+          <a class="menuOrderChoice" href="../collection/">
+            <span class="menuOrderChoiceIcon"><img src="../assets/icon-bag.svg" alt="" width="24" height="24"></span>
+            <span><strong>Collection</strong><small>Order ahead and pick up</small></span>
+            <img class="menuOrderChoiceArrow" src="../assets/icon-arrow-right.svg" alt="" width="18" height="18">
+          </a>
+          <a class="menuOrderChoice" href="../delivery/">
+            <span class="menuOrderChoiceIcon"><img src="../assets/icon-delivery.svg" alt="" width="24" height="24"></span>
+            <span><strong>Delivery</strong><small>Delivered to your door</small></span>
+            <img class="menuOrderChoiceArrow" src="../assets/icon-arrow-right.svg" alt="" width="18" height="18">
+          </a>
+          <div id="menuSafetySlot" class="menuSafetySlot"></div>
+        </div>
+      </aside>
+    </div>
+
+    <nav class="menuMobileOrderBar" aria-label="Start an order">
+      <a href="../collection/"><img src="../assets/icon-bag.svg" alt="" width="19" height="19">Collection</a>
+      <a href="../delivery/"><img src="../assets/icon-delivery.svg" alt="" width="19" height="19">Delivery</a>
+    </nav>
+
     <footer class="footer">
       <a href="mailto:help@millers.cafe" class="footerLink">help@millers.cafe</a>
       <nav class="footerPolicies" aria-label="Policies">
@@ -430,6 +496,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script src="../menu/menu.js?v=20260713a"></script>
+  <script src="../menu/menu.js?v=20260713d"></script>
 </body>
 </html>
