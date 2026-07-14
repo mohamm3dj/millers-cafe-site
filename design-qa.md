@@ -276,3 +276,37 @@ final result: passed
 - Remaining findings: no actionable P0/P1/P2 findings. P3 only: the concept's decorative star remains omitted because no approved matching asset exists.
 
 final result: passed
+
+## Collection and Delivery image-removal QA — 14 July 2026
+
+Reference and rendered evidence:
+
+- Source visual truth: `/var/folders/zj/pv7s71zx7rv52p0xf2sm8_pw0000gn/T/TemporaryItems/NSIRD_screencaptureui_6JgAIB/Screenshot 2026-07-14 at 09.51.57.png` at 1824 × 1464. This is a bug-state reference: image-free rows are shifted right while the photographed Chilli Paneer row starts at the intended left edge.
+- Browser-rendered implementation: `/private/tmp/order-image-free-collection.png` and `/private/tmp/order-image-free-delivery.png` at 1824 × 1464; `/private/tmp/order-image-free-mobile.png` at 390 × 844.
+- State: `Starters · Veg` selected on desktop, empty basket for the comparison capture, then direct-add exercised to verify the basket row; a Starters mobile accordion is expanded.
+- Full-view comparison evidence: `/private/tmp/order-image-free-comparison-full.jpg`.
+- Focused row-alignment comparison evidence: `/private/tmp/order-image-free-comparison-focused.jpg`. A focused comparison was required because the source capture isolates and enlarges the broken menu region while the final capture includes the complete ordering workspace.
+
+Findings and fidelity review:
+
+- No actionable P0, P1, or P2 findings remain.
+- Fonts and typography: the existing bundled Manrope/Urbanist hierarchy, weights, line heights, badges, prices, and descriptions are unchanged. The final rows preserve the selected homepage design language.
+- Spacing and layout rhythm: all seven visible Collection rows and all seven Delivery rows resolve to the same two-track grid (`772px 44px`) at the tested viewport. Every text block begins at x=428, every add action begins at x=1220, and the measured alignment spread is 0px. Desktop and mobile horizontal overflow are both 0px.
+- Colors and visual tokens: the existing navy, jade, mint, icy canvas, dividers, white surfaces, and add-button gradient are unchanged.
+- Image quality and asset fidelity: dish photography is intentionally absent from both menu cards and basket rows. Browser inspection reports 0 food-image nodes in Collection, Delivery, and the tested basket state. Existing navigation and action icons remain because they are interface controls, not dish photography.
+- Copy and content: category names, dish names, prices, dietary badges, descriptions, allergens, service details, and checkout language remain catalogue/configuration-driven and unchanged.
+
+Comparison history:
+
+- P1 source finding: image-free menu cards inherited explicit second/third grid-column placement, which created an implicit empty first track and pushed their copy to the right. The photographed row happened to have a real first track, so it aligned differently.
+- Fix: removed dish-media generation from menu and basket rendering, removed the order-image lookup and obsolete media CSS, and explicitly placed menu copy in column 1 and actions in column 2 in the active desktop ordering layer.
+- Post-fix evidence: `/private/tmp/order-image-free-comparison-focused.jpg` shows Papadom, Condiments, Onion Bhaji, Chilli Paneer, Garlic Mushroom Chaat, and Aloo Chaat on one consistent left edge with no photography.
+
+Functional, responsive, and technical verification:
+
+- Primary interactions tested: Collection and Delivery category selection, direct add, basket rendering, desktop list scanning, and mobile accordion expansion.
+- Collection and Delivery both report 0 menu food images, 0 basket food images, 0px horizontal overflow, and a 0px row-alignment spread at 1824 × 1464. Mobile reports 0 menu food images, 0px overflow, and a single 276px card track at 390 × 844.
+- No browser page errors occurred. The only console/network messages came from the intentionally static local preview server lacking `/api/site-config`, `/api/account/me`, and `/api/analytics`; deployed Cloudflare Functions provide those routes.
+- Automated suite: 143/143 passed. JavaScript syntax, production build, `git diff --check`, cache-version alignment, and image-free source guards passed.
+
+final result: passed

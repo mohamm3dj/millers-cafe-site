@@ -15,9 +15,8 @@ import {
 } from "./order-draft.js?v=20260713a";
 import {
   POPULAR_ITEM_NAMES,
-  getOrderItemDescription,
-  getOrderItemImage
-} from "./order-media.js?v=20260713d";
+  getOrderItemDescription
+} from "./order-media.js?v=20260714a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
@@ -2476,23 +2475,6 @@ function buildMenuCard(entry) {
   article.dataset.itemId = entry.item.id;
   article.dataset.itemName = entry.item.name;
 
-  const imageSource = getOrderItemImage(entry.item.name);
-  if (imageSource) {
-    article.classList.add("hasMedia");
-    const media = document.createElement("div");
-    media.className = "orderMenuMedia";
-    const image = document.createElement("img");
-    image.src = imageSource;
-    image.alt = "";
-    image.width = 112;
-    image.height = 112;
-    image.loading = "lazy";
-    image.decoding = "async";
-    if (entry.item.name === "Chicken Tikka Starter") image.classList.add("isTikka");
-    media.appendChild(image);
-    article.appendChild(media);
-  }
-
   const main = document.createElement("div");
   main.className = "orderMenuMain";
 
@@ -3625,22 +3607,6 @@ function renderCart() {
     li.dataset.cartId = String(item.id);
 
     const catalogItem = menuItemForCartItem(item);
-    const imageSource = getOrderItemImage(item.itemName);
-    if (imageSource) {
-      li.classList.add("hasMedia");
-      const media = document.createElement("div");
-      media.className = "orderCartMedia";
-      const image = document.createElement("img");
-      image.src = imageSource;
-      image.alt = "";
-      image.width = 72;
-      image.height = 72;
-      image.loading = "lazy";
-      image.decoding = "async";
-      if (item.itemName === "Chicken Tikka Starter") image.classList.add("isTikka");
-      media.appendChild(image);
-      li.appendChild(media);
-    }
 
     const body = document.createElement("div");
     body.className = "orderCartItemBody";

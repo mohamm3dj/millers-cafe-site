@@ -16,10 +16,7 @@ import {
   cartQuantityActionLabel,
   scrollBehaviorForPreference
 } from "../orders/order-draft.js";
-import {
-  POPULAR_ITEM_NAMES,
-  getOrderItemImage
-} from "../orders/order-media.js";
+import { POPULAR_ITEM_NAMES } from "../orders/order-media.js";
 
 const ORDER_PAGE_PATHS = ["collection/index.html", "delivery/index.html"];
 const EXPECTED_FAVOURITES = [
@@ -48,34 +45,26 @@ function allMenuItems() {
   );
 }
 
-test("the five Millers favourites are real catalogue dishes with local raster food media", () => {
+test("the five Millers favourites are real catalogue dishes", () => {
   assert.deepEqual(POPULAR_ITEM_NAMES, EXPECTED_FAVOURITES);
 
   const catalogueNames = new Set(allMenuItems().map(({ item }) => item.name));
   EXPECTED_FAVOURITES.forEach((name) => {
     assert.equal(catalogueNames.has(name), true, `${name} must be a real catalogue item`);
-
-    const imagePath = getOrderItemImage(name);
-    assert.match(
-      imagePath,
-      /^\.\.\/assets\/[a-z0-9][a-z0-9._-]*\.(?:avif|jpe?g|png|webp)$/i,
-      `${name} must use a local raster asset`
-    );
-    assert.doesNotMatch(imagePath, /(?:https?:|data:|\\|\?|#)/i);
-
-    const imageBytes = readFileSync(new URL(imagePath, new URL("../orders/order-media.js", import.meta.url)));
-    assert.ok(imageBytes.length > 1_000, `${name} food media should not be an empty placeholder`);
-    const header = imageBytes.subarray(0, 12);
-    const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-    const isPng = header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-    const isWebp = header.subarray(0, 4).toString("ascii") === "RIFF"
-      && header.subarray(8, 12).toString("ascii") === "WEBP";
-    assert.equal(isJpeg || isPng || isWebp, true, `${name} must resolve to a genuine raster image`);
   });
+});
 
-  ORDER_PAGE_PATHS.forEach((path) => {
-    assert.match(read(path), /img-src 'self' data:/, `${path} must keep images on the site origin`);
-  });
+test("collection and delivery render image-free menu and basket rows", () => {
+  const source = read("orders/order-form.js");
+  assert.doesNotMatch(source, /getOrderItemImage|orderMenuMedia|orderCartMedia|classList\.add\("hasMedia"\)/);
+
+  const css = read("styles.css");
+  assert.doesNotMatch(css, /\.order(?:Menu|Cart)Media/);
+  const quickOrderLayer = css.lastIndexOf("Millers quick-order workspace — option 2");
+  const activeCss = css.slice(quickOrderLayer);
+  assert.doesNotMatch(activeCss, /orderMenuCard\.hasMedia|orderCartItem\.hasMedia/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuMain\{\s*grid-column: 1;/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuActions\{\s*grid-column: 2;/);
 });
 
 test("catalogue keeps dietary suitability and allergens out of generic tags", () => {
@@ -393,10 +382,11 @@ test("the final quick-order layer owns the responsive three-column workspace", (
   const activeCss = css.slice(quickOrderLayer);
   assert.match(activeCss, /@media \(min-width: 960px\)[\s\S]*?body\.publicBody\.orderBody \.bookingForm\.isOrderMenuStep \.orderHub\{[\s\S]*?grid-template-columns: clamp\(190px, 15vw, 228px\) minmax\(360px, 1fr\) clamp\(300px, 25vw, 360px\);/);
   assert.match(activeCss, /grid-template-areas:\s*"rail search basket"\s*"rail heading basket"\s*"rail intro basket"\s*"rail menu basket";/);
-  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuCard\.hasMedia\{\s*grid-template-columns: 104px minmax\(0, 1fr\) auto;/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuCard\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/);
   assert.match(activeCss, /@media \(max-width: 959px\)[\s\S]*?\.orderPage \.orderHub\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/);
-  assert.match(activeCss, /\.orderPage \.orderMenuCard\.hasMedia\{[\s\S]*?grid-template-columns: 84px minmax\(0, 1fr\);/);
-  assert.match(activeCss, /\.orderPage \.orderMenuCard\.hasMedia \.orderMenuActions\{\s*grid-column: 1 \/ -1;/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuMain\{\s*grid-column: 1;/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderMenuActions\{\s*grid-column: 2;/);
+  assert.match(activeCss, /body\.publicBody\.orderBody \.orderCartItem\{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(activeCss, /linear-gradient\(135deg, #0f766e 0%, #0d9488 100%\)/);
 });
 

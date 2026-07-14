@@ -10813,25 +10813,6 @@ body.publicBody.orderBody{
   height: 20px;
 }
 
-.orderMenuMedia,
-.orderCartMedia{
-  overflow: hidden;
-  background: #eef5f4;
-}
-
-.orderMenuMedia img,
-.orderCartMedia img{
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.orderMenuMedia img.isTikka,
-.orderCartMedia img.isTikka{
-  object-position: 66% 62%;
-}
-
 .orderCartItemBody{
   min-width: 0;
 }
@@ -11185,10 +11166,6 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     transform: none;
   }
 
-  body.publicBody.orderBody .orderMenuCard.hasMedia{
-    grid-template-columns: 104px minmax(0, 1fr) auto;
-  }
-
   body.publicBody.orderBody .orderMenuCard::before{
     content: none !important;
     display: none !important;
@@ -11201,14 +11178,8 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     transform: none;
   }
 
-  body.publicBody.orderBody .orderMenuMedia{
-    width: 104px;
-    height: 104px;
-    border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, .07);
-  }
-
   body.publicBody.orderBody .orderMenuMain{
+    grid-column: 1;
     min-width: 0;
     display: grid;
     align-content: center;
@@ -11258,6 +11229,7 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
   }
 
   body.publicBody.orderBody .orderMenuActions{
+    grid-column: 2;
     min-width: 44px;
     display: flex;
     flex-direction: column-reverse;
@@ -11395,16 +11367,6 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-  }
-
-  body.publicBody.orderBody .orderCartItem.hasMedia{
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  body.publicBody.orderBody .orderCartMedia{
-    width: 72px;
-    height: 72px;
-    border-radius: 13px;
   }
 
   body.publicBody.orderBody .orderCartItemBody{
@@ -11605,34 +11567,6 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
   .orderActiveCategoryIntro,
   .orderBasketProgress{
     display: none;
-  }
-
-  .orderPage .orderMenuCard.hasMedia{
-    display: grid;
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  .orderPage .orderMenuCard.hasMedia .orderMenuActions{
-    grid-column: 1 / -1;
-  }
-
-  .orderPage .orderMenuMedia{
-    width: 84px;
-    height: 84px;
-    border-radius: 13px;
-  }
-
-  .orderPage .orderCartItem.hasMedia{
-    display: grid;
-    grid-template-columns: 60px minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .orderPage .orderCartMedia{
-    width: 60px;
-    height: 60px;
-    border-radius: 11px;
   }
 
   .orderPage .orderCartStepper{
