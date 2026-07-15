@@ -11574,6 +11574,66 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     align-items: center;
     gap: 7px;
   }
+
+  .orderPage .orderMobileStarterGroup{
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 14px;
+    border: 1px solid rgba(15, 118, 110, .13);
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(229, 247, 244, .72), rgba(255, 255, 255, .86));
+    box-shadow: 0 14px 34px rgba(15, 23, 42, .06);
+  }
+
+  .orderPage .orderMobileStarterGroupTitle{
+    margin: 0;
+    color: #0f172a;
+    font-family: var(--font-display);
+    font-size: 25px;
+    font-weight: 830;
+    letter-spacing: -.03em;
+    line-height: 1.1;
+  }
+
+  .orderPage .orderMobileStarterGroupIntro{
+    margin: -2px 0 4px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .orderPage .orderMobileStarterGroupBody{
+    display: grid;
+    gap: 7px;
+  }
+
+  .orderPage .orderMobileStarterGroup .orderMobileCategorySection{
+    margin: 0;
+    border-color: rgba(15, 118, 110, .1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .76);
+    box-shadow: none;
+  }
+}
+
+@media (min-width: 960px){
+  body.publicBody.orderBody .orderMenuSubcategoryHeading{
+    margin: 18px 0 0;
+    padding: 12px 0 9px;
+    border-bottom: 1px solid rgba(15, 118, 110, .18);
+    color: #0f766e;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 830;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+  }
+
+  body.publicBody.orderBody .orderMenuSubcategoryHeading:first-child{
+    margin-top: 0;
+    padding-top: 2px;
+  }
 }
 
 /* Millers guided menu workspace — option 3 */

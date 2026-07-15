@@ -34,7 +34,7 @@ test("every customer-facing page uses the shared homepage shell", () => {
 test("public pages share one stylesheet cache version", () => {
   PUBLIC_PAGES.forEach((relativePath) => {
     const html = read(relativePath);
-    assert.match(html, /styles\.css\?v=20260714b/, relativePath);
+    assert.match(html, /styles\.css\?v=20260715c/, relativePath);
   });
 });
 

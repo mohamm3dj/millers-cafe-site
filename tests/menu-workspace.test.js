@@ -19,6 +19,13 @@ const STYLES = readFileSync(STYLES_URL, "utf8");
 const ORDER_LAYER_MARKER = "/* Millers quick-order workspace — option 2 */";
 const MENU_LAYER_MARKER = "/* Millers guided menu workspace — option 3 */";
 const MAX_MENU_IMAGE_BYTES = 350 * 1024;
+const PRINTED_STARTER_CATEGORY_ORDER = Object.freeze([
+  "Starters - Vegetarian",
+  "Starters - Chicken",
+  "Starters - Lamb",
+  "Starters - Mixed",
+  "Starters - Seafood"
+]);
 
 const CONDITIONAL_VEGAN_COPY = Object.freeze({
   "Vegetable Biryani": "The standard dish is the vegan option. The Parda upgrade includes garlic naan, cheese and sauce, so it is not vegan.",
@@ -126,6 +133,14 @@ function documentMarkupOnly(html) {
     .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, "");
 }
 
+function extractBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0, `missing start marker: ${startMarker}`);
+  assert.ok(end > start, `missing end marker: ${endMarker}`);
+  return source.slice(start, end);
+}
+
 function findMatchingBrace(source, openIndex) {
   let depth = 0;
   let quote = "";
@@ -146,6 +161,23 @@ function findMatchingBrace(source, openIndex) {
     }
   }
   return -1;
+}
+
+function objectLiteralContaining(source, pattern, context) {
+  const match = pattern.exec(source);
+  assert.ok(match, `missing ${context}`);
+  const open = source.lastIndexOf("{", match.index);
+  assert.ok(open >= 0, `${context} must be an object literal`);
+  const close = findMatchingBrace(source, open);
+  assert.ok(close > open, `${context} must have balanced braces`);
+  return source.slice(open, close + 1);
+}
+
+function stringArrayProperty(objectSource, property) {
+  const escapedProperty = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const arrayMatch = new RegExp(`\\b${escapedProperty}\\s*:\\s*\\[([\\s\\S]*?)\\]`).exec(objectSource);
+  assert.ok(arrayMatch, `${property} must be an array`);
+  return [...arrayMatch[1].matchAll(/(["'])(.*?)\1/g)].map((match) => match[2]);
 }
 
 function collectCssRules(source) {
@@ -269,6 +301,31 @@ test("option 3 menu workspace exposes its complete semantic shell", () => {
   assert.equal(getAttribute(heroTag, "width"), "1600");
   assert.equal(getAttribute(heroTag, "height"), "560");
   assert.ok(getAttribute(heroTag, "alt").trim(), "the menu hero needs descriptive alternative text");
+});
+
+test("public menu groups every printed starter subsection under one Starters category", () => {
+  const menuGroupDefinitions = extractBetween(
+    MENU_JS,
+    "const menuGroups = [",
+    "];\n\n  const defaultGroupId"
+  );
+  const starterGroup = objectLiteralContaining(
+    menuGroupDefinitions,
+    /\bid\s*:\s*["']starters["']/,
+    "the Starters menu group"
+  );
+
+  assert.match(starterGroup, /\blabel\s*:\s*["']Starters["']/);
+  assert.deepEqual(
+    stringArrayProperty(starterGroup, "headings"),
+    PRINTED_STARTER_CATEGORY_ORDER,
+    "starter subsections must follow the order on the printed menu"
+  );
+  assert.equal((menuGroupDefinitions.match(/\bid\s*:\s*["']starters["']/g) || []).length, 1);
+  assert.doesNotMatch(menuGroupDefinitions, /Starters\s*[·•]\s*(?:Veg|Non-Veg)/i);
+  assert.doesNotMatch(menuGroupDefinitions, /starters-(?:veg|non-veg)/i);
+  assert.match(MENU_JS, /id\s*===\s*["']starters-veg["'][\s\S]{0,220}groupId\s*:\s*["']starters["']/);
+  assert.match(MENU_JS, /id\s*===\s*["']starters-non-veg["'][\s\S]{0,220}groupId\s*:\s*["']starters["']/);
 });
 
 test("menu controller provides grouped, keyboard-friendly, URL-addressable browsing", () => {

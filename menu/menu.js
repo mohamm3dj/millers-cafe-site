@@ -22,22 +22,16 @@
       headings: ["Desserts and Cakes"]
     },
     {
-      id: "starters-veg",
-      label: "Starters · Veg",
-      description: "Browse the vegetarian starters section.",
-      icon: "../assets/icon-tools-kitchen.svg",
-      headings: ["Starters - Vegetarian"]
-    },
-    {
-      id: "starters-non-veg",
-      label: "Starters · Non-Veg",
-      description: "Mixed, lamb, seafood and chicken starters.",
+      id: "starters",
+      label: "Starters",
+      description: "Vegetarian, chicken, lamb, mixed and seafood starters.",
       icon: "../assets/icon-tools-kitchen.svg",
       headings: [
-        "Starters - Mixed",
+        "Starters - Vegetarian",
+        "Starters - Chicken",
         "Starters - Lamb",
-        "Starters - Seafood",
-        "Starters - Chicken"
+        "Starters - Mixed",
+        "Starters - Seafood"
       ]
     },
     {
@@ -275,6 +269,13 @@
     return section.querySelector(":scope > .accordionBody");
   }
 
+  function sectionDisplayLabel(section) {
+    const heading = normalizeText(section?.dataset?.menuHeading);
+    return section?.dataset?.menuGroup === "starters"
+      ? heading.replace(/^Starters\s*-\s*/i, "")
+      : heading;
+  }
+
   function syncSectionBodyInteractivity(section) {
     const body = getAccordionBody(section);
     if (!body) return;
@@ -318,7 +319,7 @@
         section.appendChild(body);
       }
 
-      const titleText = section.dataset.menuHeading;
+      const titleText = sectionDisplayLabel(section);
       const toggle = document.createElement("button");
       toggle.type = "button";
       toggle.className = "menuAccordionToggle";
@@ -619,7 +620,7 @@
       { id: "all", label: "All", controls: activeGroup.sections.map((section) => section.id).join(" ") },
       ...activeGroup.sections.map((section) => ({
         id: section.id,
-        label: section.dataset.menuHeading,
+        label: sectionDisplayLabel(section),
         controls: section.id
       }))
     ];
@@ -704,6 +705,17 @@
       id = window.location.hash.replace(/^#/, "");
     }
     if (!id) return null;
+
+    if (id === "starters-veg") {
+      const vegetarianStarters = sectionsByHeading.get("Starters - Vegetarian");
+      return {
+        groupId: "starters",
+        subcategoryId: vegetarianStarters?.id || "all"
+      };
+    }
+    if (id === "starters-non-veg") {
+      return { groupId: "starters", subcategoryId: "all" };
+    }
 
     const group = menuGroups.find((candidate) => candidate.id === id);
     if (group) return { groupId: group.id, subcategoryId: "all" };

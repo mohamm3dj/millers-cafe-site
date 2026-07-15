@@ -73,6 +73,14 @@ const FORCE_CUSTOMIZE_CATEGORY_KEYS = new Set([
   "kiddies corner"
 ]);
 
+const STARTER_CATEGORY_NAMES = Object.freeze([
+  "Starters - Vegetarian",
+  "Starters - Chicken",
+  "Starters - Lamb",
+  "Starters - Mixed",
+  "Starters - Seafood"
+]);
+
 const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
   {
     label: "Millers favourites",
@@ -99,16 +107,11 @@ const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
     categories: ["Desserts and Cakes"]
   },
   {
-    label: "Starters · Veg",
-    intro: "Vegetarian small plates and Indian café classics.",
+    label: "Starters",
+    intro: "Vegetarian, chicken, lamb, mixed and seafood starters.",
     icon: "../assets/icon-tools-kitchen.svg",
-    categories: ["Starters - Vegetarian"]
-  },
-  {
-    label: "Starters · Non-Veg",
-    intro: "Chicken, lamb, seafood and mixed starters.",
-    icon: "../assets/icon-tools-kitchen.svg",
-    categories: ["Starters - Mixed", "Starters - Lamb", "Starters - Seafood", "Starters - Chicken"]
+    categories: STARTER_CATEGORY_NAMES,
+    showCategoryHeadings: true
   },
   {
     label: "Mains & Curries",
@@ -2161,9 +2164,47 @@ function normalizeMenuCatalog(rawCatalog) {
     .filter(Boolean);
 }
 
+function starterCategoryIndex(categoryName) {
+  const categoryKey = normalizeKey(categoryName);
+  return STARTER_CATEGORY_NAMES.findIndex((name) => normalizeKey(name) === categoryKey);
+}
+
+function starterCategoryDisplayName(categoryName) {
+  const index = starterCategoryIndex(categoryName);
+  return index >= 0
+    ? STARTER_CATEGORY_NAMES[index].replace(/^Starters\s*-\s*/i, "")
+    : normalizeText(categoryName);
+}
+
+function orderedNormalizedMenuCategories() {
+  const indexedCategories = normalizedMenu.map((category, categoryIndex) => ({
+    category,
+    categoryIndex
+  }));
+  const starterCategories = indexedCategories
+    .filter(({ category }) => starterCategoryIndex(category.name) >= 0)
+    .sort((left, right) => starterCategoryIndex(left.category.name) - starterCategoryIndex(right.category.name));
+
+  if (starterCategories.length <= 1) return indexedCategories;
+
+  const ordered = [];
+  let startersInserted = false;
+  indexedCategories.forEach((entry) => {
+    if (starterCategoryIndex(entry.category.name) >= 0) {
+      if (!startersInserted) {
+        ordered.push(...starterCategories);
+        startersInserted = true;
+      }
+      return;
+    }
+    ordered.push(entry);
+  });
+  return ordered;
+}
+
 function allMenuEntries() {
   const entries = [];
-  normalizedMenu.forEach((category, categoryIndex) => {
+  orderedNormalizedMenuCategories().forEach(({ category, categoryIndex }) => {
     category.items.forEach((item, itemIndex) => {
       entries.push({
         categoryName: category.name,
@@ -2203,7 +2244,7 @@ function desktopMenuGroups() {
 
 function menuNavigationItems() {
   if (isMobileOrderMenuLayout()) {
-    return normalizedMenu.map((category) => ({
+    return orderedNormalizedMenuCategories().map(({ category }) => ({
       label: category.name,
       intro: "",
       icon: "../assets/icon-tools-kitchen.svg"
@@ -2579,8 +2620,9 @@ function renderMobileMenuSections() {
 
   let renderedSections = 0;
   let renderedItems = 0;
+  let starterGroupBody = null;
 
-  normalizedMenu.forEach((category, categoryIndex) => {
+  orderedNormalizedMenuCategories().forEach(({ category, categoryIndex }) => {
     const entries = category.items
       .map((item, itemIndex) => ({
         categoryName: category.name,
@@ -2612,7 +2654,7 @@ function renderMobileMenuSections() {
 
     const title = document.createElement("span");
     title.className = "orderMobileCategoryName";
-    title.textContent = category.name;
+    title.textContent = starterCategoryDisplayName(category.name);
 
     const meta = document.createElement("span");
     meta.className = "orderMobileCategoryCount";
@@ -2633,7 +2675,30 @@ function renderMobileMenuSections() {
       section.appendChild(items);
     }
 
-    fragment.appendChild(section);
+    if (starterCategoryIndex(category.name) >= 0) {
+      if (!starterGroupBody) {
+        const starterGroup = document.createElement("section");
+        starterGroup.className = "orderMobileStarterGroup";
+        starterGroup.setAttribute("aria-labelledby", "orderMobileStarterGroupTitle");
+
+        const starterTitle = document.createElement("h2");
+        starterTitle.id = "orderMobileStarterGroupTitle";
+        starterTitle.className = "orderMobileStarterGroupTitle";
+        starterTitle.textContent = "Starters";
+
+        const starterIntro = document.createElement("p");
+        starterIntro.className = "orderMobileStarterGroupIntro";
+        starterIntro.textContent = "Choose vegetarian, chicken, lamb, mixed or seafood.";
+
+        starterGroupBody = document.createElement("div");
+        starterGroupBody.className = "orderMobileStarterGroupBody";
+        starterGroup.append(starterTitle, starterIntro, starterGroupBody);
+        fragment.appendChild(starterGroup);
+      }
+      starterGroupBody.appendChild(section);
+    } else {
+      fragment.appendChild(section);
+    }
   });
 
   if (renderedSections === 0) {
@@ -2675,7 +2740,17 @@ function renderMenuItems() {
   }
 
   const fragment = document.createDocumentFragment();
+  const activeGroup = activeDesktopMenuGroup();
+  const showCategoryHeadings = Boolean(activeGroup?.showCategoryHeadings && !searchQuery);
+  let renderedCategoryName = "";
   entries.forEach((entry) => {
+    if (showCategoryHeadings && entry.categoryName !== renderedCategoryName) {
+      renderedCategoryName = entry.categoryName;
+      const heading = document.createElement("h3");
+      heading.className = "orderMenuSubcategoryHeading";
+      heading.textContent = starterCategoryDisplayName(entry.categoryName);
+      fragment.appendChild(heading);
+    }
     const card = buildMenuCard(entry);
     menuCardElements.push(card);
     fragment.appendChild(card);

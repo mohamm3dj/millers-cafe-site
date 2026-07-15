@@ -26,6 +26,13 @@ const EXPECTED_FAVOURITES = [
   "Garlic Naan",
   "Mango Lassi"
 ];
+const PRINTED_STARTER_CATEGORY_ORDER = Object.freeze([
+  "Starters - Vegetarian",
+  "Starters - Chicken",
+  "Starters - Lamb",
+  "Starters - Mixed",
+  "Starters - Seafood"
+]);
 
 function read(relativePath) {
   return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -37,6 +44,47 @@ function extractBetween(source, startMarker, endMarker) {
   assert.ok(start >= 0, `missing start marker: ${startMarker}`);
   assert.ok(end > start, `missing end marker: ${endMarker}`);
   return source.slice(start, end);
+}
+
+function findMatchingBrace(source, openIndex) {
+  let depth = 0;
+  let quote = "";
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    const previous = source[index - 1];
+    if (quote) {
+      if (char === quote && previous !== "\\") quote = "";
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function objectLiteralContaining(source, pattern, context) {
+  const match = pattern.exec(source);
+  assert.ok(match, `missing ${context}`);
+  const open = source.lastIndexOf("{", match.index);
+  assert.ok(open >= 0, `${context} must be an object literal`);
+  const close = findMatchingBrace(source, open);
+  assert.ok(close > open, `${context} must have balanced braces`);
+  return source.slice(open, close + 1);
+}
+
+function stringArrayConstant(source, constantName) {
+  const escapedName = constantName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(
+    `\\bconst\\s+${escapedName}\\s*=\\s*Object\\.freeze\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)\\s*;`
+  ).exec(source);
+  assert.ok(match, `${constantName} must be a frozen string array`);
+  return [...match[1].matchAll(/(["'])(.*?)\1/g)].map((entry) => entry[2]);
 }
 
 function allMenuItems() {
@@ -273,6 +321,75 @@ test("collection and delivery share an identical ordering workspace", () => {
     assert.doesNotMatch(collection, new RegExp(`id="${id}"`), `${id} is delivery-only`);
     assert.match(delivery, new RegExp(`id="${id}"`), `${id} must remain available for delivery`);
   });
+});
+
+test("ordering groups starters once and preserves the printed subsection hierarchy", () => {
+  const source = read("orders/order-form.js");
+  const styles = read("styles.css");
+  const groupDefinitions = extractBetween(
+    source,
+    "const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([",
+    "]);\n\nconst form"
+  );
+  const starterGroup = objectLiteralContaining(
+    groupDefinitions,
+    /\blabel\s*:\s*["']Starters["']/,
+    "the desktop Starters group"
+  );
+
+  assert.deepEqual(
+    stringArrayConstant(source, "STARTER_CATEGORY_NAMES"),
+    PRINTED_STARTER_CATEGORY_ORDER,
+    "starter subsections must follow the printed menu"
+  );
+  assert.match(starterGroup, /\bcategories\s*:\s*STARTER_CATEGORY_NAMES\b/);
+  assert.match(starterGroup, /\bshowCategoryHeadings\s*:\s*true\b/);
+  assert.equal((groupDefinitions.match(/\blabel\s*:\s*["']Starters["']/g) || []).length, 1);
+  assert.doesNotMatch(groupDefinitions, /Starters\s*[·•]\s*(?:Veg|Non-Veg)/i);
+
+  const displayOrder = extractBetween(
+    source,
+    "function orderedNormalizedMenuCategories()",
+    "function allMenuEntries()"
+  );
+  assert.match(displayOrder, /starterCategoryIndex/);
+  assert.match(
+    extractBetween(source, "function starterCategoryIndex(categoryName)", "function starterCategoryDisplayName"),
+    /STARTER_CATEGORY_NAMES/,
+    "the category rank must come from the exact printed starter order"
+  );
+  assert.match(displayOrder, /\.sort\(/, "normalized starter categories must apply the printed display order");
+  assert.match(
+    extractBetween(source, "function allMenuEntries()", "function entriesForDesktopMenuGroup"),
+    /orderedNormalizedMenuCategories\(\)/,
+    "the normalized display order must feed desktop menu entries"
+  );
+
+  const desktopRenderer = extractBetween(source, "function renderMenuItems()", "function clearModifierError()");
+  assert.match(desktopRenderer, /showCategoryHeadings/);
+  assert.match(desktopRenderer, /orderMenuSubcategoryHeading/);
+
+  const mobileRenderer = extractBetween(
+    source,
+    "function renderMobileMenuSections()",
+    "function renderMenuItems()"
+  );
+  assert.match(mobileRenderer, /orderMobileStarterGroup/);
+  assert.match(mobileRenderer, /textContent\s*=\s*["']Starters["']/);
+  const mobileStarterLabel = extractBetween(
+    source,
+    "function starterCategoryDisplayName(categoryName)",
+    "function orderedNormalizedMenuCategories()"
+  );
+  assert.match(mobileStarterLabel, /STARTER_CATEGORY_NAMES/);
+  assert.match(
+    mobileStarterLabel,
+    /\.replace\([^\n]*Starters/,
+    "mobile starter subsection labels must remove the repeated ‘Starters -’ prefix"
+  );
+
+  assert.match(styles, /\.orderMenuSubcategoryHeading\b/);
+  assert.match(styles, /\.orderMobileStarterGroup\b/);
 });
 
 test("the desktop category rail has icons and roving keyboard navigation", () => {
