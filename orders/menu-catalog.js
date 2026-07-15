@@ -60,6 +60,12 @@ const VEGETARIAN_ONLY_OPTION_KEYS = new Set([
   "mint sauce",
   "naan"
 ]);
+const CAFE_CURRY_CATEGORY_KEYS = new Set([
+  "mild curries",
+  "medium curries",
+  "hot curries",
+  "very hot curries"
+]);
 
 function normalizedCatalogKey(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -71,6 +77,30 @@ function uniqueUpperCodes(values) {
       .map((value) => String(value || "").trim().toUpperCase())
       .filter(Boolean)
   ));
+}
+
+function explicitModifierAllergenCodes(categoryName, groupName, optionName, currySauceAllergenCodesByName) {
+  const categoryKey = normalizedCatalogKey(categoryName);
+  const groupKey = normalizedCatalogKey(groupName);
+  const optionKey = normalizedCatalogKey(optionName);
+
+  if (categoryKey === "curry sauce" && groupKey === "sauce") {
+    return currySauceAllergenCodesByName.get(optionKey) || [];
+  }
+  if (
+    CAFE_CURRY_CATEGORY_KEYS.has(categoryKey)
+    && groupKey === "protein"
+    && (optionKey === "chicken tikka" || optionKey === "lamb tikka")
+  ) {
+    return ["D"];
+  }
+  if (groupKey === "upgrade" && optionKey === "parda biryani upgrade") {
+    return ["D"];
+  }
+  if (categoryKey === "desi crust" && groupKey === "base" && optionKey === "masala") {
+    return ["N"];
+  }
+  return [];
 }
 
 function dietaryKindFromCodes(codes) {
@@ -214,6 +244,17 @@ export function getPreferredModifierOptionIndex(item, group) {
 }
 
 function remediateMenuCatalog(catalog) {
+  const currySauceAllergenCodesByName = new Map();
+  (Array.isArray(catalog) ? catalog : []).forEach((category) => {
+    if (!CAFE_CURRY_CATEGORY_KEYS.has(normalizedCatalogKey(category?.name))) return;
+    (Array.isArray(category?.items) ? category.items : []).forEach((item) => {
+      currySauceAllergenCodesByName.set(
+        normalizedCatalogKey(item?.name),
+        normalizeMenuItemAllergenCodes(item)
+      );
+    });
+  });
+
   (Array.isArray(catalog) ? catalog : []).forEach((category) => {
     (Array.isArray(category?.items) ? category.items : []).forEach((item) => {
       item.codes = uniqueUpperCodes(item.codes);
@@ -228,7 +269,17 @@ function remediateMenuCatalog(catalog) {
       (Array.isArray(item.modifierGroups) ? item.modifierGroups : []).forEach((group) => {
         let affectsDietarySuitability = false;
         (Array.isArray(group?.options) ? group.options : []).forEach((option) => {
-          option.allergenCodes = normalizeMenuItemAllergenCodes({ codes: option.allergenCodes });
+          option.allergenCodes = normalizeMenuItemAllergenCodes({
+            codes: [
+              ...(Array.isArray(option.allergenCodes) ? option.allergenCodes : []),
+              ...explicitModifierAllergenCodes(
+                category.name,
+                group.name,
+                option.name,
+                currySauceAllergenCodesByName
+              )
+            ]
+          });
           option.removesAllergenCodes = normalizeMenuItemAllergenCodes({ codes: option.removesAllergenCodes });
           option.dietaryEffect = optionDietaryEffect(group.name, option.name);
           if (option.dietaryEffect !== "inherit") affectsDietarySuitability = true;
@@ -917,7 +968,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 6,
         "description": "Chicken, lamb tikka and seekh kebab.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -945,7 +998,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Minced lamb and peas.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -954,7 +1009,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Spiced minced lamb.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -963,7 +1020,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Grilled marinated lamb.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       }
@@ -977,7 +1036,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Prawns with seafood sauce.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1070,12 +1131,8 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Lightly spiced onion fritters.",
         "publicPriceLabel": "",
-        "codes": [
-          "VG"
-        ],
-        "tags": [
-          "vegan"
-        ],
+        "codes": [],
+        "tags": [],
         "modifierGroups": []
       },
       {
@@ -1150,7 +1207,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Clay oven grilled chicken.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1159,7 +1218,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Tikka with chaat spices on puri.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1181,7 +1242,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 5,
         "description": "Spiced battered chicken.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       }
@@ -1288,14 +1351,16 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Wraps",
-    "description": "Served with chips, salad and your choice of naan or chapati.",
+    "description": "Served with chips, salad and your choice of naan or chapati. All wraps contain dairy (D).",
     "items": [
       {
         "name": "Chicken Tikka Wrap",
         "basePrice": 12,
         "description": "",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": [
           {
@@ -1376,7 +1441,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 12,
         "description": "",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": [
           {
@@ -1457,7 +1524,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 12,
         "description": "",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": [
           {
@@ -1539,11 +1608,9 @@ export const MILLERS_ORDER_MENU = [
         "description": "",
         "publicPriceLabel": "",
         "codes": [
-          "VG"
+          "D"
         ],
-        "tags": [
-          "vegan"
-        ],
+        "tags": [],
         "modifierGroups": [
           {
             "name": "Bread Choice",
@@ -1719,103 +1786,103 @@ export const MILLERS_ORDER_MENU = [
               },
               {
                 "name": "Kerala Special",
-                "priceAdjustment": 2
+                "priceAdjustment": 0
               },
               {
                 "name": "Coconut Mango Makhani",
-                "priceAdjustment": 2
+                "priceAdjustment": 0
               },
               {
                 "name": "Creamy Garlic",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Dhansak",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Apna Special",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Saagwala",
-                "priceAdjustment": 2
+                "priceAdjustment": 0
               },
               {
                 "name": "Achari",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Balti",
-                "priceAdjustment": 2
+                "priceAdjustment": 0
               },
               {
                 "name": "Bhuna",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Laknavi",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Rogan Josh",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Miller's Special",
-                "priceAdjustment": 4
+                "priceAdjustment": 0
               },
               {
                 "name": "Butter Chicken",
-                "priceAdjustment": 2
+                "priceAdjustment": 0
               },
               {
                 "name": "Madras",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Jalfrezi",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Chilli Garlic",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Shezane Murgh",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Nawabh Chettinad",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Coconut Chana",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Pathia",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               },
               {
                 "name": "Shiraz",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Naga Balti",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Naga Butter",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Masala Revenge",
-                "priceAdjustment": 3
+                "priceAdjustment": 0
               },
               {
                 "name": "Vindaloo",
-                "priceAdjustment": 1
+                "priceAdjustment": 0
               }
             ]
           }
@@ -1919,7 +1986,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 13,
         "description": "Coated in rich masala spices.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "N"
+        ],
         "tags": [
           "spicy"
         ],
@@ -1930,7 +1999,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 13,
         "description": "Marinated in traditional tandoori spices.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1958,14 +2029,16 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Mumbai Sizzle Burgers",
-    "description": "Served with chips.",
+    "description": "Served with chips. All items contain dairy (D).",
     "items": [
       {
         "name": "Simple Indian Burger",
         "basePrice": 10,
         "description": "Double smash patties with cheese and masala sauce.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1974,7 +2047,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 12,
         "description": "Double patties, cheese, crushed papadom and Algerian sauce.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -1983,7 +2058,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 13,
         "description": "Double patties with seekh kebab and naga chilli drizzle.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [
           "spicy"
         ],
@@ -1994,7 +2071,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 15,
         "description": "Chicken tikka, seekh kebab and 3 smash patties with curry mayo.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -2017,7 +2096,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 13,
         "description": "Double paneer with mango chutney and tamarind.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": []
       },
@@ -2026,7 +2107,9 @@ export const MILLERS_ORDER_MENU = [
         "basePrice": 12,
         "description": "Chicken tikka, lamb tikka, onions and peppers. Pick your spice level.",
         "publicPriceLabel": "",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": [
           {
@@ -2060,14 +2143,16 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Desi Crust",
-    "description": "Choose Pizza (12\") for £13 or Calzone for £17. All served with your choice of base and any 3 toppings. Extra toppings £2 each.",
+    "description": "Choose Pizza (12\") for £13 or Calzone for £17. All contain dairy (D) and are served with your choice of base and any 3 toppings. Extra toppings £2 each.",
     "items": [
       {
         "name": "Build Your Desi Crust",
         "basePrice": 13,
-        "description": "Choose Balti, Bhuna, Masala, Tomato, Naga or Madras as your base.",
+        "description": "Choose Balti, Bhuna, Masala (N), Tomato, Naga or Madras as your base.",
         "publicPriceLabel": "From £13",
-        "codes": [],
+        "codes": [
+          "D"
+        ],
         "tags": [],
         "modifierGroups": [
           {
@@ -2180,6 +2265,67 @@ export const MILLERS_ORDER_MENU = [
                 "priceAdjustment": 0
               }
             ]
+          },
+          {
+            "name": "Extra Toppings (£2 each)",
+            "selectionType": "multiple",
+            "isRequired": false,
+            "isTextInput": false,
+            "maxSelections": 13,
+            "options": [
+              {
+                "name": "Chicken Tikka",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Lamb Tikka",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Seekh Kebab",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Onions",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Mixed Vegetables",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Tuna",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Prawns",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Keema",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Pepperoni",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Sweet Corn",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Pineapple",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Olives",
+                "priceAdjustment": 2
+              },
+              {
+                "name": "Peppers",
+                "priceAdjustment": 2
+              }
+            ]
           }
         ]
       }
@@ -2187,7 +2333,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Tandoori",
-    "description": "Tandoori dishes marked (D) contain dairy.",
+    "description": "All tandoori dishes contain dairy (D) and are served with salad and vegetable curry sauce.",
     "items": [
       {
         "name": "Lamb Chops",
@@ -2284,7 +2430,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Biryani",
-    "description": "Traditional basmati rice dishes cooked with spices. Upgrade any option to Parda Biryani for +£5, wrapped in garlic naan with cheese and special sauce.",
+    "description": "Traditional basmati rice dish cooked with spices and layered with your choice of meat or vegetables. Upgrade any option to Parda Biryani for +£5, wrapped in garlic naan with cheese and special sauce.",
     "items": [
       {
         "name": "Beef Biryani",
@@ -2608,7 +2754,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Mild Curries",
-    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
+    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6 (D), Lamb Tikka £7 (D), Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
     "items": [
       {
         "name": "Korma",
@@ -2916,7 +3062,7 @@ export const MILLERS_ORDER_MENU = [
       },
       {
         "name": "Creamy Garlic",
-        "basePrice": 8,
+        "basePrice": 7,
         "description": "Creamy garlic with a hint of sweetness.",
         "publicPriceLabel": "",
         "codes": [
@@ -3068,7 +3214,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Medium Curries",
-    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
+    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6 (D), Lamb Tikka £7 (D), Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
     "items": [
       {
         "name": "Apna Special",
@@ -3749,7 +3895,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Hot Curries",
-    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
+    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6 (D), Lamb Tikka £7 (D), Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
     "items": [
       {
         "name": "Madras",
@@ -4287,7 +4433,7 @@ export const MILLERS_ORDER_MENU = [
   },
   {
     "name": "Very Hot Curries",
-    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6, Lamb Tikka £7, Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
+    "description": "Choose your protein: Chicken £5, Lamb £5, Beef £5, Keema £5, Prawn £5, King Prawn £10, Chicken Tikka £6 (D), Lamb Tikka £7 (D), Pulled Chicken £6, Pulled Lamb £6, Vegetables £4, Monkfish £13, Sea Bass £10.",
     "items": [
       {
         "name": "Shiraz",
@@ -4903,7 +5049,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Chapati",
         "basePrice": 2,
-        "description": "",
+        "description": "Thin wholemeal flatbread.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4916,7 +5062,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Paratha",
         "basePrice": 4,
-        "description": "",
+        "description": "Layered pan-fried flatbread.",
         "publicPriceLabel": "",
         "codes": [
           "D"
@@ -4934,7 +5080,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Chana Masala",
         "basePrice": 4,
-        "description": "",
+        "description": "Chickpeas in light spices.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4947,7 +5093,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Bombay Potato",
         "basePrice": 4,
-        "description": "",
+        "description": "Spicy potatoes with seasoning.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4960,7 +5106,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Bhindi Bhaji",
         "basePrice": 4,
-        "description": "",
+        "description": "Okra cooked with spices.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4973,7 +5119,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Saag Bhaji",
         "basePrice": 4,
-        "description": "",
+        "description": "Spinach side dish.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4986,7 +5132,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Tarka Daal",
         "basePrice": 4,
-        "description": "",
+        "description": "Lentils cooked with garlic.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -4999,7 +5145,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Tinda Bhaji",
         "basePrice": 4,
-        "description": "",
+        "description": "Spiced baby pumpkins.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -5012,7 +5158,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Saag Aloo",
         "basePrice": 4,
-        "description": "",
+        "description": "Spinach with potatoes.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -5025,7 +5171,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Cauliflower Bhaji",
         "basePrice": 4,
-        "description": "",
+        "description": "Cauliflower cooked in spices.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -5038,7 +5184,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Mushroom Bhaji",
         "basePrice": 4,
-        "description": "",
+        "description": "Mushrooms cooked in spices.",
         "publicPriceLabel": "",
         "codes": [
           "VG"
@@ -5051,7 +5197,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Saag Paneer",
         "basePrice": 4,
-        "description": "",
+        "description": "Spinach and paneer in a creamy sauce.",
         "publicPriceLabel": "",
         "codes": [
           "D"

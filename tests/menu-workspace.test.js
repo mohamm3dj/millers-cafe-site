@@ -21,7 +21,6 @@ const MENU_LAYER_MARKER = "/* Millers guided menu workspace — option 3 */";
 const MAX_MENU_IMAGE_BYTES = 350 * 1024;
 
 const CONDITIONAL_VEGAN_COPY = Object.freeze({
-  "Onion Bhaji & Veg Wrap": "Vegan option available; final suitability depends on the bread, sauce and extras selected.",
   "Vegetable Biryani": "The standard dish is the vegan option. The Parda upgrade includes garlic naan, cheese and sauce, so it is not vegan.",
   curry: "Vegan base option with Vegetables; meat and fish protein choices are not vegan."
 });

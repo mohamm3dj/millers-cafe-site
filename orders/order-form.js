@@ -3,7 +3,7 @@ import {
   getMenuItemAllergenLabels,
   getMenuItemDietaryDisplay,
   getPreferredModifierOptionIndex
-} from "./menu-catalog.js?v=20260710b";
+} from "./menu-catalog.js?v=20260715a";
 import {
   calculateOrderPricing,
   canAdvanceToCheckoutDetails,
@@ -2781,9 +2781,14 @@ function handleModifierPanelKeydown(event) {
 function modifierOptionLabel(option) {
   if (!option) return "";
   const adjustment = Number(option.priceAdjustment || 0);
-  if (adjustment === 0) return option.name;
-  const sign = adjustment > 0 ? "+" : "-";
-  return `${option.name} (${sign}${formatGBP(Math.abs(adjustment))})`;
+  const priceLabel = adjustment === 0
+    ? ""
+    : ` (${adjustment > 0 ? "+" : "-"}${formatGBP(Math.abs(adjustment))})`;
+  const allergenLabels = getMenuItemAllergenLabels({ codes: option.allergenCodes });
+  const allergenLabel = allergenLabels.length > 0
+    ? ` · Contains ${allergenLabels.join(", ")}`
+    : "";
+  return `${option.name}${priceLabel}${allergenLabel}`;
 }
 
 function createModifierGroupField(group, groupIndex) {
