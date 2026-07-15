@@ -13,10 +13,7 @@ import {
   reconcileOrderDraftState,
   scrollBehaviorForPreference
 } from "./order-draft.js?v=20260713a";
-import {
-  POPULAR_ITEM_NAMES,
-  getOrderItemDescription
-} from "./order-media.js?v=20260714a";
+import { getOrderItemDescription } from "./order-media.js?v=20260714a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
@@ -80,32 +77,44 @@ const STARTER_CATEGORY_NAMES = Object.freeze([
   "Starters - Mixed",
   "Starters - Seafood"
 ]);
+const LUNCH_SPECIAL_CATEGORY_NAMES = Object.freeze([
+  "Salad Bowls",
+  "Wraps",
+  "Jacket Potato",
+  "Curry Sauce",
+  "Omelettes",
+  "Wings"
+]);
+const STREET_KITCHEN_CATEGORY_NAMES = Object.freeze([
+  "Mumbai Sizzle Burgers",
+  "Desi Crust"
+]);
+const CAFE_CURRY_CATEGORY_NAMES = Object.freeze([
+  "Mild Curries",
+  "Medium Curries",
+  "Hot Curries",
+  "Very Hot Curries"
+]);
+const DRINK_CATEGORY_NAMES = Object.freeze([
+  "Shakes and Chillers",
+  "Hot Drinks",
+  "Soft Drinks"
+]);
+const MENU_CATEGORY_DISPLAY_LABELS = Object.freeze({
+  "Starters - Vegetarian": "Vegetarian",
+  "Starters - Chicken": "Chicken",
+  "Starters - Lamb": "Lamb",
+  "Starters - Mixed": "Mixed",
+  "Starters - Seafood": "Seafood",
+  "Mild Curries": "Mild",
+  "Medium Curries": "Medium",
+  "Hot Curries": "Hot",
+  "Very Hot Curries": "Very Hot",
+  "Shakes and Chillers": "Shakes & Chillers",
+  "Desserts and Cakes": "Desserts & Cakes"
+});
 
 const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
-  {
-    label: "Millers favourites",
-    intro: "A quick route to the dishes our homepage regulars know best.",
-    icon: "../assets/icon-tools-kitchen.svg",
-    itemNames: POPULAR_ITEM_NAMES
-  },
-  {
-    label: "Shakes & Chillers",
-    intro: "Cold coffees, smoothies, lassi and made-to-order milkshakes.",
-    icon: "../assets/icon-glass-full.svg",
-    categories: ["Shakes and Chillers"]
-  },
-  {
-    label: "Hot Drinks",
-    intro: "Coffee, tea and warming house favourites.",
-    icon: "../assets/icon-coffee.svg",
-    categories: ["Hot Drinks"]
-  },
-  {
-    label: "Desserts & Cakes",
-    intro: "Cakes, puddings and something sweet to finish.",
-    icon: "../assets/icon-cake.svg",
-    categories: ["Desserts and Cakes"]
-  },
   {
     label: "Starters",
     intro: "Vegetarian, chicken, lamb, mixed and seafood starters.",
@@ -114,34 +123,74 @@ const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
     showCategoryHeadings: true
   },
   {
-    label: "Mains & Curries",
-    intro: "Tandoori dishes, vegetarian mains and curries from mild to fiery.",
-    icon: "../assets/icon-tools-kitchen.svg",
-    categories: ["Curry Sauce", "Tandoori", "Vegetarian Mains", "Mild Curries", "Medium Curries", "Hot Curries", "Very Hot Curries"]
+    label: "Lunch Specials",
+    intro: "Salad bowls, wraps, jacket potatoes, omelettes and wings.",
+    icon: "../assets/icon-bag.svg",
+    categories: LUNCH_SPECIAL_CATEGORY_NAMES,
+    showCategoryHeadings: true
   },
   {
-    label: "Biryani & Rice",
-    intro: "Layered biryanis and rice sides for every main.",
-    icon: "../assets/icon-tools-kitchen.svg",
-    categories: ["Biryani", "Rice"]
+    label: "Street Kitchen",
+    intro: "Mumbai Sizzle burgers and Millers Desi Crust.",
+    icon: "../assets/icon-bag.svg",
+    categories: STREET_KITCHEN_CATEGORY_NAMES,
+    showCategoryHeadings: true
   },
   {
-    label: "Breads",
+    label: "Tandoori",
+    intro: "Flame-cooked grills served with salad and vegetable curry sauce.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Tandoori"]
+  },
+  {
+    label: "Biryani",
+    intro: "Traditional basmati rice dishes with meat, seafood or vegetables.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Biryani"]
+  },
+  {
+    label: "Vegetarian Mains",
+    intro: "Vegetable and paneer mains from the printed menu.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: ["Vegetarian Mains"]
+  },
+  {
+    label: "Café Curries",
+    intro: "Choose your protein, then pick a curry from mild to very hot.",
+    icon: "../assets/icon-tools-kitchen.svg",
+    categories: CAFE_CURRY_CATEGORY_NAMES,
+    showCategoryHeadings: true
+  },
+  {
+    label: "Rice",
+    intro: "Boiled, pilau and flavoured rice sides.",
+    icon: "../assets/icon-bag.svg",
+    categories: ["Rice"]
+  },
+  {
+    label: "Bread & Snacks",
     intro: "Fresh naan, chapati and paratha.",
     icon: "../assets/icon-book.svg",
     categories: ["Bread & Snacks"]
   },
   {
-    label: "Burgers, Wraps & More",
-    intro: "Millers specials, wraps, wings and build-your-own favourites.",
+    label: "Side Dishes",
+    intro: "Vegetable sides, chips and café extras.",
     icon: "../assets/icon-bag.svg",
-    categories: ["Salad Bowls", "Wraps", "Jacket Potato", "Omelettes", "Wings", "Mumbai Sizzle Burgers", "Desi Crust"]
+    categories: ["Side Dishes"]
   },
   {
-    label: "Sides & Soft Drinks",
-    intro: "Sides, chips and chilled drinks to complete your order.",
+    label: "Desserts & Cakes",
+    intro: "Cakes, puddings and something sweet to finish.",
+    icon: "../assets/icon-cake.svg",
+    categories: ["Desserts and Cakes"]
+  },
+  {
+    label: "Drinks",
+    intro: "Shakes, chillers, hot drinks and soft drinks.",
     icon: "../assets/icon-bottle.svg",
-    categories: ["Soft Drinks", "Side Dishes"]
+    categories: DRINK_CATEGORY_NAMES,
+    showCategoryHeadings: true
   }
 ]);
 
@@ -2164,16 +2213,17 @@ function normalizeMenuCatalog(rawCatalog) {
     .filter(Boolean);
 }
 
-function starterCategoryIndex(categoryName) {
-  const categoryKey = normalizeKey(categoryName);
-  return STARTER_CATEGORY_NAMES.findIndex((name) => normalizeKey(name) === categoryKey);
+function menuCategoryDisplayName(categoryName) {
+  const normalizedName = normalizeText(categoryName);
+  return MENU_CATEGORY_DISPLAY_LABELS[normalizedName] || normalizedName;
 }
 
-function starterCategoryDisplayName(categoryName) {
-  const index = starterCategoryIndex(categoryName);
-  return index >= 0
-    ? STARTER_CATEGORY_NAMES[index].replace(/^Starters\s*-\s*/i, "")
-    : normalizeText(categoryName);
+function menuGroupForCategory(categoryName) {
+  const categoryKey = normalizeKey(categoryName);
+  return DESKTOP_ORDER_MENU_GROUPS.find((group) => (
+    Array.isArray(group.categories)
+    && group.categories.some((name) => normalizeKey(name) === categoryKey)
+  )) || null;
 }
 
 function orderedNormalizedMenuCategories() {
@@ -2181,25 +2231,20 @@ function orderedNormalizedMenuCategories() {
     category,
     categoryIndex
   }));
-  const starterCategories = indexedCategories
-    .filter(({ category }) => starterCategoryIndex(category.name) >= 0)
-    .sort((left, right) => starterCategoryIndex(left.category.name) - starterCategoryIndex(right.category.name));
+  const configuredOrder = new Map(
+    DESKTOP_ORDER_MENU_GROUPS
+      .flatMap((group) => Array.isArray(group.categories) ? group.categories : [])
+      .map((name, index) => [normalizeKey(name), index])
+  );
 
-  if (starterCategories.length <= 1) return indexedCategories;
-
-  const ordered = [];
-  let startersInserted = false;
-  indexedCategories.forEach((entry) => {
-    if (starterCategoryIndex(entry.category.name) >= 0) {
-      if (!startersInserted) {
-        ordered.push(...starterCategories);
-        startersInserted = true;
-      }
-      return;
-    }
-    ordered.push(entry);
+  return indexedCategories.sort((left, right) => {
+    const leftRank = configuredOrder.get(normalizeKey(left.category.name));
+    const rightRank = configuredOrder.get(normalizeKey(right.category.name));
+    if (leftRank === undefined && rightRank === undefined) return left.categoryIndex - right.categoryIndex;
+    if (leftRank === undefined) return 1;
+    if (rightRank === undefined) return -1;
+    return leftRank - rightRank;
   });
-  return ordered;
 }
 
 function allMenuEntries() {
@@ -2409,7 +2454,12 @@ function renderCategoryChips() {
     return;
   }
   if (!names.includes(selectedCategory)) {
-    selectedCategory = names[0];
+    const parentGroup = menuGroupForCategory(selectedCategory);
+    const selectedGroup = DESKTOP_ORDER_MENU_GROUPS.find((group) => group.label === selectedCategory);
+    const mappedCategory = selectedGroup?.categories?.find((categoryName) => names.includes(categoryName));
+    selectedCategory = names.includes(parentGroup?.label)
+      ? parentGroup.label
+      : (mappedCategory || names[0]);
   }
 
   menuCategoryChips.innerHTML = "";
@@ -2620,7 +2670,7 @@ function renderMobileMenuSections() {
 
   let renderedSections = 0;
   let renderedItems = 0;
-  let starterGroupBody = null;
+  const mobileGroupBodies = new Map();
 
   orderedNormalizedMenuCategories().forEach(({ category, categoryIndex }) => {
     const entries = category.items
@@ -2654,7 +2704,7 @@ function renderMobileMenuSections() {
 
     const title = document.createElement("span");
     title.className = "orderMobileCategoryName";
-    title.textContent = starterCategoryDisplayName(category.name);
+    title.textContent = menuCategoryDisplayName(category.name);
 
     const meta = document.createElement("span");
     meta.className = "orderMobileCategoryCount";
@@ -2675,27 +2725,34 @@ function renderMobileMenuSections() {
       section.appendChild(items);
     }
 
-    if (starterCategoryIndex(category.name) >= 0) {
-      if (!starterGroupBody) {
-        const starterGroup = document.createElement("section");
-        starterGroup.className = "orderMobileStarterGroup";
-        starterGroup.setAttribute("aria-labelledby", "orderMobileStarterGroupTitle");
+    const parentGroup = menuGroupForCategory(category.name);
+    const shouldGroup = Boolean(parentGroup && parentGroup.categories.length > 1);
+    if (shouldGroup) {
+      let groupBody = mobileGroupBodies.get(parentGroup.label);
+      if (!groupBody) {
+        const groupSlug = normalizeKey(parentGroup.label).replace(/\s+/g, "-");
+        const groupTitleId = `orderMobileMenuGroup-${groupSlug}`;
+        const mobileGroup = document.createElement("section");
+        mobileGroup.className = "orderMobileMenuGroup";
+        mobileGroup.dataset.menuGroup = parentGroup.label;
+        mobileGroup.setAttribute("aria-labelledby", groupTitleId);
 
-        const starterTitle = document.createElement("h2");
-        starterTitle.id = "orderMobileStarterGroupTitle";
-        starterTitle.className = "orderMobileStarterGroupTitle";
-        starterTitle.textContent = "Starters";
+        const groupTitle = document.createElement("h2");
+        groupTitle.id = groupTitleId;
+        groupTitle.className = "orderMobileMenuGroupTitle";
+        groupTitle.textContent = parentGroup.label;
 
-        const starterIntro = document.createElement("p");
-        starterIntro.className = "orderMobileStarterGroupIntro";
-        starterIntro.textContent = "Choose vegetarian, chicken, lamb, mixed or seafood.";
+        const groupIntro = document.createElement("p");
+        groupIntro.className = "orderMobileMenuGroupIntro";
+        groupIntro.textContent = parentGroup.intro;
 
-        starterGroupBody = document.createElement("div");
-        starterGroupBody.className = "orderMobileStarterGroupBody";
-        starterGroup.append(starterTitle, starterIntro, starterGroupBody);
-        fragment.appendChild(starterGroup);
+        groupBody = document.createElement("div");
+        groupBody.className = "orderMobileMenuGroupBody";
+        mobileGroup.append(groupTitle, groupIntro, groupBody);
+        mobileGroupBodies.set(parentGroup.label, groupBody);
+        fragment.appendChild(mobileGroup);
       }
-      starterGroupBody.appendChild(section);
+      groupBody.appendChild(section);
     } else {
       fragment.appendChild(section);
     }
@@ -2748,7 +2805,7 @@ function renderMenuItems() {
       renderedCategoryName = entry.categoryName;
       const heading = document.createElement("h3");
       heading.className = "orderMenuSubcategoryHeading";
-      heading.textContent = starterCategoryDisplayName(entry.categoryName);
+      heading.textContent = menuCategoryDisplayName(entry.categoryName);
       fragment.appendChild(heading);
     }
     const card = buildMenuCard(entry);

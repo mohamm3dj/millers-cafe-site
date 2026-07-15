@@ -8,20 +8,6 @@
 
   const menuGroups = [
     {
-      id: "drinks",
-      label: "Drinks",
-      description: "Shakes, chillers and hot drinks.",
-      icon: "../assets/icon-glass-full.svg",
-      headings: ["Shakes and Chillers", "Hot Drinks"]
-    },
-    {
-      id: "desserts-and-cakes",
-      label: "Desserts & Cakes",
-      description: "Desserts, cakes and sweet favourites.",
-      icon: "../assets/icon-cake.svg",
-      headings: ["Desserts and Cakes"]
-    },
-    {
       id: "starters",
       label: "Starters",
       description: "Vegetarian, chicken, lamb, mixed and seafood starters.",
@@ -35,59 +21,117 @@
       ]
     },
     {
-      id: "mains-and-curries",
-      label: "Mains & Curries",
-      description: "Tandoori, vegetarian mains and curries from mild to very hot.",
+      id: "lunch-specials",
+      label: "Lunch Specials",
+      description: "Salad bowls, wraps, jacket potatoes, omelettes and wings.",
+      icon: "../assets/icon-tools-kitchen.svg",
+      headings: [
+        "Salad Bowls",
+        "Wraps",
+        "Jacket Potato",
+        "Curry Sauce",
+        "Omelettes",
+        "Wings"
+      ]
+    },
+    {
+      id: "street-kitchen",
+      label: "Street Kitchen",
+      description: "Mumbai Sizzle burgers and Millers Desi Crust.",
+      icon: "../assets/icon-bag.svg",
+      headings: ["Mumbai Sizzle Burgers", "Desi Crust"]
+    },
+    {
+      id: "tandoori",
+      label: "Tandoori",
+      description: "Flame-cooked grills served with salad and vegetable curry sauce.",
+      icon: "../assets/icon-tools-kitchen.svg",
+      headings: ["Tandoori"]
+    },
+    {
+      id: "biryani",
+      label: "Biryani",
+      description: "Traditional basmati rice dishes with meat, seafood or vegetables.",
+      icon: "../assets/icon-bag.svg",
+      headings: ["Biryani"]
+    },
+    {
+      id: "vegetarian-mains",
+      label: "Vegetarian Mains",
+      description: "Vegetable and paneer mains from the printed menu.",
+      icon: "../assets/icon-tools-kitchen.svg",
+      headings: ["Vegetarian Mains"]
+    },
+    {
+      id: "cafe-curries",
+      label: "Café Curries",
+      description: "Choose your protein, then pick a curry from mild to very hot.",
       icon: "../assets/icon-tools-kitchen.svg",
       headings: [
         "Mild Curries",
         "Medium Curries",
         "Hot Curries",
-        "Very Hot Curries",
-        "Vegetarian Mains",
-        "Tandoori",
-        "Curry Sauce"
+        "Very Hot Curries"
       ]
     },
     {
-      id: "biryani-and-rice",
-      label: "Biryani & Rice",
-      description: "Biryani dishes and rice sides.",
+      id: "rice",
+      label: "Rice",
+      description: "Boiled, pilau and flavoured rice sides.",
       icon: "../assets/icon-bag.svg",
-      headings: ["Biryani", "Rice"]
+      headings: ["Rice"]
     },
     {
-      id: "breads",
-      label: "Breads",
-      description: "Browse breads and snacks.",
+      id: "bread-and-snacks",
+      label: "Bread & Snacks",
+      description: "Naan, chapati and paratha.",
       icon: "../assets/icon-book.svg",
       headings: ["Bread & Snacks"]
     },
     {
-      id: "burgers-wraps-and-more",
-      label: "Burgers, Wraps & More",
-      description: "Salad bowls, wraps, potatoes, omelettes, wings, burgers and Desi Crust.",
+      id: "side-dishes",
+      label: "Side Dishes",
+      description: "Vegetable sides, chips and café extras.",
       icon: "../assets/icon-bag.svg",
-      headings: [
-        "Salad Bowls",
-        "Wraps",
-        "Jacket Potato",
-        "Omelettes",
-        "Wings",
-        "Mumbai Sizzle Burgers",
-        "Desi Crust"
-      ]
+      headings: ["Side Dishes"]
     },
     {
-      id: "sides-and-soft-drinks",
-      label: "Sides & Soft Drinks",
-      description: "Side dishes and soft drinks.",
+      id: "desserts-and-cakes",
+      label: "Desserts & Cakes",
+      description: "Desserts, cakes and sweet favourites.",
+      icon: "../assets/icon-cake.svg",
+      headings: ["Desserts and Cakes"]
+    },
+    {
+      id: "drinks",
+      label: "Drinks",
+      description: "Shakes, chillers, hot drinks and soft drinks.",
       icon: "../assets/icon-bottle.svg",
-      headings: ["Side Dishes", "Soft Drinks"]
+      headings: ["Shakes and Chillers", "Hot Drinks", "Soft Drinks"]
     }
   ];
 
-  const defaultGroupId = "mains-and-curries";
+  const defaultGroupId = "starters";
+  const sectionDisplayLabels = new Map([
+    ["Starters - Vegetarian", "Vegetarian"],
+    ["Starters - Chicken", "Chicken"],
+    ["Starters - Lamb", "Lamb"],
+    ["Starters - Mixed", "Mixed"],
+    ["Starters - Seafood", "Seafood"],
+    ["Mild Curries", "Mild"],
+    ["Medium Curries", "Medium"],
+    ["Hot Curries", "Hot"],
+    ["Very Hot Curries", "Very Hot"],
+    ["Shakes and Chillers", "Shakes & Chillers"],
+    ["Desserts and Cakes", "Desserts & Cakes"]
+  ]);
+  const legacyMenuGroupAliases = new Map([
+    ["mains-and-curries", "cafe-curries"],
+    ["biryani-and-rice", "biryani"],
+    ["breads", "bread-and-snacks"],
+    ["burgers-wraps-and-more", "lunch-specials"],
+    ["sides-and-soft-drinks", "side-dishes"]
+  ]);
   const labelsToggle = document.getElementById("labelsToggle");
   const legendToggle = document.getElementById("legendToggle");
   const menuSearchInput = document.getElementById("menuSearchInput");
@@ -224,6 +268,9 @@
 
   function ensureSectionIdsAndGroups() {
     const configuredHeadings = new Set(menuGroups.flatMap((group) => group.headings));
+    const configuredHeadingOrder = new Map(
+      menuGroups.flatMap((group) => group.headings).map((heading, index) => [heading, index])
+    );
 
     contentSections.forEach((section, index) => {
       const heading = section.querySelector(":scope > .tileTitle");
@@ -250,7 +297,7 @@
       }
       section.id = id;
       section.dataset.menuHeading = headingText;
-      section.dataset.menuOriginalIndex = String(index);
+      section.dataset.menuOriginalIndex = String(configuredHeadingOrder.get(headingText) ?? index);
       usedIds.add(id);
       sectionsById.set(id, section);
     });
@@ -271,9 +318,7 @@
 
   function sectionDisplayLabel(section) {
     const heading = normalizeText(section?.dataset?.menuHeading);
-    return section?.dataset?.menuGroup === "starters"
-      ? heading.replace(/^Starters\s*-\s*/i, "")
-      : heading;
+    return sectionDisplayLabels.get(heading) || heading;
   }
 
   function syncSectionBodyInteractivity(section) {
@@ -613,6 +658,9 @@
   function buildSubcategoryTabs() {
     const activeGroup = getActiveGroup();
     menuGroupTabs.replaceChildren();
+    menuGroupTabs.hidden = activeGroup.sections.length <= 1;
+    if (menuGroupTabs.hidden) return;
+
     menuGroupTabs.setAttribute("role", "tablist");
     menuGroupTabs.setAttribute("aria-label", `${activeGroup.label} sections`);
 
@@ -715,6 +763,11 @@
     }
     if (id === "starters-non-veg") {
       return { groupId: "starters", subcategoryId: "all" };
+    }
+
+    const aliasedGroupId = legacyMenuGroupAliases.get(id);
+    if (aliasedGroupId) {
+      return { groupId: aliasedGroupId, subcategoryId: "all" };
     }
 
     const group = menuGroups.find((candidate) => candidate.id === id);

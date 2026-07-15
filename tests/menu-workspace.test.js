@@ -19,12 +19,53 @@ const STYLES = readFileSync(STYLES_URL, "utf8");
 const ORDER_LAYER_MARKER = "/* Millers quick-order workspace — option 2 */";
 const MENU_LAYER_MARKER = "/* Millers guided menu workspace — option 3 */";
 const MAX_MENU_IMAGE_BYTES = 350 * 1024;
-const PRINTED_STARTER_CATEGORY_ORDER = Object.freeze([
-  "Starters - Vegetarian",
-  "Starters - Chicken",
-  "Starters - Lamb",
-  "Starters - Mixed",
-  "Starters - Seafood"
+const PRINTED_MENU_HIERARCHY = Object.freeze([
+  {
+    id: "starters",
+    label: "Starters",
+    headings: [
+      "Starters - Vegetarian",
+      "Starters - Chicken",
+      "Starters - Lamb",
+      "Starters - Mixed",
+      "Starters - Seafood"
+    ]
+  },
+  {
+    id: "lunch-specials",
+    label: "Lunch Specials",
+    headings: ["Salad Bowls", "Wraps", "Jacket Potato", "Curry Sauce", "Omelettes", "Wings"]
+  },
+  {
+    id: "street-kitchen",
+    label: "Street Kitchen",
+    headings: ["Mumbai Sizzle Burgers", "Desi Crust"]
+  },
+  { id: "tandoori", label: "Tandoori", headings: ["Tandoori"] },
+  { id: "biryani", label: "Biryani", headings: ["Biryani"] },
+  { id: "vegetarian-mains", label: "Vegetarian Mains", headings: ["Vegetarian Mains"] },
+  {
+    id: "cafe-curries",
+    label: "Café Curries",
+    headings: ["Mild Curries", "Medium Curries", "Hot Curries", "Very Hot Curries"]
+  },
+  { id: "rice", label: "Rice", headings: ["Rice"] },
+  { id: "bread-and-snacks", label: "Bread & Snacks", headings: ["Bread & Snacks"] },
+  { id: "side-dishes", label: "Side Dishes", headings: ["Side Dishes"] },
+  { id: "desserts-and-cakes", label: "Desserts & Cakes", headings: ["Desserts and Cakes"] },
+  {
+    id: "drinks",
+    label: "Drinks",
+    headings: ["Shakes and Chillers", "Hot Drinks", "Soft Drinks"]
+  }
+]);
+
+const LEGACY_MENU_GROUP_ALIASES = Object.freeze([
+  ["mains-and-curries", "cafe-curries"],
+  ["biryani-and-rice", "biryani"],
+  ["breads", "bread-and-snacks"],
+  ["burgers-wraps-and-more", "lunch-specials"],
+  ["sides-and-soft-drinks", "side-dishes"]
 ]);
 
 const CONDITIONAL_VEGAN_COPY = Object.freeze({
@@ -303,29 +344,83 @@ test("option 3 menu workspace exposes its complete semantic shell", () => {
   assert.ok(getAttribute(heroTag, "alt").trim(), "the menu hero needs descriptive alternative text");
 });
 
-test("public menu groups every printed starter subsection under one Starters category", () => {
+test("public menu follows the complete printed-menu hierarchy and keeps Drinks last", () => {
   const menuGroupDefinitions = extractBetween(
     MENU_JS,
     "const menuGroups = [",
     "];\n\n  const defaultGroupId"
   );
-  const starterGroup = objectLiteralContaining(
-    menuGroupDefinitions,
-    /\bid\s*:\s*["']starters["']/,
-    "the Starters menu group"
+
+  const configuredIds = [...menuGroupDefinitions.matchAll(/\bid\s*:\s*["']([^"']+)["']/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(
+    configuredIds,
+    PRINTED_MENU_HIERARCHY.map((group) => group.id),
+    "primary categories must follow the printed menu, with Drinks at the bottom"
   );
 
-  assert.match(starterGroup, /\blabel\s*:\s*["']Starters["']/);
-  assert.deepEqual(
-    stringArrayProperty(starterGroup, "headings"),
-    PRINTED_STARTER_CATEGORY_ORDER,
-    "starter subsections must follow the order on the printed menu"
-  );
-  assert.equal((menuGroupDefinitions.match(/\bid\s*:\s*["']starters["']/g) || []).length, 1);
+  PRINTED_MENU_HIERARCHY.forEach((expectedGroup) => {
+    const group = objectLiteralContaining(
+      menuGroupDefinitions,
+      new RegExp(`\\bid\\s*:\\s*["']${expectedGroup.id}["']`),
+      `the ${expectedGroup.label} menu group`
+    );
+    assert.match(group, new RegExp(`\\blabel\\s*:\\s*["']${expectedGroup.label.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}["']`));
+    assert.deepEqual(
+      stringArrayProperty(group, "headings"),
+      expectedGroup.headings,
+      `${expectedGroup.label} subsections must follow the printed menu`
+    );
+  });
+
+  assert.equal(configuredIds.at(-1), "drinks", "Drinks must remain the final primary category");
+  const sideDishes = PRINTED_MENU_HIERARCHY.find((group) => group.id === "side-dishes");
+  const drinks = PRINTED_MENU_HIERARCHY.find((group) => group.id === "drinks");
+  assert.deepEqual(sideDishes?.headings, ["Side Dishes"]);
+  assert.equal(sideDishes?.headings.includes("Soft Drinks"), false);
+  assert.equal(drinks?.headings.includes("Side Dishes"), false);
+  assert.equal(drinks?.headings.at(-1), "Soft Drinks");
   assert.doesNotMatch(menuGroupDefinitions, /Starters\s*[·•]\s*(?:Veg|Non-Veg)/i);
   assert.doesNotMatch(menuGroupDefinitions, /starters-(?:veg|non-veg)/i);
-  assert.match(MENU_JS, /id\s*===\s*["']starters-veg["'][\s\S]{0,220}groupId\s*:\s*["']starters["']/);
-  assert.match(MENU_JS, /id\s*===\s*["']starters-non-veg["'][\s\S]{0,220}groupId\s*:\s*["']starters["']/);
+
+  const groupingSetup = extractBetween(
+    MENU_JS,
+    "function ensureSectionIdsAndGroups()",
+    "function getAccordionBody(section)"
+  );
+  assert.match(groupingSetup, /menuGroups\.flatMap\(\(group\)\s*=>\s*group\.headings\)/);
+  assert.match(groupingSetup, /configuredHeadingOrder\.get\(headingText\)/);
+  assert.match(groupingSetup, /group\.sections\s*=\s*group\.headings\.map/);
+  assert.match(
+    extractBetween(MENU_JS, "function applyGroupView()", "function applySearchResults()"),
+    /visibleSections\.forEach\(\(section\)\s*=>\s*menuBrowseMain\.appendChild\(section\)\)/,
+    "the configured hierarchy must drive the displayed section order"
+  );
+});
+
+test("public menu hides redundant tabs and preserves every legacy menu hash", () => {
+  const tabs = extractBetween(MENU_JS, "function buildSubcategoryTabs()", "function updateActiveGroupCopy()");
+  assert.match(tabs, /menuGroupTabs\.hidden\s*=\s*activeGroup\.sections\.length\s*<=\s*1/);
+  assert.match(tabs, /if\s*\(menuGroupTabs\.hidden\)\s*return/);
+
+  const aliases = extractBetween(
+    MENU_JS,
+    "const legacyMenuGroupAliases = new Map([",
+    "]);\n  const labelsToggle"
+  );
+  LEGACY_MENU_GROUP_ALIASES.forEach(([legacyId, groupId]) => {
+    assert.match(
+      aliases,
+      new RegExp(`\\[\\s*["']${legacyId}["']\\s*,\\s*["']${groupId}["']\\s*\\]`),
+      `#${legacyId} must keep routing to ${groupId}`
+    );
+  });
+
+  const hashRouter = extractBetween(MENU_JS, "function stateFromHash()", "function applyHashState(options = {})");
+  assert.match(hashRouter, /id\s*===\s*["']starters-veg["'][\s\S]{0,220}groupId\s*:\s*["']starters["']/);
+  assert.match(hashRouter, /id\s*===\s*["']starters-non-veg["'][\s\S]{0,180}groupId\s*:\s*["']starters["']/);
+  assert.match(hashRouter, /legacyMenuGroupAliases\.get\(id\)/);
+  assert.match(hashRouter, /groupId\s*:\s*aliasedGroupId/);
 });
 
 test("menu controller provides grouped, keyboard-friendly, URL-addressable browsing", () => {

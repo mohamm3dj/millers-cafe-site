@@ -11575,7 +11575,7 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     gap: 7px;
   }
 
-  .orderPage .orderMobileStarterGroup{
+  .orderPage .orderMobileMenuGroup{
     display: grid;
     gap: 8px;
     margin: 0 0 16px;
@@ -11586,7 +11586,7 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     box-shadow: 0 14px 34px rgba(15, 23, 42, .06);
   }
 
-  .orderPage .orderMobileStarterGroupTitle{
+  .orderPage .orderMobileMenuGroupTitle{
     margin: 0;
     color: #0f172a;
     font-family: var(--font-display);
@@ -11596,19 +11596,19 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
     line-height: 1.1;
   }
 
-  .orderPage .orderMobileStarterGroupIntro{
+  .orderPage .orderMobileMenuGroupIntro{
     margin: -2px 0 4px;
     color: #64748b;
     font-size: 12px;
     line-height: 1.45;
   }
 
-  .orderPage .orderMobileStarterGroupBody{
+  .orderPage .orderMobileMenuGroupBody{
     display: grid;
     gap: 7px;
   }
 
-  .orderPage .orderMobileStarterGroup .orderMobileCategorySection{
+  .orderPage .orderMobileMenuGroup .orderMobileCategorySection{
     margin: 0;
     border-color: rgba(15, 118, 110, .1);
     border-radius: 14px;
@@ -11992,6 +11992,10 @@ body.publicBody.orderBody.isOrderBasketDialogOpen{
   overflow-x: auto;
   padding: 1px 0 4px;
   scrollbar-width: none;
+}
+
+.menuBody .menuGroupTabs[hidden]{
+  display: none !important;
 }
 
 .menuBody .menuGroupTabs::-webkit-scrollbar{

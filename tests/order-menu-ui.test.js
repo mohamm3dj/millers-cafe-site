@@ -26,12 +26,45 @@ const EXPECTED_FAVOURITES = [
   "Garlic Naan",
   "Mango Lassi"
 ];
-const PRINTED_STARTER_CATEGORY_ORDER = Object.freeze([
-  "Starters - Vegetarian",
-  "Starters - Chicken",
-  "Starters - Lamb",
-  "Starters - Mixed",
-  "Starters - Seafood"
+const PRINTED_ORDER_MENU_HIERARCHY = Object.freeze([
+  {
+    label: "Starters",
+    constantName: "STARTER_CATEGORY_NAMES",
+    categories: [
+      "Starters - Vegetarian",
+      "Starters - Chicken",
+      "Starters - Lamb",
+      "Starters - Mixed",
+      "Starters - Seafood"
+    ]
+  },
+  {
+    label: "Lunch Specials",
+    constantName: "LUNCH_SPECIAL_CATEGORY_NAMES",
+    categories: ["Salad Bowls", "Wraps", "Jacket Potato", "Curry Sauce", "Omelettes", "Wings"]
+  },
+  {
+    label: "Street Kitchen",
+    constantName: "STREET_KITCHEN_CATEGORY_NAMES",
+    categories: ["Mumbai Sizzle Burgers", "Desi Crust"]
+  },
+  { label: "Tandoori", categories: ["Tandoori"] },
+  { label: "Biryani", categories: ["Biryani"] },
+  { label: "Vegetarian Mains", categories: ["Vegetarian Mains"] },
+  {
+    label: "Café Curries",
+    constantName: "CAFE_CURRY_CATEGORY_NAMES",
+    categories: ["Mild Curries", "Medium Curries", "Hot Curries", "Very Hot Curries"]
+  },
+  { label: "Rice", categories: ["Rice"] },
+  { label: "Bread & Snacks", categories: ["Bread & Snacks"] },
+  { label: "Side Dishes", categories: ["Side Dishes"] },
+  { label: "Desserts & Cakes", categories: ["Desserts and Cakes"] },
+  {
+    label: "Drinks",
+    constantName: "DRINK_CATEGORY_NAMES",
+    categories: ["Shakes and Chillers", "Hot Drinks", "Soft Drinks"]
+  }
 ]);
 
 function read(relativePath) {
@@ -85,6 +118,13 @@ function stringArrayConstant(source, constantName) {
   ).exec(source);
   assert.ok(match, `${constantName} must be a frozen string array`);
   return [...match[1].matchAll(/(["'])(.*?)\1/g)].map((entry) => entry[2]);
+}
+
+function stringArrayProperty(objectSource, property) {
+  const escapedProperty = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const arrayMatch = new RegExp(`\\b${escapedProperty}\\s*:\\s*\\[([\\s\\S]*?)\\]`).exec(objectSource);
+  assert.ok(arrayMatch, `${property} must be an array`);
+  return [...arrayMatch[1].matchAll(/(["'])(.*?)\1/g)].map((match) => match[2]);
 }
 
 function allMenuItems() {
@@ -323,28 +363,67 @@ test("collection and delivery share an identical ordering workspace", () => {
   });
 });
 
-test("ordering groups starters once and preserves the printed subsection hierarchy", () => {
+test("ordering follows the complete printed-menu hierarchy and keeps Drinks last", () => {
   const source = read("orders/order-form.js");
-  const styles = read("styles.css");
   const groupDefinitions = extractBetween(
     source,
     "const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([",
     "]);\n\nconst form"
   );
-  const starterGroup = objectLiteralContaining(
-    groupDefinitions,
-    /\blabel\s*:\s*["']Starters["']/,
-    "the desktop Starters group"
+
+  const configuredLabels = [...groupDefinitions.matchAll(/\blabel\s*:\s*["']([^"']+)["']/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(
+    configuredLabels,
+    PRINTED_ORDER_MENU_HIERARCHY.map((group) => group.label),
+    "checkout primary categories must follow the printed menu"
   );
 
-  assert.deepEqual(
-    stringArrayConstant(source, "STARTER_CATEGORY_NAMES"),
-    PRINTED_STARTER_CATEGORY_ORDER,
-    "starter subsections must follow the printed menu"
+  PRINTED_ORDER_MENU_HIERARCHY.forEach((expectedGroup) => {
+    const group = objectLiteralContaining(
+      groupDefinitions,
+      new RegExp(`\\blabel\\s*:\\s*["']${expectedGroup.label}["']`),
+      `the desktop ${expectedGroup.label} group`
+    );
+    if (expectedGroup.constantName) {
+      assert.deepEqual(
+        stringArrayConstant(source, expectedGroup.constantName),
+        expectedGroup.categories,
+        `${expectedGroup.label} subsections must follow the printed menu`
+      );
+      assert.match(group, new RegExp(`\\bcategories\\s*:\\s*${expectedGroup.constantName}\\b`));
+    } else {
+      assert.deepEqual(
+        stringArrayProperty(group, "categories"),
+        expectedGroup.categories,
+        `${expectedGroup.label} must map to its printed-menu section`
+      );
+    }
+
+    if (expectedGroup.categories.length > 1) {
+      assert.match(group, /\bshowCategoryHeadings\s*:\s*true\b/);
+    }
+  });
+
+  assert.equal(configuredLabels.at(-1), "Drinks", "Drinks must be the final checkout category");
+  const sideGroup = objectLiteralContaining(
+    groupDefinitions,
+    /\blabel\s*:\s*["']Side Dishes["']/,
+    "the Side Dishes group"
   );
-  assert.match(starterGroup, /\bcategories\s*:\s*STARTER_CATEGORY_NAMES\b/);
-  assert.match(starterGroup, /\bshowCategoryHeadings\s*:\s*true\b/);
-  assert.equal((groupDefinitions.match(/\blabel\s*:\s*["']Starters["']/g) || []).length, 1);
+  const drinksGroup = objectLiteralContaining(
+    groupDefinitions,
+    /\blabel\s*:\s*["']Drinks["']/,
+    "the Drinks group"
+  );
+  assert.deepEqual(stringArrayProperty(sideGroup, "categories"), ["Side Dishes"]);
+  assert.doesNotMatch(sideGroup, /Soft Drinks/);
+  assert.match(drinksGroup, /\bcategories\s*:\s*DRINK_CATEGORY_NAMES\b/);
+  assert.deepEqual(stringArrayConstant(source, "DRINK_CATEGORY_NAMES"), [
+    "Shakes and Chillers",
+    "Hot Drinks",
+    "Soft Drinks"
+  ]);
   assert.doesNotMatch(groupDefinitions, /Starters\s*[·•]\s*(?:Veg|Non-Veg)/i);
 
   const displayOrder = extractBetween(
@@ -352,44 +431,50 @@ test("ordering groups starters once and preserves the printed subsection hierarc
     "function orderedNormalizedMenuCategories()",
     "function allMenuEntries()"
   );
-  assert.match(displayOrder, /starterCategoryIndex/);
-  assert.match(
-    extractBetween(source, "function starterCategoryIndex(categoryName)", "function starterCategoryDisplayName"),
-    /STARTER_CATEGORY_NAMES/,
-    "the category rank must come from the exact printed starter order"
-  );
-  assert.match(displayOrder, /\.sort\(/, "normalized starter categories must apply the printed display order");
+  assert.match(displayOrder, /DESKTOP_ORDER_MENU_GROUPS/);
+  assert.match(displayOrder, /\.flatMap\(\(group\)\s*=>\s*Array\.isArray\(group\.categories\)/);
+  assert.match(displayOrder, /configuredOrder\.get\(normalizeKey\((?:left|right)\.category\.name\)\)/);
+  assert.match(displayOrder, /return\s+leftRank\s*-\s*rightRank/);
   assert.match(
     extractBetween(source, "function allMenuEntries()", "function entriesForDesktopMenuGroup"),
     /orderedNormalizedMenuCategories\(\)/,
-    "the normalized display order must feed desktop menu entries"
+    "the configured display order must feed desktop menu entries"
   );
 
   const desktopRenderer = extractBetween(source, "function renderMenuItems()", "function clearModifierError()");
   assert.match(desktopRenderer, /showCategoryHeadings/);
   assert.match(desktopRenderer, /orderMenuSubcategoryHeading/);
+  assert.match(desktopRenderer, /menuCategoryDisplayName\(entry\.categoryName\)/);
+});
+
+test("mobile ordering uses the same generic multi-section grouping as desktop", () => {
+  const source = read("orders/order-form.js");
+  const styles = read("styles.css");
+
+  const groupLookup = extractBetween(
+    source,
+    "function menuGroupForCategory(categoryName)",
+    "function orderedNormalizedMenuCategories()"
+  );
+  assert.match(groupLookup, /DESKTOP_ORDER_MENU_GROUPS\.find/);
+  assert.match(groupLookup, /group\.categories\.some/);
 
   const mobileRenderer = extractBetween(
     source,
     "function renderMobileMenuSections()",
     "function renderMenuItems()"
   );
-  assert.match(mobileRenderer, /orderMobileStarterGroup/);
-  assert.match(mobileRenderer, /textContent\s*=\s*["']Starters["']/);
-  const mobileStarterLabel = extractBetween(
-    source,
-    "function starterCategoryDisplayName(categoryName)",
-    "function orderedNormalizedMenuCategories()"
-  );
-  assert.match(mobileStarterLabel, /STARTER_CATEGORY_NAMES/);
-  assert.match(
-    mobileStarterLabel,
-    /\.replace\([^\n]*Starters/,
-    "mobile starter subsection labels must remove the repeated ‘Starters -’ prefix"
-  );
+  assert.match(mobileRenderer, /const mobileGroupBodies = new Map\(\)/);
+  assert.match(mobileRenderer, /menuGroupForCategory\(category\.name\)/);
+  assert.match(mobileRenderer, /parentGroup\.categories\.length\s*>\s*1/);
+  assert.match(mobileRenderer, /mobileGroup\.className\s*=\s*["']orderMobileMenuGroup["']/);
+  assert.match(mobileRenderer, /groupTitle\.textContent\s*=\s*parentGroup\.label/);
+  assert.match(mobileRenderer, /groupBody\.appendChild\(section\)/);
+  assert.doesNotMatch(mobileRenderer, /StarterGroup|parentGroup\.label\s*===\s*["']Starters["']/);
 
   assert.match(styles, /\.orderMenuSubcategoryHeading\b/);
-  assert.match(styles, /\.orderMobileStarterGroup\b/);
+  assert.match(styles, /\.orderMobileMenuGroup\b/);
+  assert.doesNotMatch(styles, /\.orderMobileStarterGroup\b/);
 });
 
 test("the desktop category rail has icons and roving keyboard navigation", () => {
