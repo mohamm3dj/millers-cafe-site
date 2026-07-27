@@ -159,6 +159,24 @@ test("validateBookingWindow honors custom booking rules", () => {
   assert.equal(check.ok, true);
 });
 
+test("normal booking reads do not consume the KV entity-list quota", async () => {
+  let listCalls = 0;
+  const kv = {
+    async get() {
+      return [];
+    },
+    async list() {
+      listCalls += 1;
+      throw new Error("KV list() limit exceeded for the day.");
+    }
+  };
+
+  const stored = await loadBookings({ BOOKINGS_KV: kv });
+
+  assert.deepEqual(stored, []);
+  assert.equal(listCalls, 0);
+});
+
 test("per-booking entities recover a booking missing from the legacy aggregate", async () => {
   const values = new Map();
   const kv = {
@@ -186,7 +204,7 @@ test("per-booking entities recover a booking missing from the legacy aggregate",
   await saveBookingEntity(env, created.record);
   await saveBookings(env, []);
 
-  const recovered = await loadBookings(env);
+  const recovered = await loadBookings(env, { includeEntities: true });
   assert.equal(recovered.length, 1);
   assert.equal(recovered[0].id, created.record.id);
   assert.equal(recovered[0].customerName, created.record.customerName);

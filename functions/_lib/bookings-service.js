@@ -22,7 +22,7 @@ import { ApiError } from "./errors.js";
 import { getSiteConfig } from "./site-config.js";
 
 export async function listBookingFeed(env, includePast = false, format = "csv") {
-  const bookings = await loadBookings(env);
+  const bookings = await loadBookings(env, { includeEntities: true });
   const rows = feedRows(bookings, Boolean(includePast));
   if (format === "json") {
     return { format: "json", body: rows };
@@ -120,7 +120,7 @@ function bookingFeedRecord(booking) {
 }
 
 export async function listBookingReviewFeed(env, options = {}) {
-  const bookings = await loadBookings(env);
+  const bookings = await loadBookings(env, { includeEntities: true });
   const includePast = Boolean(options.includePast);
   const requestedStatus = normalizedStatus(options.status || "pending");
   const today = new Intl.DateTimeFormat("en-CA", {

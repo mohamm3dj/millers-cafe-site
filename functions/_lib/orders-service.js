@@ -16,7 +16,7 @@ import { ApiError } from "./errors.js";
 import { getSiteConfig } from "./site-config.js";
 
 export async function listOrderFeed(env, includePast = false, format = "csv") {
-  const orders = await loadOrders(env);
+  const orders = await loadOrders(env, { includeEntities: true });
   const rows = feedRows(orders, Boolean(includePast));
   if (format === "json") {
     return { format: "json", body: rows };
@@ -79,7 +79,7 @@ function orderReviewRecord(order) {
 }
 
 export async function listOrderReviewFeed(env, options = {}) {
-  const orders = await loadOrders(env);
+  const orders = await loadOrders(env, { includeEntities: true });
   const includePast = Boolean(options.includePast);
   const requestedStatus = normalizedStatus(options.status || "submitted");
   const today = todayISODateInLondon();

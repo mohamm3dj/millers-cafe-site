@@ -8,6 +8,7 @@ import { createOrderRecord, loadOrders, saveOrders } from "../functions/_orders-
 import { ApiError } from "../functions/_lib/errors.js";
 import {
   createBooking,
+  getBookingAvailability,
   listBookingReviewFeed,
   updateBookingDecision
 } from "../functions/_lib/bookings-service.js";
@@ -18,6 +19,7 @@ import { onRequestPost as createBookingRoute } from "../functions/api/bookings.j
 import {
   makeBookingPayload,
   makeOrderPayload,
+  nextOpenDate,
   resetInMemoryStores
 } from "./helpers/factories.js";
 
@@ -157,6 +159,26 @@ test("booking creation succeeds when best-effort analytics storage fails", async
   assert.equal((await response.json()).ok, true);
   assert.equal((await loadBookings({ BOOKINGS_KV: kv })).length, 1);
   assert.equal(globalThis.__millersCafeAnalyticsLocks?.size || 0, 0);
+});
+
+test("booking availability remains available when KV entity listing is exhausted", async () => {
+  const kv = {
+    async get(key) {
+      return String(key) === "bookings_v1" ? [] : null;
+    },
+    async list() {
+      throw new Error("KV list() limit exceeded for the day.");
+    }
+  };
+
+  const result = await getBookingAvailability({ BOOKINGS_KV: kv }, {
+    date: nextOpenDate(2),
+    partySize: 2,
+    durationMinutes: 90
+  });
+
+  assert.equal(result.open, true);
+  assert.ok(result.slots.some((slot) => slot.available));
 });
 
 test("booking route rejects an oversized chunked-style JSON body before creating a record", async () => {

@@ -228,6 +228,24 @@ test("findOrderIndexByReference locates an order from its public reference", () 
   assert.equal(index, 0);
 });
 
+test("normal order reads do not consume the KV entity-list quota", async () => {
+  let listCalls = 0;
+  const kv = {
+    async get() {
+      return [];
+    },
+    async list() {
+      listCalls += 1;
+      throw new Error("KV list() limit exceeded for the day.");
+    }
+  };
+
+  const stored = await loadOrders({ BOOKINGS_KV: kv });
+
+  assert.deepEqual(stored, []);
+  assert.equal(listCalls, 0);
+});
+
 test("per-order Stripe entities recover a paid order missing from the legacy aggregate", async () => {
   const values = new Map();
   const kv = {
@@ -262,7 +280,7 @@ test("per-order Stripe entities recover a paid order missing from the legacy agg
   await saveOrderEntity(env, created.record);
   await saveOrders(env, []);
 
-  const recovered = await loadOrders(env);
+  const recovered = await loadOrders(env, { includeEntities: true });
   assert.equal(recovered.length, 1);
   assert.equal(recovered[0].paymentSessionId, "cs_test_entity");
   assert.equal(recovered[0].paymentAmountTotal, 1200);

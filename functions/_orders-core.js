@@ -623,35 +623,40 @@ async function loadOrderEntities(env) {
     return [];
   }
 
-  const entities = [];
-  let cursor = "";
-  for (let page = 0; page < 100; page += 1) {
-    const listed = await env.BOOKINGS_KV.list({
-      prefix: ORDER_ENTITY_PREFIX,
-      ...(cursor ? { cursor } : {})
-    });
-    const keys = Array.isArray(listed?.keys) ? listed.keys : [];
-    for (let offset = 0; offset < keys.length; offset += 50) {
-      const names = keys
-        .slice(offset, offset + 50)
-        .map((key) => String(key?.name || "").trim())
-        .filter(Boolean);
-      const pageEntities = await Promise.all(
-        names.map((keyName) => env.BOOKINGS_KV.get(keyName, "json"))
-      );
-      for (const rawEntity of pageEntities) {
-        const entity = normalizeOrderRecord(rawEntity);
-        if (entity) entities.push(entity);
+  try {
+    const entities = [];
+    let cursor = "";
+    for (let page = 0; page < 100; page += 1) {
+      const listed = await env.BOOKINGS_KV.list({
+        prefix: ORDER_ENTITY_PREFIX,
+        ...(cursor ? { cursor } : {})
+      });
+      const keys = Array.isArray(listed?.keys) ? listed.keys : [];
+      for (let offset = 0; offset < keys.length; offset += 50) {
+        const names = keys
+          .slice(offset, offset + 50)
+          .map((key) => String(key?.name || "").trim())
+          .filter(Boolean);
+        const pageEntities = await Promise.all(
+          names.map((keyName) => env.BOOKINGS_KV.get(keyName, "json"))
+        );
+        for (const rawEntity of pageEntities) {
+          const entity = normalizeOrderRecord(rawEntity);
+          if (entity) entities.push(entity);
+        }
       }
-    }
 
-    cursor = String(listed?.cursor || "").trim();
-    if (listed?.list_complete === true || !cursor) break;
+      cursor = String(listed?.cursor || "").trim();
+      if (listed?.list_complete === true || !cursor) break;
+    }
+    return entities;
+  } catch (error) {
+    // Entity recovery is best-effort; the aggregate remains the hot-path source.
+    return [];
   }
-  return entities;
 }
 
-export async function loadOrders(env) {
+export async function loadOrders(env, options = {}) {
   let records = [];
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.get === "function") {
     const stored = await env.BOOKINGS_KV.get(STORAGE_KEY, "json");
@@ -661,6 +666,8 @@ export async function loadOrders(env) {
   }
 
   const storedRecords = records.map(normalizeOrderRecord).filter(Boolean);
+  if (options?.includeEntities !== true) return storedRecords;
+
   const entityRecords = await loadOrderEntities(env);
   if (entityRecords.length === 0) return storedRecords;
 
