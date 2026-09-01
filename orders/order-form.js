@@ -11,8 +11,9 @@ import {
   createEmptyOrderDraftMeta,
   createEmptyOrderDraftState,
   reconcileOrderDraftState,
+  resolveOrderMenuView,
   scrollBehaviorForPreference
-} from "./order-draft.js?v=20260901b";
+} from "./order-draft.js?v=20260901c";
 import { getOrderItemDescription } from "./order-media.js?v=20260714a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
@@ -2313,6 +2314,21 @@ function defaultCategoryName() {
   return categoryNames()[0] || "";
 }
 
+function applyMenuCategoryDeepLink() {
+  const resolvedView = resolveOrderMenuView(
+    { selectedCategory, searchQuery },
+    window.location.hash,
+    categoryNames()
+  );
+  if (!resolvedView.deepLinked) return false;
+
+  selectedCategory = resolvedView.selectedCategory;
+  mobileOpenCategory = resolvedView.selectedCategory;
+  searchQuery = resolvedView.searchQuery;
+  if (menuSearchInput) menuSearchInput.value = searchQuery;
+  return true;
+}
+
 function activeDesktopMenuGroup() {
   return desktopMenuGroups().find((group) => group.label === selectedCategory) || null;
 }
@@ -4356,6 +4372,7 @@ async function initialize() {
 
   const liveOrderDataPromise = loadLiveOrderData();
   restoreOrderDraft();
+  applyMenuCategoryDeepLink();
   initializeMenuInteractions();
   await liveOrderDataPromise;
   setOrderCalendarOpen(false);

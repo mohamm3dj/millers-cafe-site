@@ -36,10 +36,11 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
     assert.match(markup, /Main/);
     assert.match(markup, /Crisp or snack/);
     assert.match(markup, /Cold drink/);
-    assert.match(markup, /href="\.\/collection\/"/);
-    assert.match(markup, /href="\.\/delivery\/"/);
-    assert.match(markup, /href="\.\/menu\/"/);
+    assert.match(markup, /href="\.\/collection\/#fresh-lunch-deal"/);
+    assert.match(markup, /href="\.\/delivery\/#fresh-lunch-deal"/);
+    assert.match(markup, /href="\.\/menu\/#fresh-lunch-deal"/);
     assert.match(markup, /Order for collection/);
+    assert.match(markup, /View the menu/);
     assert.match(markup, /role="group" aria-label="The deal includes/);
     assert.match(markup, /excluded from discounts/i);
   });
@@ -47,7 +48,7 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
 
 test("homepage launch styles use a coordinated cache refresh", () => {
   assert.match(homeHtml, /styles\.css\?v=20260901c/);
-  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v91"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v92"/);
   assert.match(serviceWorker, /"\/styles\.css\?v=20260901c"/);
 });
 

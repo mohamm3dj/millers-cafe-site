@@ -88,6 +88,36 @@ export function scrollBehaviorForPreference(prefersReducedMotion) {
   return prefersReducedMotion ? "auto" : "smooth";
 }
 
+export function resolveOrderMenuView(viewState = {}, locationHash = "", availableCategories = []) {
+  const currentView = {
+    selectedCategory: normalizeText(viewState?.selectedCategory),
+    searchQuery: normalizeText(viewState?.searchQuery),
+    deepLinked: false
+  };
+  const rawHash = String(locationHash || "").replace(/^#/, "");
+  if (!rawHash) return currentView;
+
+  let decodedHash = rawHash;
+  try {
+    decodedHash = decodeURIComponent(rawHash);
+  } catch (error) {
+    decodedHash = rawHash;
+  }
+
+  const requestedKey = normalizeKey(decodedHash);
+  if (!requestedKey || !Array.isArray(availableCategories)) return currentView;
+  const matchedCategory = availableCategories
+    .map((category) => normalizeText(category))
+    .find((category) => normalizeKey(category) === requestedKey);
+  if (!matchedCategory) return currentView;
+
+  return {
+    selectedCategory: matchedCategory,
+    searchQuery: "",
+    deepLinked: true
+  };
+}
+
 function cartLineTotals(basePrice, selections, quantity) {
   const modifierTotal = (selections || []).reduce((sum, entry) => sum + Number(entry.priceAdjustment || 0), 0);
   const unitPrice = roundMoney(basePrice + modifierTotal);

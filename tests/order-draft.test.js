@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { reconcileOrderDraftState } from "../orders/order-draft.js";
+import { reconcileOrderDraftState, resolveOrderMenuView } from "../orders/order-draft.js";
 
 const SAMPLE_MENU = [
   {
@@ -278,4 +278,22 @@ test("the current draft version preserves a customer's selected category and sea
   assert.equal(draft.selectedCategory, "Drinks");
   assert.equal(draft.searchQuery, "latte");
   assert.equal(meta.hadChanges, false);
+});
+
+test("a menu category deep link overrides a saved view without changing invalid links", () => {
+  const categories = ["Fresh Lunch Deal", "Café Curries", "Drinks"];
+  const savedView = { selectedCategory: "Drinks", searchQuery: "latte" };
+
+  assert.deepEqual(
+    resolveOrderMenuView(savedView, "#fresh-lunch-deal", categories),
+    { selectedCategory: "Fresh Lunch Deal", searchQuery: "", deepLinked: true }
+  );
+  assert.deepEqual(
+    resolveOrderMenuView(savedView, "#Caf%C3%A9%20Curries", categories),
+    { selectedCategory: "Café Curries", searchQuery: "", deepLinked: true }
+  );
+  assert.deepEqual(
+    resolveOrderMenuView(savedView, "#not-a-real-category", categories),
+    { selectedCategory: "Drinks", searchQuery: "latte", deepLinked: false }
+  );
 });

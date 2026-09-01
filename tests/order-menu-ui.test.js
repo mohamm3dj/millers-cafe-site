@@ -482,6 +482,19 @@ test("ordering follows the complete printed-menu hierarchy and keeps Drinks last
   assert.match(desktopRenderer, /menuCategoryDisplayName\(entry\.categoryName\)/);
 });
 
+test("order category deep links override restored views before the menu renders", () => {
+  const source = read("orders/order-form.js");
+
+  assert.match(
+    source,
+    /restoreOrderDraft\(\);\s*applyMenuCategoryDeepLink\(\);\s*initializeMenuInteractions\(\);/
+  );
+  assert.match(
+    source,
+    /resolveOrderMenuView\(\s*\{ selectedCategory, searchQuery \},\s*window\.location\.hash,\s*categoryNames\(\)\s*\)/
+  );
+});
+
 test("mobile ordering uses the same generic multi-section grouping as desktop", () => {
   const source = read("orders/order-form.js");
   const styles = read("styles.css");
