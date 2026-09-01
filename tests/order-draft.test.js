@@ -197,3 +197,38 @@ test("reconcileOrderDraftState restores POS ids for items and modifiers", () => 
   assert.equal(draft.cartItems[0].modifierSelections[0].posModifierGroupId, "group-spice");
   assert.equal(draft.cartItems[0].modifierSelections[0].posModifierOptionId, "option-hot");
 });
+
+test("reconcileOrderDraftState restores discount eligibility from the live catalogue", () => {
+  const menu = [
+    {
+      name: "Fresh Lunch Deal",
+      items: [
+        {
+          id: "fresh-lunch-deal::fresh-lunch-deal::0",
+          name: "Fresh Lunch Deal",
+          basePrice: 5.95,
+          discountEligible: false,
+          modifierGroups: []
+        }
+      ]
+    }
+  ];
+
+  const { draft, meta } = reconcileOrderDraftState({
+    cartItems: [
+      {
+        itemId: "fresh-lunch-deal::fresh-lunch-deal::0",
+        itemName: "Fresh Lunch Deal",
+        basePrice: 5.95,
+        discountEligible: true,
+        quantity: 1,
+        modifierSelections: []
+      }
+    ]
+  }, menu);
+
+  assert.equal(draft.cartItems.length, 1);
+  assert.equal(draft.cartItems[0].discountEligible, false);
+  assert.equal(meta.updatedItems, 1);
+  assert.equal(meta.hadChanges, true);
+});

@@ -28,29 +28,45 @@ function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
 }
 
+function toMinorUnits(value) {
+  return Math.round(roundMoney(value) * 100);
+}
+
+function fromMinorUnits(value) {
+  return roundMoney(Number(value || 0) / 100);
+}
+
 export function calculateOrderPricing(cartItems, options = {}) {
   const orderType = String(options.orderType || "collection").trim().toLowerCase() === "delivery"
     ? "delivery"
     : "collection";
   const collectionDiscountRate = Math.max(0, Math.min(1, Number(options.collectionDiscountRate ?? 0.10)));
-  const subtotal = roundMoney(
-    (Array.isArray(cartItems) ? cartItems : [])
-      .reduce((sum, item) => sum + Number(item?.linePrice || 0), 0)
+  const normalizedCartItems = Array.isArray(cartItems) ? cartItems : [];
+  const subtotalMinor = normalizedCartItems.reduce(
+    (sum, item) => sum + toMinorUnits(item?.linePrice),
+    0
   );
-  const totalQuantity = (Array.isArray(cartItems) ? cartItems : [])
+  const discountEligibleSubtotalMinor = normalizedCartItems.reduce(
+    (sum, item) => (
+      item?.discountEligible === false ? sum : sum + toMinorUnits(item?.linePrice)
+    ),
+    0
+  );
+  const totalQuantity = normalizedCartItems
     .reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0)), 0);
-  const collectionDiscount = orderType === "collection"
-    ? roundMoney(subtotal * collectionDiscountRate)
+  const collectionDiscountMinor = orderType === "collection"
+    ? Math.round(discountEligibleSubtotalMinor * collectionDiscountRate)
     : 0;
-  const deliveryFee = orderType === "delivery" && totalQuantity > 0
-    ? roundMoney(Math.max(0, Number(options.deliveryFeeGBP || 0)))
+  const deliveryFeeMinor = orderType === "delivery" && totalQuantity > 0
+    ? toMinorUnits(Math.max(0, Number(options.deliveryFeeGBP || 0)))
     : 0;
+  const totalMinor = Math.max(0, subtotalMinor - collectionDiscountMinor + deliveryFeeMinor);
 
   return {
-    subtotal,
-    collectionDiscount,
-    deliveryFee,
-    total: roundMoney(Math.max(0, subtotal - collectionDiscount + deliveryFee)),
+    subtotal: fromMinorUnits(subtotalMinor),
+    collectionDiscount: fromMinorUnits(collectionDiscountMinor),
+    deliveryFee: fromMinorUnits(deliveryFeeMinor),
+    total: fromMinorUnits(totalMinor),
     totalQuantity
   };
 }
@@ -287,6 +303,7 @@ function reconcileStoredCartItem(raw, fallbackId, lookup, maxItemQuantity) {
   const rawQuantity = Number(raw?.quantity || 1);
   const quantity = Math.max(1, Math.min(maxItemQuantity, rawQuantity));
   const basePrice = roundMoney(liveItem.basePrice);
+  const discountEligible = liveItem.discountEligible !== false;
   const totals = cartLineTotals(basePrice, modifierResult.selections, quantity);
   const rawId = Number(raw?.id);
   const id = Number.isInteger(rawId) && rawId > 0 ? rawId : fallbackId;
@@ -295,6 +312,7 @@ function reconcileStoredCartItem(raw, fallbackId, lookup, maxItemQuantity) {
     || rawItemId !== normalizeText(liveItem.id)
     || rawItemName !== liveItem.name
     || roundMoney(raw?.basePrice) !== basePrice
+    || raw?.discountEligible !== discountEligible
     || !Number.isInteger(rawQuantity)
     || rawQuantity !== quantity;
 
@@ -310,6 +328,7 @@ function reconcileStoredCartItem(raw, fallbackId, lookup, maxItemQuantity) {
       signature: cartLineSignature(liveItem.posItemId || liveItem.id || liveItem.name, modifierResult.selections),
       itemName: liveItem.name,
       basePrice,
+      discountEligible,
       modifierSelections: modifierResult.selections,
       quantity,
       unitPrice: totals.unitPrice,

@@ -44,6 +44,25 @@ async function signStripePayload(secret, payload) {
   return `t=${timestamp},v1=${signature}`;
 }
 
+function freshLunchDealSelections(drink = "Coca-Cola Can") {
+  return [
+    { groupName: "Main", optionName: "Fresh Homemade Bread Sandwich" },
+    { groupName: "Filling", optionName: "Chicken" },
+    { groupName: "Sauce", optionName: "Mayo" },
+    { groupName: "Crisp or snack", optionName: "Crisps (selection may vary)" },
+    { groupName: "Drink", optionName: drink }
+  ];
+}
+
+function freshLunchDealCartItem(drink = "Coca-Cola Can", overrides = {}) {
+  return {
+    itemName: "Fresh Lunch Deal",
+    quantity: 1,
+    modifierSelections: freshLunchDealSelections(drink),
+    ...overrides
+  };
+}
+
 beforeEach(() => {
   resetInMemoryStores();
   globalThis.fetch = originalFetch;
@@ -96,6 +115,138 @@ test("priceOrderCart applies a 10 percent collection discount", () => {
   assert.equal(priced.items[0].checkoutUnitAmountMinor, 180);
   assert.match(priced.itemsSummary, /Collection discount \(10%\) = -£0\.20/);
   assert.match(priced.itemsSummary, /Total = £1\.80/);
+});
+
+test("priceOrderCart excludes the fresh lunch deal and its paid drink upgrade from collection discounts", () => {
+  [
+    { drink: "Coca-Cola Can", subtotal: 5.95, totalMinor: 595 },
+    { drink: "Latte (hot drink upgrade)", subtotal: 6.95, totalMinor: 695 }
+  ].forEach(({ drink, subtotal, totalMinor }) => {
+    const priced = priceOrderCart([
+      freshLunchDealCartItem(drink)
+    ], {
+      orderType: "collection"
+    });
+
+    assert.equal(priced.ok, true);
+    assert.equal(priced.subtotal, subtotal);
+    assert.equal(priced.collectionDiscount, 0);
+    assert.equal(priced.total, subtotal);
+    assert.equal(priced.totalMinor, totalMinor);
+    assert.equal(priced.items[0].discountEligible, false);
+    assert.equal(priced.items[0].checkoutQuantity, 1);
+    assert.equal(priced.items[0].checkoutUnitAmountMinor, totalMinor);
+    assert.doesNotMatch(priced.items[0].stripeDescription, /collection discount applied/i);
+    assert.doesNotMatch(priced.itemsSummary, /Collection discount/);
+  });
+});
+
+test("priceOrderCart discounts only eligible lines and ignores browser-provided eligibility flags", () => {
+  const priced = priceOrderCart([
+    freshLunchDealCartItem("Coca-Cola Can", {
+      basePrice: 0.01,
+      discountEligible: true
+    }),
+    {
+      itemName: "Papadom",
+      quantity: 1,
+      modifierSelections: [],
+      basePrice: 999,
+      discountEligible: false
+    }
+  ], {
+    orderType: "collection"
+  });
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.subtotal, 6.95);
+  assert.equal(priced.collectionDiscount, 0.1);
+  assert.equal(priced.collectionDiscountMinor, 10);
+  assert.equal(priced.total, 6.85);
+  assert.equal(priced.totalMinor, 685);
+  assert.equal(priced.items[0].discountEligible, false);
+  assert.equal(priced.items[0].checkoutQuantity, 1);
+  assert.equal(priced.items[0].checkoutUnitAmountMinor, 595);
+  assert.doesNotMatch(priced.items[0].stripeDescription, /collection discount applied/i);
+  assert.equal(priced.items[1].discountEligible, true);
+  assert.equal(priced.items[1].checkoutQuantity, 1);
+  assert.equal(priced.items[1].checkoutUnitAmountMinor, 90);
+  assert.match(priced.items[1].stripeDescription, /10% collection discount applied/);
+  assert.match(priced.itemsSummary, /Collection discount \(10%\) = -£0\.10/);
+  assert.match(priced.itemsSummary, /Total = £6\.85/);
+});
+
+test("priceOrderCart allocates rounding only across eligible lines without surcharging the final line", () => {
+  const menuCatalog = [
+    {
+      name: "Rounding",
+      items: [
+        ...["Eligible A", "Eligible B", "Eligible C", "Eligible D"].map((name) => ({
+          name,
+          basePrice: 0.05,
+          modifierGroups: []
+        })),
+        {
+          name: "Eligible Penny",
+          basePrice: 0.01,
+          modifierGroups: []
+        },
+        {
+          name: "Excluded Five",
+          basePrice: 0.05,
+          discountEligible: false,
+          modifierGroups: []
+        }
+      ]
+    }
+  ];
+  const priced = priceOrderCart(
+    menuCatalog[0].items.map((item) => ({
+      itemName: item.name,
+      quantity: 1,
+      modifierSelections: []
+    })),
+    { orderType: "collection", menuCatalog }
+  );
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.subtotalMinor, 26);
+  assert.equal(priced.collectionDiscountMinor, 2);
+  assert.equal(priced.totalMinor, 24);
+  assert.deepEqual(
+    priced.items.map((item) => item.checkoutUnitAmountMinor),
+    [4, 4, 5, 5, 1, 5]
+  );
+  assert.equal(priced.items.at(-1).discountEligible, false);
+  assert.equal(priced.items.at(-1).checkoutUnitAmountMinor, 5);
+  priced.items.forEach((item) => {
+    assert.ok(item.checkoutUnitAmountMinor >= 0, `${item.itemName} must not receive a negative Stripe amount`);
+    assert.ok(
+      item.checkoutUnitAmountMinor <= Math.round(item.linePrice * 100),
+      `${item.itemName} must not be surcharged during discount allocation`
+    );
+  });
+});
+
+test("priceOrderCart keeps the fresh lunch deal full-price for delivery despite a forged browser flag", () => {
+  const priced = priceOrderCart([
+    freshLunchDealCartItem("Coca-Cola Can", {
+      discountEligible: true
+    })
+  ], {
+    orderType: "delivery",
+    deliveryFeeGBP: 2
+  });
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.subtotal, 5.95);
+  assert.equal(priced.collectionDiscount, 0);
+  assert.equal(priced.deliveryFee, 2);
+  assert.equal(priced.total, 7.95);
+  assert.equal(priced.totalMinor, 795);
+  assert.equal(priced.items[0].discountEligible, false);
+  assert.equal(priced.items[0].checkoutUnitAmountMinor, 595);
+  assert.doesNotMatch(priced.items[0].stripeDescription, /collection discount applied/i);
 });
 
 test("priceOrderCart preserves POS menu ids from the live catalog", () => {
@@ -213,6 +364,59 @@ test("createOrderCheckout prices delivery from the bundled website menu", async 
   assert.equal(created.ok, true);
   assert.equal(created.sessionId, "cs_test_pos_menu");
   assert.equal(created.amountTotal, 600);
+});
+
+test("createOrderCheckout preserves the bundled deal exclusion in mixed collection Stripe lines", async () => {
+  const env = {
+    STRIPE_SECRET_KEY: "sk_test_123",
+    ONLINE_ORDERING_ENABLED: "true"
+  };
+
+  globalThis.fetch = async (url, options = {}) => {
+    const requestUrl = String(url);
+    if (requestUrl === "https://api.stripe.com/v1/checkout/sessions" && options.method === "POST") {
+      const form = new URLSearchParams(String(options.body || ""));
+      const dealDescription = String(form.get("line_items[0][price_data][product_data][description]") || "");
+      const eligibleDescription = String(form.get("line_items[1][price_data][product_data][description]") || "");
+
+      assert.equal(form.get("line_items[0][price_data][unit_amount]"), "595");
+      assert.equal(form.get("line_items[0][quantity]"), "1");
+      assert.doesNotMatch(dealDescription, /collection discount applied/i);
+      assert.equal(form.get("line_items[1][price_data][unit_amount]"), "90");
+      assert.equal(form.get("line_items[1][quantity]"), "1");
+      assert.match(eligibleDescription, /10% collection discount applied/);
+      assert.equal(form.get("line_items[2][price_data][unit_amount]"), null);
+      assert.equal(form.get("metadata[order_type]"), "collection");
+
+      return jsonResponse({
+        id: "cs_test_mixed_discount",
+        url: "https://checkout.stripe.com/c/pay/cs_test_mixed_discount"
+      });
+    }
+
+    throw new Error(`Unexpected fetch: ${requestUrl}`);
+  };
+
+  const created = await createOrderCheckout(env, "https://millers.cafe/api/orders/checkout", {
+    ...makeOrderPayload(),
+    cartItems: [
+      freshLunchDealCartItem("Coca-Cola Can", {
+        basePrice: 0.01,
+        discountEligible: true
+      }),
+      {
+        itemName: "Papadom",
+        quantity: 1,
+        modifierSelections: [],
+        basePrice: 999,
+        discountEligible: false
+      }
+    ]
+  });
+
+  assert.equal(created.ok, true);
+  assert.equal(created.sessionId, "cs_test_mixed_discount");
+  assert.equal(created.amountTotal, 685);
 });
 
 test("production checkout stays paused until online ordering is explicitly enabled", async () => {

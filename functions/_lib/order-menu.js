@@ -6,7 +6,7 @@ import {
 } from "../../orders/menu-catalog.js";
 
 const MAX_ITEM_QUANTITY = 20;
-const COLLECTION_DISCOUNT_RATE = 0.10;
+const COLLECTION_DISCOUNT_PERCENT = 10;
 const GBP_FORMATTER = new Intl.NumberFormat("en-GB", {
   style: "currency",
   currency: "GBP",
@@ -56,8 +56,16 @@ function toMinorUnits(value) {
   return Math.round(roundMoney(value) * 100);
 }
 
-function collectionDiscountForSubtotal(orderType, subtotal) {
-  return orderType === "collection" ? roundMoney(subtotal * COLLECTION_DISCOUNT_RATE) : 0;
+function fromMinorUnits(value) {
+  return roundMoney(Number(value || 0) / 100);
+}
+
+function collectionDiscountMinorForSubtotalMinor(orderType, subtotalMinor) {
+  return orderType === "collection"
+    ? Math.round(
+      (Math.max(0, Number(subtotalMinor || 0)) * COLLECTION_DISCOUNT_PERCENT) / 100
+    )
+    : 0;
 }
 
 function normalizedOrderType(value) {
@@ -153,6 +161,7 @@ function buildOrderMenuItemMap(menuCatalog = MILLERS_ORDER_MENU) {
         menuVersion: normalizeText(rawItem?.menuVersion),
         name: itemName,
         basePrice: roundMoney(basePrice),
+        discountEligible: rawItem?.discountEligible !== false,
         modifierGroups
       };
 
@@ -347,6 +356,7 @@ export function priceOrderCart(rawCartItems, options = {}) {
       itemName: menuItem.name,
       quantity,
       basePrice: menuItem.basePrice,
+      discountEligible: menuItem.discountEligible !== false,
       modifierSelections: selectionCheck.selections,
       unitPrice,
       linePrice,
@@ -355,26 +365,71 @@ export function priceOrderCart(rawCartItems, options = {}) {
     });
   }
 
-  const subtotal = roundMoney(pricedItems.reduce((sum, item) => sum + Number(item.linePrice || 0), 0));
-  const collectionDiscount = collectionDiscountForSubtotal(orderType, subtotal);
-  const total = roundMoney(Math.max(0, subtotal - collectionDiscount + deliveryFeeGBP));
-  const totalMinor = toMinorUnits(total);
+  const subtotalMinor = pricedItems.reduce((sum, item) => sum + toMinorUnits(item.linePrice), 0);
+  const discountEligibleSubtotalMinor = pricedItems.reduce(
+    (sum, item) => item.discountEligible ? sum + toMinorUnits(item.linePrice) : sum,
+    0
+  );
+  const collectionDiscountMinor = collectionDiscountMinorForSubtotalMinor(
+    orderType,
+    discountEligibleSubtotalMinor
+  );
+  const deliveryFeeMinor = toMinorUnits(deliveryFeeGBP);
+  const totalMinor = Math.max(0, subtotalMinor - collectionDiscountMinor + deliveryFeeMinor);
+  const subtotal = fromMinorUnits(subtotalMinor);
+  const collectionDiscount = fromMinorUnits(collectionDiscountMinor);
+  const total = fromMinorUnits(totalMinor);
 
-  if (collectionDiscount > 0) {
-    let remainingMinor = totalMinor;
+  if (collectionDiscountMinor > 0) {
+    const eligibleAllocations = pricedItems
+      .map((item, index) => {
+        if (!item.discountEligible) return null;
+        const lineMinor = toMinorUnits(item.linePrice);
+        const scaledDiscount = lineMinor * COLLECTION_DISCOUNT_PERCENT;
+        const discountMinor = Math.floor(scaledDiscount / 100);
+        return {
+          index,
+          lineMinor,
+          discountMinor,
+          remainder: scaledDiscount % 100
+        };
+      })
+      .filter(Boolean);
+    const rankedAllocations = eligibleAllocations.slice().sort((left, right) =>
+      right.remainder - left.remainder || left.index - right.index
+    );
+    let unallocatedDiscountMinor = collectionDiscountMinor - eligibleAllocations.reduce(
+      (sum, allocation) => sum + allocation.discountMinor,
+      0
+    );
+
+    for (let index = 0; unallocatedDiscountMinor > 0; index += 1) {
+      rankedAllocations[index % rankedAllocations.length].discountMinor += 1;
+      unallocatedDiscountMinor -= 1;
+    }
+
+    const allocationByIndex = new Map(
+      eligibleAllocations.map((allocation) => [allocation.index, allocation])
+    );
+
     pricedItems.forEach((item, index) => {
-      const isLast = index === pricedItems.length - 1;
-      const discountedLineMinor = isLast
-        ? remainingMinor
-        : Math.max(0, Math.round(toMinorUnits(item.linePrice) * (1 - COLLECTION_DISCOUNT_RATE)));
-      remainingMinor -= discountedLineMinor;
+      if (!item.discountEligible) {
+        item.checkoutQuantity = item.quantity;
+        item.checkoutUnitAmountMinor = toMinorUnits(item.unitPrice);
+        return;
+      }
+
+      const allocation = allocationByIndex.get(index);
+      const discountedLineMinor = Math.max(0, allocation.lineMinor - allocation.discountMinor);
       item.checkoutQuantity = 1;
       item.checkoutUnitAmountMinor = discountedLineMinor;
       item.stripeName = item.quantity > 1 ? `${item.quantity}x ${item.itemName}` : item.itemName;
-      item.stripeDescription = [
-        item.stripeDescription,
-        "10% collection discount applied"
-      ].filter(Boolean).join(" | ");
+      if (allocation.discountMinor > 0) {
+        item.stripeDescription = [
+          item.stripeDescription,
+          "10% collection discount applied"
+        ].filter(Boolean).join(" | ");
+      }
     });
   } else {
     pricedItems.forEach((item) => {
@@ -400,11 +455,11 @@ export function priceOrderCart(rawCartItems, options = {}) {
     items: pricedItems,
     itemsSummary: lines.join("\n"),
     subtotal,
-    subtotalMinor: toMinorUnits(subtotal),
+    subtotalMinor,
     collectionDiscount,
-    collectionDiscountMinor: toMinorUnits(collectionDiscount),
+    collectionDiscountMinor,
     deliveryFee: deliveryFeeGBP,
-    deliveryFeeMinor: toMinorUnits(deliveryFeeGBP),
+    deliveryFeeMinor,
     total,
     totalMinor,
     totalQuantity: pricedItems.reduce((sum, item) => sum + item.quantity, 0),

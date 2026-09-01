@@ -3,7 +3,7 @@ import {
   getMenuItemAllergenLabels,
   getMenuItemDietaryDisplay,
   getPreferredModifierOptionIndex
-} from "./menu-catalog.js?v=20260715a";
+} from "./menu-catalog.js?v=20260901a";
 import {
   calculateOrderPricing,
   canAdvanceToCheckoutDetails,
@@ -12,7 +12,7 @@ import {
   createEmptyOrderDraftState,
   reconcileOrderDraftState,
   scrollBehaviorForPreference
-} from "./order-draft.js?v=20260713a";
+} from "./order-draft.js?v=20260901a";
 import { getOrderItemDescription } from "./order-media.js?v=20260714a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
@@ -115,6 +115,12 @@ const MENU_CATEGORY_DISPLAY_LABELS = Object.freeze({
 });
 
 const DESKTOP_ORDER_MENU_GROUPS = Object.freeze([
+  {
+    label: "Fresh Lunch Deal",
+    intro: "Build a £5.95 lunch with a main, filling, sauce, salad, snack and drink.",
+    icon: "../assets/icon-bag.svg",
+    categories: ["Fresh Lunch Deal"]
+  },
   {
     label: "Starters",
     intro: "Vegetarian, chicken, lamb, mixed and seafood starters.",
@@ -1010,7 +1016,7 @@ function updateOrderReviewRow() {
   const typeLabel = orderType === "delivery" ? "Delivery" : "Collection";
   const priceSummary = orderType === "delivery"
     ? `Subtotal ${formatGBP(totals.subtotal)} + delivery ${formatGBP(totals.deliveryFee)} = total ${formatGBP(totals.total)}`
-    : `Subtotal ${formatGBP(totals.subtotal)} − 10% collection discount ${formatGBP(totals.collectionDiscount)} = total ${formatGBP(totals.total)}`;
+    : `Subtotal ${formatGBP(totals.subtotal)} − 10% discount on eligible items ${formatGBP(totals.collectionDiscount)} = total ${formatGBP(totals.total)}`;
   orderReviewText.textContent = `${typeLabel} · ${totals.totalQuantity} ${dishLabel} · ${priceSummary} · ${dateLabel} at ${timeLabel}`;
 }
 
@@ -1357,7 +1363,7 @@ function updateOrderContextStrip() {
     const etaMax = Math.round(Number(siteConfigState?.delivery?.etaMaxMinutes ?? 55));
     orderContextPricing.textContent = isDelivery
       ? `${formatGBP(DELIVERY_FEE_GBP)} fee · ${etaMin}–${etaMax} min typical`
-      : "10% off automatically";
+      : "10% off eligible items";
   }
 }
 
@@ -1456,7 +1462,7 @@ function updateStickyCheckoutBar() {
   if (stickyCheckoutOrder) {
     const adjustmentText = currentOrderType() === "delivery" && totals.deliveryFee > 0
       ? ` total · includes ${formatGBP(totals.deliveryFee)} delivery`
-      : (totals.collectionDiscount > 0 ? " total · after 10% off" : " total");
+      : (totals.collectionDiscount > 0 ? " total · after 10% off eligible items" : " total");
     stickyCheckoutOrder.textContent = isMobileMenu
       ? `${formatGBP(totals.total)} total`
       : (isMobileCheckout
@@ -2182,6 +2188,7 @@ function normalizeMenuCatalog(rawCatalog) {
             name: itemName,
             description: normalizeText(item?.description),
             basePrice: roundMoney(basePrice),
+            discountEligible: item?.discountEligible !== false,
             modifierGroups,
             tags,
             codes,
@@ -3237,6 +3244,7 @@ function persistOrderDraft() {
       menuVersion: item.menuVersion || "",
       itemName: item.itemName,
       basePrice: item.basePrice,
+      discountEligible: item.discountEligible !== false,
       modifierSelections: (item.modifierSelections || []).map((selection) => ({ ...selection })),
       quantity: item.quantity
     })),
@@ -3316,6 +3324,7 @@ function addItemToCart(item, modifierSelections, quantity, openBasket = false) {
       signature,
       itemName: item.name,
       basePrice: item.basePrice,
+      discountEligible: item.discountEligible !== false,
       modifierSelections,
       quantity: cleanQty,
       unitPrice: totals.unitPrice,
@@ -3402,7 +3411,7 @@ function renderCheckoutSummaryList(totals = cartPricingTotals()) {
 
   appendPriceRow("Subtotal", formatGBP(totals.subtotal));
   if (totals.collectionDiscount > 0) {
-    appendPriceRow("Collection discount (10%)", `−${formatGBP(totals.collectionDiscount)}`, "isDiscount");
+    appendPriceRow("Collection discount (10% on eligible items)", `−${formatGBP(totals.collectionDiscount)}`, "isDiscount");
   }
   if (currentOrderType() === "delivery" && totals.deliveryFee > 0) {
     appendPriceRow("Delivery fee", formatGBP(totals.deliveryFee));
@@ -3436,7 +3445,7 @@ function syncItemsSummary() {
   const totals = cartPricingTotals();
   if (totals.collectionDiscount > 0) {
     lines.push(`Subtotal = ${formatGBP(totals.subtotal)}`);
-    lines.push(`Collection discount (10%) = -${formatGBP(totals.collectionDiscount)}`);
+    lines.push(`Collection discount (10% on eligible items) = -${formatGBP(totals.collectionDiscount)}`);
   }
   if (totals.deliveryFee > 0) {
     lines.push(`Subtotal = ${formatGBP(totals.subtotal)}`);
@@ -3448,7 +3457,7 @@ function syncItemsSummary() {
   if (orderSummaryPreview) {
     const priceText = currentOrderType() === "delivery"
       ? `Subtotal ${formatGBP(totals.subtotal)} + delivery ${formatGBP(totals.deliveryFee)} = total ${formatGBP(totals.total)}`
-      : `Subtotal ${formatGBP(totals.subtotal)} − discount ${formatGBP(totals.collectionDiscount)} = total ${formatGBP(totals.total)}`;
+      : `Subtotal ${formatGBP(totals.subtotal)} − eligible-item discount ${formatGBP(totals.collectionDiscount)} = total ${formatGBP(totals.total)}`;
     orderSummaryPreview.textContent = `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${priceText}.`;
   }
 }
@@ -4095,6 +4104,9 @@ function initializeMenuInteractions() {
     menuSearchInput.value = searchQuery;
   }
   renderCategoryChips();
+  if (!mobileOpenCategory && isMobileOrderMenuLayout()) {
+    mobileOpenCategory = selectedCategory;
+  }
   renderMenuItems();
   renderCart();
   setBasketOpen(isDesktopBasketLayout());

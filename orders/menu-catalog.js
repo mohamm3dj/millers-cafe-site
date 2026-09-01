@@ -293,6 +293,251 @@ function remediateMenuCatalog(catalog) {
 
 export const MILLERS_ORDER_MENU = [
   {
+    "name": "Fresh Lunch Deal",
+    "description": "Build a fresh lunch with a main, filling, sauce, optional salad, crisps or a snack, and a drink.",
+    "items": [
+      {
+        "name": "Fresh Lunch Deal",
+        "basePrice": 5.95,
+        "description": "Choose a fresh homemade bread sandwich, mini Twister wrap or pasta pot; chicken, chicken tikka, tuna, egg or cheese; a sauce; optional lettuce, cucumber, tomato and onions; crisps or a snack; and a cold drink. Upgrade to any hot drink for +£1. Not eligible for discounts.",
+        "publicPriceLabel": "",
+        "discountEligible": false,
+        "codes": [],
+        "tags": [
+          "deal"
+        ],
+        "modifierGroups": [
+          {
+            "name": "Main",
+            "selectionType": "single",
+            "isRequired": true,
+            "isTextInput": false,
+            "maxSelections": 1,
+            "options": [
+              {
+                "name": "Fresh Homemade Bread Sandwich",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Mini Twister Wrap",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Pasta Pot",
+                "priceAdjustment": 0
+              }
+            ]
+          },
+          {
+            "name": "Filling",
+            "selectionType": "single",
+            "isRequired": true,
+            "isTextInput": false,
+            "maxSelections": 1,
+            "options": [
+              {
+                "name": "Chicken",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Chicken Tikka",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Tuna",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Egg",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Cheese",
+                "priceAdjustment": 0
+              }
+            ]
+          },
+          {
+            "name": "Sauce",
+            "selectionType": "single",
+            "isRequired": true,
+            "isTextInput": false,
+            "maxSelections": 1,
+            "options": [
+              {
+                "name": "Mayo",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Ketchup",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Barbecue",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Brown Sauce",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Sweet Chilli",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Mint Yoghurt",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Mango Chutney",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Sriracha",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Tamarind",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Curry Mayo",
+                "priceAdjustment": 0
+              }
+            ]
+          },
+          {
+            "name": "Salad (optional)",
+            "selectionType": "multiple",
+            "isRequired": false,
+            "isTextInput": false,
+            "maxSelections": 4,
+            "options": [
+              {
+                "name": "Lettuce",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Cucumber",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Tomato",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Onions",
+                "priceAdjustment": 0
+              }
+            ]
+          },
+          {
+            "name": "Crisp or snack",
+            "selectionType": "single",
+            "isRequired": true,
+            "isTextInput": false,
+            "maxSelections": 1,
+            "options": [
+              {
+                "name": "Crisps (selection may vary)",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Snack (selection may vary)",
+                "priceAdjustment": 0
+              }
+            ]
+          },
+          {
+            "name": "Drink",
+            "selectionType": "single",
+            "isRequired": true,
+            "isTextInput": false,
+            "maxSelections": 1,
+            "options": [
+              {
+                "name": "Coca-Cola Can",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Diet Coke Can",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Fanta Can",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Sprite Can",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Still Water",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Sparkling Water",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "J2O Orange",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "J2O Apple & Raspberry",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Peppermint Tea (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Green Tea (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Tea (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Americano (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Latte (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Cappuccino (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Mocha (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Flat White (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Hot Chocolate (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Masala Tea (hot drink upgrade)",
+                "priceAdjustment": 1
+              },
+              {
+                "name": "Masala Latte (hot drink upgrade)",
+                "priceAdjustment": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
     "name": "Shakes and Chillers",
     "description": "Cold drinks, smoothies, lassis and signature milkshakes.",
     "items": [

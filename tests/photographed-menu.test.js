@@ -44,6 +44,107 @@ function sortedCodes(values) {
   return [...values].map((value) => String(value).toUpperCase()).sort();
 }
 
+test("the photographed Fresh Lunch Deal is first with every pictured choice", () => {
+  assert.equal(MILLERS_ORDER_MENU[0]?.name, "Fresh Lunch Deal");
+  assert.equal(MILLERS_ORDER_MENU[0]?.items?.[0]?.name, "Fresh Lunch Deal");
+
+  const deal = itemNamed("Fresh Lunch Deal", "Fresh Lunch Deal");
+  assert.equal(deal.basePrice, 5.95);
+  assert.equal(deal.discountEligible, false);
+  assert.deepEqual(
+    deal.modifierGroups.map((group) => group.name),
+    ["Main", "Filling", "Sauce", "Salad (optional)", "Crisp or snack", "Drink"]
+  );
+
+  const expectedRequiredOptions = new Map([
+    ["Main", [
+      "Fresh Homemade Bread Sandwich",
+      "Mini Twister Wrap",
+      "Pasta Pot"
+    ]],
+    ["Filling", ["Chicken", "Chicken Tikka", "Tuna", "Egg", "Cheese"]],
+    ["Sauce", [
+      "Mayo",
+      "Ketchup",
+      "Barbecue",
+      "Brown Sauce",
+      "Sweet Chilli",
+      "Mint Yoghurt",
+      "Mango Chutney",
+      "Sriracha",
+      "Tamarind",
+      "Curry Mayo"
+    ]],
+    ["Crisp or snack", [
+      "Crisps (selection may vary)",
+      "Snack (selection may vary)"
+    ]]
+  ]);
+
+  expectedRequiredOptions.forEach((expectedOptions, groupName) => {
+    const group = groupNamed(deal, groupName);
+    assert.equal(group.isRequired, true, `${groupName} should be required`);
+    assert.equal(group.selectionType, "single", `${groupName} should allow one choice`);
+    assert.equal(group.maxSelections, 1, `${groupName} should allow one choice`);
+    assert.deepEqual(group.options.map((option) => option.name), expectedOptions);
+    group.options.forEach((option) => {
+      assert.equal(option.priceAdjustment, 0, `${groupName} / ${option.name} should be included`);
+    });
+  });
+
+  const salad = groupNamed(deal, "Salad (optional)");
+  assert.equal(salad.isRequired, false);
+  assert.equal(salad.selectionType, "multiple");
+  assert.equal(salad.maxSelections, 4);
+  assert.deepEqual(
+    salad.options.map((option) => option.name),
+    ["Lettuce", "Cucumber", "Tomato", "Onions"]
+  );
+  salad.options.forEach((option) => {
+    assert.equal(option.priceAdjustment, 0, `${option.name} salad should be included`);
+  });
+
+  const drink = groupNamed(deal, "Drink");
+  assert.equal(drink.isRequired, true);
+  assert.equal(drink.selectionType, "single");
+  assert.equal(drink.maxSelections, 1);
+
+  const coldDrinkNames = [
+    "Coca-Cola Can",
+    "Diet Coke Can",
+    "Fanta Can",
+    "Sprite Can",
+    "Still Water",
+    "Sparkling Water",
+    "J2O Orange",
+    "J2O Apple & Raspberry"
+  ];
+  const hotDrinkUpgradeNames = [
+    "Peppermint Tea (hot drink upgrade)",
+    "Green Tea (hot drink upgrade)",
+    "Tea (hot drink upgrade)",
+    "Americano (hot drink upgrade)",
+    "Latte (hot drink upgrade)",
+    "Cappuccino (hot drink upgrade)",
+    "Mocha (hot drink upgrade)",
+    "Flat White (hot drink upgrade)",
+    "Hot Chocolate (hot drink upgrade)",
+    "Masala Tea (hot drink upgrade)",
+    "Masala Latte (hot drink upgrade)"
+  ];
+
+  assert.deepEqual(
+    drink.options.map((option) => option.name),
+    [...coldDrinkNames, ...hotDrinkUpgradeNames]
+  );
+  coldDrinkNames.forEach((name) => {
+    assert.equal(optionNamed(drink, name).priceAdjustment, 0, `${name} should be included`);
+  });
+  hotDrinkUpgradeNames.forEach((name) => {
+    assert.equal(optionNamed(drink, name).priceAdjustment, 1, `${name} should cost +£1`);
+  });
+});
+
 test("photographed curry prices keep Creamy Garlic and every side sauce at the printed price", () => {
   const creamyGarlicMatches = CURRY_CATEGORY_NAMES.flatMap((categoryName) =>
     categoryNamed(categoryName).items.filter((item) => item.name === "Creamy Garlic")

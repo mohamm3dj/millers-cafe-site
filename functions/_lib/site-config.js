@@ -307,6 +307,7 @@ function normalizeMenuItem(rawItem) {
   const normalized = {
     name,
     basePrice: Math.round(basePrice * 100) / 100,
+    discountEligible: rawItem?.discountEligible !== false,
     description: normalizeText(rawItem?.description || rawItem?.details),
     publicPriceLabel: normalizeText(rawItem?.publicPriceLabel || rawItem?.priceLabel),
     codes: uniqueStrings(rawItem?.codes, (value) => value.toUpperCase()),

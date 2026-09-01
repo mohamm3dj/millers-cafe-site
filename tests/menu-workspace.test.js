@@ -21,6 +21,11 @@ const MENU_LAYER_MARKER = "/* Millers guided menu workspace — option 3 */";
 const MAX_MENU_IMAGE_BYTES = 350 * 1024;
 const PRINTED_MENU_HIERARCHY = Object.freeze([
   {
+    id: "fresh-lunch-deal",
+    label: "Fresh Lunch Deal",
+    headings: ["Fresh Lunch Deal"]
+  },
+  {
     id: "starters",
     label: "Starters",
     headings: [
@@ -284,8 +289,8 @@ function topLevelCssTokens(value) {
 
 test("public menu keeps exact canonical category and item parity", () => {
   const actual = parseStaticMenu(MENU_HTML);
-  assert.equal(actual.length, 27, "the public menu must render every canonical category");
-  assert.equal(actual.reduce((count, category) => count + category.items.length, 0), 177);
+  assert.equal(actual.length, 28, "the public menu must render every canonical category");
+  assert.equal(actual.reduce((count, category) => count + category.items.length, 0), 178);
 
   assert.deepEqual(
     actual.map((category) => category.name),
@@ -358,6 +363,8 @@ test("public menu follows the complete printed-menu hierarchy and keeps Drinks l
     PRINTED_MENU_HIERARCHY.map((group) => group.id),
     "primary categories must follow the printed menu, with Drinks at the bottom"
   );
+  assert.equal(configuredIds[0], "fresh-lunch-deal", "the deal must be the first public menu category");
+  assert.match(MENU_JS, /const\s+defaultGroupId\s*=\s*["']fresh-lunch-deal["']/);
 
   PRINTED_MENU_HIERARCHY.forEach((expectedGroup) => {
     const group = objectLiteralContaining(

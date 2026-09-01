@@ -27,6 +27,7 @@ const EXPECTED_FAVOURITES = [
   "Mango Lassi"
 ];
 const PRINTED_ORDER_MENU_HIERARCHY = Object.freeze([
+  { label: "Fresh Lunch Deal", categories: ["Fresh Lunch Deal"] },
   {
     label: "Starters",
     constantName: "STARTER_CATEGORY_NAMES",
@@ -271,6 +272,39 @@ test("pricing shows the same subtotal, adjustment, and total shape before checko
   assert.equal(calculateOrderPricing([], { orderType: "delivery", deliveryFeeGBP: 2 }).deliveryFee, 0);
 });
 
+test("browser pricing excludes the Fresh Lunch Deal and its upgrades from collection discounts", () => {
+  const dealOnly = calculateOrderPricing([
+    { quantity: 1, linePrice: 5.95, discountEligible: false }
+  ], { orderType: "collection" });
+  assert.deepEqual(dealOnly, {
+    subtotal: 5.95,
+    collectionDiscount: 0,
+    deliveryFee: 0,
+    total: 5.95,
+    totalQuantity: 1
+  });
+
+  const upgradedDeal = calculateOrderPricing([
+    { quantity: 1, linePrice: 6.95, discountEligible: false }
+  ], { orderType: "collection" });
+  assert.equal(upgradedDeal.collectionDiscount, 0);
+  assert.equal(upgradedDeal.total, 6.95);
+
+  const mixedBasket = calculateOrderPricing([
+    { quantity: 1, linePrice: 5.95, discountEligible: false },
+    { quantity: 1, linePrice: 1, discountEligible: true }
+  ], { orderType: "collection" });
+  assert.equal(mixedBasket.subtotal, 6.95);
+  assert.equal(mixedBasket.collectionDiscount, 0.1);
+  assert.equal(mixedBasket.total, 6.85);
+
+  const delivery = calculateOrderPricing([
+    { quantity: 1, linePrice: 5.95, discountEligible: false }
+  ], { orderType: "delivery", deliveryFeeGBP: 2 });
+  assert.equal(delivery.collectionDiscount, 0);
+  assert.equal(delivery.total, 7.95);
+});
+
 test("after-hours customers can reach checkout details to choose a future date", () => {
   assert.equal(canAdvanceToCheckoutDetails(1, false), true);
   assert.equal(canAdvanceToCheckoutDetails(0, false), false);
@@ -378,6 +412,7 @@ test("ordering follows the complete printed-menu hierarchy and keeps Drinks last
     PRINTED_ORDER_MENU_HIERARCHY.map((group) => group.label),
     "checkout primary categories must follow the printed menu"
   );
+  assert.equal(configuredLabels[0], "Fresh Lunch Deal", "the deal must be the first checkout category");
 
   PRINTED_ORDER_MENU_HIERARCHY.forEach((expectedGroup) => {
     const group = objectLiteralContaining(
@@ -471,6 +506,14 @@ test("mobile ordering uses the same generic multi-section grouping as desktop", 
   assert.match(mobileRenderer, /groupTitle\.textContent\s*=\s*parentGroup\.label/);
   assert.match(mobileRenderer, /groupBody\.appendChild\(section\)/);
   assert.doesNotMatch(mobileRenderer, /StarterGroup|parentGroup\.label\s*===\s*["']Starters["']/);
+
+  const initialization = extractBetween(
+    source,
+    "function initializeMenuInteractions()",
+    "function handleCheckoutReturnState()"
+  );
+  assert.match(initialization, /if\s*\(!mobileOpenCategory\s*&&\s*isMobileOrderMenuLayout\(\)\)/);
+  assert.match(initialization, /mobileOpenCategory\s*=\s*selectedCategory/);
 
   assert.match(styles, /\.orderMenuSubcategoryHeading\b/);
   assert.match(styles, /\.orderMobileMenuGroup\b/);

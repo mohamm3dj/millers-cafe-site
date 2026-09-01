@@ -8,6 +8,13 @@
 
   const menuGroups = [
     {
+      id: "fresh-lunch-deal",
+      label: "Fresh Lunch Deal",
+      description: "Build a fresh lunch with a main, filling, sauce, optional salad, crisps or a snack, and a drink.",
+      icon: "../assets/icon-bag.svg",
+      headings: ["Fresh Lunch Deal"]
+    },
+    {
       id: "starters",
       label: "Starters",
       description: "Vegetarian, chicken, lamb, mixed and seafood starters.",
@@ -111,7 +118,7 @@
     }
   ];
 
-  const defaultGroupId = "starters";
+  const defaultGroupId = "fresh-lunch-deal";
   const sectionDisplayLabels = new Map([
     ["Starters - Vegetarian", "Vegetarian"],
     ["Starters - Chicken", "Chicken"],
