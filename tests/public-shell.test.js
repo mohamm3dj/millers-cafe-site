@@ -31,7 +31,7 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
 
   promos.forEach(([, headingId, markup]) => {
     assert.match(markup, new RegExp(`<h2 id="${headingId}">Fresh Lunch Deal<\\/h2>`));
-    assert.match(markup, /New at Millers/i);
+    assert.match(markup, /New at Millers Café/);
     assert.match(markup, /£5\.95/);
     assert.match(markup, /Main/);
     assert.match(markup, /Crisp or snack/);
@@ -48,7 +48,7 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
 
 test("homepage launch styles use a coordinated cache refresh", () => {
   assert.match(homeHtml, /styles\.css\?v=20260901c/);
-  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v92"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v93"/);
   assert.match(serviceWorker, /"\/styles\.css\?v=20260901c"/);
 });
 
