@@ -1,12 +1,12 @@
 "use strict";
 
 import { normalizeMenuItemAllergenCodes } from "./menu-catalog.js";
-import { createEmptyOrderDraftState } from "./order-draft-state.js";
+import { createEmptyOrderDraftState } from "./order-draft-state.js?v=20260901b";
 
 export { createEmptyOrderDraftState };
 
 const DEFAULT_MAX_ITEM_QUANTITY = 20;
-const DEFAULT_ORDER_DRAFT_VERSION = 2;
+const DEFAULT_ORDER_DRAFT_VERSION = 3;
 const DEFAULT_ASAP_VALUE = "ASAP";
 
 function normalizeText(value) {
@@ -409,10 +409,12 @@ export function reconcileOrderDraftState(raw, normalizedMenu, options = {}) {
   meta.mergedLines = merged.mergedLines;
   meta.restoredLineCount = merged.items.length;
 
+  const rawVersion = Number(raw?.version);
+  const isCurrentDraftVersion = rawVersion === orderDraftVersion;
   const rawNextCartId = Number(raw?.nextCartId);
   const highestCartId = merged.items.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0);
-  const selectedCategory = normalizeText(raw?.selectedCategory);
-  const searchQuery = normalizeText(raw?.searchQuery);
+  const selectedCategory = isCurrentDraftVersion ? normalizeText(raw?.selectedCategory) : "";
+  const searchQuery = isCurrentDraftVersion ? normalizeText(raw?.searchQuery) : "";
 
   const draft = {
     version: orderDraftVersion,
@@ -430,7 +432,7 @@ export function reconcileOrderDraftState(raw, normalizedMenu, options = {}) {
   meta.hadChanges = meta.removedItems > 0
     || meta.updatedItems > 0
     || meta.mergedLines > 0
-    || Number(raw?.version) !== orderDraftVersion;
+    || rawVersion !== orderDraftVersion;
 
   return {
     draft,

@@ -69,6 +69,22 @@ test("menu-heavy interactions are debounced and account avoids the full order ca
   assert.match(menuSource, /window\.setTimeout\(applySearch, 120\)/);
   assert.match(menuSource, /if \(activeJumpChipId === id\) return;/);
   assert.match(orderSource, /menuSearchTimer = window\.setTimeout\(\(\) => \{[\s\S]*?renderMenuItems\(\);[\s\S]*?\}, 120\);/);
-  assert.match(accountSource, /from "\.\.\/orders\/order-draft-state\.js"/);
+  assert.match(accountSource, /from "\.\.\/orders\/order-draft-state\.js\?v=20260901b"/);
   assert.doesNotMatch(accountSource, /from "\.\.\/orders\/order-draft\.js"/);
+});
+
+test("the menu landing migration uses coordinated browser asset versions", () => {
+  const collection = read("../collection/index.html");
+  const delivery = read("../delivery/index.html");
+  const account = read("../account/index.html");
+  const orderSource = read("../orders/order-form.js");
+  const draftSource = read("../orders/order-draft.js");
+  const serviceWorker = read("../sw.js");
+
+  assert.match(collection, /order-form\.js\?v=20260901b/);
+  assert.match(delivery, /order-form\.js\?v=20260901b/);
+  assert.match(account, /account\.js\?v=20260901b/);
+  assert.match(orderSource, /order-draft\.js\?v=20260901b/);
+  assert.match(draftSource, /order-draft-state\.js\?v=20260901b/);
+  assert.match(serviceWorker, /millers-static-v90/);
 });

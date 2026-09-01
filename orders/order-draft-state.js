@@ -1,6 +1,6 @@
 "use strict";
 
-const DEFAULT_ORDER_DRAFT_VERSION = 2;
+const DEFAULT_ORDER_DRAFT_VERSION = 3;
 
 export function createEmptyOrderDraftState(options = {}) {
   const orderDraftVersion = Number.isInteger(options.orderDraftVersion)

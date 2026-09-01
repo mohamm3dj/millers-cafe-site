@@ -1,4 +1,4 @@
-import { createEmptyOrderDraftState } from "../orders/order-draft-state.js";
+import { createEmptyOrderDraftState } from "../orders/order-draft-state.js?v=20260901b";
 
 const ACCOUNT_ME_API = "/api/account/me";
 const ACCOUNT_REQUEST_CODE_API = "/api/account/request-code";
@@ -13,7 +13,7 @@ const BOOKINGS_SLOTS_API = "/api/bookings/slots";
 const SITE_CONFIG_API = "/api/site-config";
 const BUSINESS_TIMEZONE = "Europe/London";
 const ORDER_DRAFT_STORAGE_KEY = "millers-cafe-order-draft-v2";
-const ORDER_DRAFT_VERSION = 2;
+const ORDER_DRAFT_VERSION = 3;
 
 const requestForm = document.getElementById("accountRequestForm");
 const verifyForm = document.getElementById("accountVerifyForm");

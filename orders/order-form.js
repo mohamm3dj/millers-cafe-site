@@ -12,7 +12,7 @@ import {
   createEmptyOrderDraftState,
   reconcileOrderDraftState,
   scrollBehaviorForPreference
-} from "./order-draft.js?v=20260901a";
+} from "./order-draft.js?v=20260901b";
 import { getOrderItemDescription } from "./order-media.js?v=20260714a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
@@ -25,7 +25,7 @@ let SERVICE_END_MINUTES = 17 * 60;
 let SLOT_STEP_MINUTES = 15;
 const ASAP_VALUE = "ASAP";
 const ORDER_DRAFT_STORAGE_KEY = "millers-cafe-order-draft-v2";
-const ORDER_DRAFT_VERSION = 2;
+const ORDER_DRAFT_VERSION = 3;
 let COLLECTION_MIN_LEAD_MINUTES = 30;
 let DELIVERY_MIN_LEAD_MINUTES = 60;
 let COLLECTION_EARLIEST_SCHEDULED_MINUTES = (12 * 60) + 30;

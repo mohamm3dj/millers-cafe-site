@@ -232,3 +232,50 @@ test("reconcileOrderDraftState restores discount eligibility from the live catal
   assert.equal(meta.updatedItems, 1);
   assert.equal(meta.hadChanges, true);
 });
+
+test("a draft version migration resets the saved menu landing while preserving the order", () => {
+  const { draft, meta } = reconcileOrderDraftState({
+    version: 2,
+    cartItems: [
+      {
+        id: 1,
+        itemId: "salad-bowls::build-your-salad-bowl::0",
+        itemName: "Build Your Salad Bowl",
+        basePrice: 8,
+        quantity: 1,
+        modifierSelections: [
+          { groupName: "Protein", optionName: "Chicken Tikka", priceAdjustment: 0, isTextInput: false }
+        ]
+      }
+    ],
+    nextCartId: 7,
+    selectedCategory: "Café Curries",
+    searchQuery: "korma",
+    schedules: {
+      collection: { date: "2026-09-02", time: "13:00" },
+      delivery: { date: "2026-09-03", time: "14:00" }
+    }
+  }, SAMPLE_MENU, { orderDraftVersion: 3 });
+
+  assert.equal(draft.version, 3);
+  assert.equal(draft.selectedCategory, "");
+  assert.equal(draft.searchQuery, "");
+  assert.equal(draft.cartItems.length, 1);
+  assert.equal(draft.cartItems[0].modifierSelections[0].optionName, "Chicken Tikka");
+  assert.equal(draft.nextCartId, 7);
+  assert.deepEqual(draft.schedules.collection, { date: "2026-09-02", time: "13:00" });
+  assert.deepEqual(draft.schedules.delivery, { date: "2026-09-03", time: "14:00" });
+  assert.equal(meta.hadChanges, true);
+});
+
+test("the current draft version preserves a customer's selected category and search", () => {
+  const { draft, meta } = reconcileOrderDraftState({
+    version: 3,
+    selectedCategory: "Drinks",
+    searchQuery: "latte"
+  }, SAMPLE_MENU, { orderDraftVersion: 3 });
+
+  assert.equal(draft.selectedCategory, "Drinks");
+  assert.equal(draft.searchQuery, "latte");
+  assert.equal(meta.hadChanges, false);
+});
