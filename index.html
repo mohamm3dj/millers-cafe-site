@@ -40,7 +40,7 @@
   <link rel="preload" href="./assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin media="(min-width: 960px)">
   <link rel="preload" href="./assets/desktop-hero-tikka.webp" as="image" type="image/webp" media="(min-width: 960px)">
 
-  <link rel="stylesheet" href="styles.css?v=20260715d">
+  <link rel="stylesheet" href="styles.css?v=20260901c">
   <script type="application/ld+json" id="restaurantSchema">
     {
       "@context": "https://schema.org",
@@ -162,6 +162,38 @@
         </div>
       </section>
 
+      <section class="homeMealDealPromo homeMealDealPromoDesktop" aria-labelledby="desktopMealDealPromoTitle">
+        <div class="homeMealDealCopy">
+          <p class="homeMealDealBadge"><span aria-hidden="true">✦</span> New at Millers</p>
+          <h2 id="desktopMealDealPromoTitle">Fresh Lunch Deal</h2>
+          <p class="homeMealDealIntro">Lunch, sorted. Build your main your way, then add crisps or a snack and a cold drink.</p>
+
+          <div class="homeMealDealIncludes" role="group" aria-label="The deal includes a main, a crisp or snack, and a cold drink">
+            <span><img src="./assets/icon-tools-kitchen.svg" alt="" width="20" height="20">Main</span>
+            <b aria-hidden="true">+</b>
+            <span><img src="./assets/icon-snack.svg" alt="" width="20" height="20">Crisp or snack</span>
+            <b aria-hidden="true">+</b>
+            <span><img src="./assets/icon-bottle.svg" alt="" width="20" height="20">Cold drink</span>
+          </div>
+        </div>
+
+        <div class="homeMealDealPrice" role="group" aria-label="Fresh Lunch Deal price, £5.95. Upgrade to any hot drink for £1 extra.">
+          <span>Fresh lunch deal</span>
+          <strong>£5.95</strong>
+          <small>Hot drink upgrade +£1</small>
+        </div>
+
+        <div class="homeMealDealActions">
+          <a class="homeMealDealAction homeMealDealActionPrimary" href="./collection/">
+            Order for collection
+            <img src="./assets/icon-arrow-right.svg" alt="" width="18" height="18">
+          </a>
+          <a class="homeMealDealAction homeMealDealActionSecondary" href="./delivery/">Get it delivered</a>
+          <a class="homeMealDealDetails" href="./menu/">See every option</a>
+          <small class="homeMealDealNote">Fresh Lunch Deal is excluded from discounts.</small>
+        </div>
+      </section>
+
       <section class="desktopActionBand" aria-label="Order and booking options">
         <a class="desktopActionCard" href="./collection/">
           <span class="desktopActionIcon"><img src="./assets/icon-bag.svg" alt="" width="25" height="25"></span>
@@ -244,6 +276,38 @@
       <p class="heroMeta">55 Brigsley Road, Waltham, Grimsby DN37 0JZ</p>
       <p class="heroIntro">Indian-inspired dining, café favourites, desserts and shakes in Waltham. Book a table or order for collection and local delivery.</p>
     </div>
+
+    <section class="homeMealDealPromo homeMealDealPromoMobile" aria-labelledby="mobileMealDealPromoTitle">
+      <div class="homeMealDealCopy">
+        <p class="homeMealDealBadge"><span aria-hidden="true">✦</span> New at Millers</p>
+        <h2 id="mobileMealDealPromoTitle">Fresh Lunch Deal</h2>
+        <p class="homeMealDealIntro">Lunch, sorted. Build your main your way, then add crisps or a snack and a cold drink.</p>
+
+        <div class="homeMealDealIncludes" role="group" aria-label="The deal includes a main, a crisp or snack, and a cold drink">
+          <span><img src="./assets/icon-tools-kitchen.svg" alt="" width="20" height="20">Main</span>
+          <b aria-hidden="true">+</b>
+          <span><img src="./assets/icon-snack.svg" alt="" width="20" height="20">Crisp or snack</span>
+          <b aria-hidden="true">+</b>
+          <span><img src="./assets/icon-bottle.svg" alt="" width="20" height="20">Cold drink</span>
+        </div>
+      </div>
+
+      <div class="homeMealDealPrice" role="group" aria-label="Fresh Lunch Deal price, £5.95. Upgrade to any hot drink for £1 extra.">
+        <span>Fresh lunch deal</span>
+        <strong>£5.95</strong>
+        <small>Hot drink upgrade +£1</small>
+      </div>
+
+      <div class="homeMealDealActions">
+        <a class="homeMealDealAction homeMealDealActionPrimary" href="./collection/">
+          Order for collection
+          <img src="./assets/icon-arrow-right.svg" alt="" width="18" height="18">
+        </a>
+        <a class="homeMealDealAction homeMealDealActionSecondary" href="./delivery/">Get it delivered</a>
+        <a class="homeMealDealDetails" href="./menu/">See every option</a>
+        <small class="homeMealDealNote">Fresh Lunch Deal is excluded from discounts.</small>
+      </div>
+    </section>
 
     <!-- BUTTON GRID -->
     <div class="grid homeGrid">

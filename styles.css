@@ -10741,6 +10741,378 @@ body.publicBody.orderBody{
     transition-duration: .01ms !important;
   }
 }
+/* Fresh Lunch Deal homepage launch */
+.homeMealDealPromo{
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 26px;
+  background:
+    linear-gradient(132deg, rgba(4, 45, 50, .98) 0%, rgba(7, 75, 73, .97) 52%, rgba(12, 99, 88, .96) 100%);
+  box-shadow:
+    0 22px 46px rgba(4, 45, 50, .22),
+    inset 0 1px 0 rgba(255, 255, 255, .18);
+  color: #fffdf6;
+  font-family: var(--font-body);
+}
+
+.homeMealDealPromo::before{
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 9% 10%, rgba(255, 210, 118, .24), transparent 31%),
+    radial-gradient(circle at 73% 115%, rgba(99, 230, 207, .26), transparent 43%);
+}
+
+.homeMealDealPromo::after{
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -92px;
+  right: -70px;
+  width: 220px;
+  height: 220px;
+  border: 38px solid rgba(255, 220, 143, .11);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.homeMealDealPromoDesktop{
+  display: none;
+}
+
+.homeMealDealCopy,
+.homeMealDealActions{
+  min-width: 0;
+}
+
+.homeMealDealBadge{
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 224, 157, .32);
+  border-radius: 999px;
+  background: rgba(255, 224, 157, .12);
+  color: #ffe3a7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.homeMealDealBadge span{
+  font-size: 12px;
+}
+
+.homeMealDealPromo h2{
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 9vw, 42px);
+  font-weight: 850;
+  letter-spacing: -.045em;
+  line-height: .98;
+}
+
+.homeMealDealIntro{
+  max-width: 54ch;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, .82);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.homeMealDealIncludes{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.homeMealDealIncludes span{
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .09);
+  color: rgba(255, 255, 255, .92);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.homeMealDealIncludes img{
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
+  opacity: .9;
+}
+
+.homeMealDealIncludes b{
+  color: #ffdfa0;
+  font-size: 14px;
+}
+
+.homeMealDealPrice{
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: end;
+  gap: 3px 12px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, .68);
+  border-radius: 21px;
+  background: linear-gradient(145deg, #fff8e8, #ffdda0);
+  box-shadow:
+    0 14px 30px rgba(1, 28, 31, .22),
+    inset 0 1px 0 #ffffff;
+  color: #073f42;
+}
+
+.homeMealDealPrice span{
+  align-self: end;
+  color: #7b5314;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.homeMealDealPrice strong{
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: clamp(45px, 13vw, 58px);
+  font-weight: 900;
+  letter-spacing: -.065em;
+  line-height: .84;
+}
+
+.homeMealDealPrice small{
+  color: #305f5d;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.homeMealDealActions{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.homeMealDealAction{
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.homeMealDealAction:hover{
+  transform: translateY(-2px);
+}
+
+.homeMealDealPromo a:focus-visible{
+  outline: 3px solid #ffd77f;
+  outline-offset: 3px;
+}
+
+.homeMealDealActionPrimary{
+  grid-column: 1 / -1;
+  background: #fffdf6;
+  box-shadow: 0 10px 22px rgba(1, 28, 31, .2);
+  color: #075b58;
+}
+
+.homeMealDealActionPrimary:hover{
+  background: #ffffff;
+  box-shadow: 0 14px 25px rgba(1, 28, 31, .26);
+}
+
+.homeMealDealActionPrimary img{
+  width: 18px;
+  height: 18px;
+}
+
+.homeMealDealActionSecondary{
+  border-color: rgba(255, 255, 255, .32);
+  background: rgba(255, 255, 255, .1);
+  color: #ffffff;
+}
+
+.homeMealDealActionSecondary:hover{
+  background: rgba(255, 255, 255, .17);
+}
+
+.homeMealDealDetails{
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #ffe3a7;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.homeMealDealNote{
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, .84);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (max-width: 959px){
+  body.homeBody main{
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .homeMealDealPromoMobile{
+    display: grid;
+  }
+}
+
+@media (max-width: 420px){
+  .homeMealDealPromo{
+    gap: 16px;
+    padding: 19px 17px;
+    border-radius: 23px;
+  }
+
+  .homeMealDealIncludes{
+    gap: 6px;
+  }
+
+  .homeMealDealIncludes b{
+    display: none;
+  }
+
+  .homeMealDealIncludes span{
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .homeMealDealPrice{
+    padding-inline: 15px;
+  }
+
+  .homeMealDealPrice strong{
+    font-size: 48px;
+  }
+
+  .homeMealDealAction{
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 960px){
+  .homeMealDealPromoMobile{
+    display: none;
+  }
+
+  .homeMealDealPromoDesktop{
+    min-height: 184px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) 190px minmax(238px, .7fr);
+    align-items: center;
+    gap: 24px;
+    margin-top: 20px;
+    padding: 24px 28px;
+  }
+
+  .homeMealDealPromo h2{
+    font-size: clamp(36px, 3.4vw, 50px);
+  }
+
+  .homeMealDealIntro{
+    margin-top: 7px;
+    font-size: 13px;
+  }
+
+  .homeMealDealIncludes{
+    margin-top: 12px;
+  }
+
+  .homeMealDealPrice{
+    min-height: 146px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 17px 12px;
+    border-radius: 30px;
+    text-align: center;
+    transform: rotate(-1.5deg);
+  }
+
+  .homeMealDealPrice strong{
+    font-size: 58px;
+    line-height: .85;
+  }
+
+  .homeMealDealActions{
+    grid-template-columns: 1fr;
+  }
+
+  .homeMealDealActionPrimary,
+  .homeMealDealNote{
+    grid-column: auto;
+  }
+
+  .homeMealDealDetails{
+    min-height: 28px;
+  }
+}
+
+@media (min-width: 960px) and (max-width: 1160px){
+  .homeMealDealPromoDesktop{
+    grid-template-columns: minmax(0, 1fr) 166px 218px;
+    gap: 16px;
+    padding-inline: 22px;
+  }
+
+  .homeMealDealIncludes span{
+    font-size: 10px;
+  }
+
+  .homeMealDealPrice strong{
+    font-size: 52px;
+  }
+}
+
 /* Millers quick-order workspace — option 2 */
 .orderContextStrip{
   width: 100%;

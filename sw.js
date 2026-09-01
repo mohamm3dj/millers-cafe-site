@@ -1,9 +1,9 @@
-const CACHE_NAME = "millers-static-v90";
+const CACHE_NAME = "millers-static-v91";
 const CORE_ASSETS = [
   "/",
   "/index.html",
   "/offline.html",
-  "/styles.css?v=20260715d",
+  "/styles.css?v=20260901c",
   "/assets/millers-logo.webp",
   "/manifest.webmanifest",
   "/icon-192.png",

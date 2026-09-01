@@ -34,7 +34,7 @@ test("every customer-facing page uses the shared homepage shell", () => {
 test("public pages share one stylesheet cache version", () => {
   PUBLIC_PAGES.forEach((relativePath) => {
     const html = read(relativePath);
-    assert.match(html, /styles\.css\?v=20260715d/, relativePath);
+    assert.match(html, /styles\.css\?v=20260901c/, relativePath);
   });
 });
 
@@ -86,5 +86,5 @@ test("the menu landing migration uses coordinated browser asset versions", () =>
   assert.match(account, /account\.js\?v=20260901b/);
   assert.match(orderSource, /order-draft\.js\?v=20260901b/);
   assert.match(draftSource, /order-draft-state\.js\?v=20260901b/);
-  assert.match(serviceWorker, /millers-static-v90/);
+  assert.match(serviceWorker, /millers-static-v91/);
 });

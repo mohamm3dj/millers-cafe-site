@@ -19,6 +19,38 @@ test("home contact details are directly actionable without a hidden card state",
   assert.doesNotMatch(homeSource, /setupFlipTile|data\.flipClicks/);
 });
 
+test("homepage launches the Fresh Lunch Deal in both responsive entry points", () => {
+  const promos = [
+    ...homeHtml.matchAll(
+      /<section class="homeMealDealPromo [^"]+" aria-labelledby="([^"]+)">([\s\S]*?)<\/section>/g
+    )
+  ];
+
+  assert.equal(promos.length, 2, "desktop and mobile should each have a launch banner");
+  assert.equal(new Set(promos.map(([, headingId]) => headingId)).size, 2, "banner heading ids must be unique");
+
+  promos.forEach(([, headingId, markup]) => {
+    assert.match(markup, new RegExp(`<h2 id="${headingId}">Fresh Lunch Deal<\\/h2>`));
+    assert.match(markup, /New at Millers/i);
+    assert.match(markup, /£5\.95/);
+    assert.match(markup, /Main/);
+    assert.match(markup, /Crisp or snack/);
+    assert.match(markup, /Cold drink/);
+    assert.match(markup, /href="\.\/collection\/"/);
+    assert.match(markup, /href="\.\/delivery\/"/);
+    assert.match(markup, /href="\.\/menu\/"/);
+    assert.match(markup, /Order for collection/);
+    assert.match(markup, /role="group" aria-label="The deal includes/);
+    assert.match(markup, /excluded from discounts/i);
+  });
+});
+
+test("homepage launch styles use a coordinated cache refresh", () => {
+  assert.match(homeHtml, /styles\.css\?v=20260901c/);
+  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v91"/);
+  assert.match(serviceWorker, /"\/styles\.css\?v=20260901c"/);
+});
+
 test("page chrome clips decorative overflow and mobile ordering removes the oversized shine", () => {
   assert.match(styles, /html, body\s*\{[\s\S]*?overflow-x:\s*clip;/);
   assert.match(
