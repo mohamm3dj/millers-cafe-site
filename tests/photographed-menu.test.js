@@ -44,7 +44,7 @@ function sortedCodes(values) {
   return [...values].map((value) => String(value).toUpperCase()).sort();
 }
 
-test("the photographed Fresh Lunch Deal is first with every pictured choice", () => {
+test("the Fresh Lunch Deal is first with every approved choice", () => {
   assert.equal(MILLERS_ORDER_MENU[0]?.name, "Fresh Lunch Deal");
   assert.equal(MILLERS_ORDER_MENU[0]?.items?.[0]?.name, "Fresh Lunch Deal");
 
@@ -76,8 +76,14 @@ test("the photographed Fresh Lunch Deal is first with every pictured choice", ()
       "Curry Mayo"
     ]],
     ["Crisp or snack", [
-      "Crisps (selection may vary)",
-      "Snack (selection may vary)"
+      "Quavers - Cheese",
+      "Pom-Bear Original",
+      "Walkers - Cheese & Onion",
+      "Walkers - Salt & Vinegar",
+      "Walkers - Ready Salted",
+      "Walkers - Prawn Cocktail",
+      "Cadbury Twirls",
+      "Cadbury Wispa"
     ]]
   ]);
 
@@ -89,6 +95,9 @@ test("the photographed Fresh Lunch Deal is first with every pictured choice", ()
     assert.deepEqual(group.options.map((option) => option.name), expectedOptions);
     group.options.forEach((option) => {
       assert.equal(option.priceAdjustment, 0, `${groupName} / ${option.name} should be included`);
+      if (groupName === "Crisp or snack") {
+        assert.deepEqual(option.allergenCodes, [], `${option.name} should not make an unverified allergen claim`);
+      }
     });
   });
 

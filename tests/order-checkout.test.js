@@ -49,7 +49,7 @@ function freshLunchDealSelections(drink = "Coca-Cola Can") {
     { groupName: "Main", optionName: "Fresh Homemade Bread Sandwich" },
     { groupName: "Filling", optionName: "Chicken" },
     { groupName: "Sauce", optionName: "Mayo" },
-    { groupName: "Crisp or snack", optionName: "Crisps (selection may vary)" },
+    { groupName: "Crisp or snack", optionName: "Quavers - Cheese" },
     { groupName: "Drink", optionName: drink }
   ];
 }

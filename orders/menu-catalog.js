@@ -439,11 +439,35 @@ export const MILLERS_ORDER_MENU = [
             "maxSelections": 1,
             "options": [
               {
-                "name": "Crisps (selection may vary)",
+                "name": "Quavers - Cheese",
                 "priceAdjustment": 0
               },
               {
-                "name": "Snack (selection may vary)",
+                "name": "Pom-Bear Original",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Walkers - Cheese & Onion",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Walkers - Salt & Vinegar",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Walkers - Ready Salted",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Walkers - Prawn Cocktail",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Cadbury Twirls",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Cadbury Wispa",
                 "priceAdjustment": 0
               }
             ]

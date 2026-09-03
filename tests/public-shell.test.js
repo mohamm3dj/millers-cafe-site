@@ -48,7 +48,7 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
 
 test("homepage launch styles use a coordinated cache refresh", () => {
   assert.match(homeHtml, /styles\.css\?v=20260901c/);
-  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v93"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v94"/);
   assert.match(serviceWorker, /"\/styles\.css\?v=20260901c"/);
 });
 
