@@ -81,11 +81,11 @@ test("the menu landing migration uses coordinated browser asset versions", () =>
   const draftSource = read("../orders/order-draft.js");
   const serviceWorker = read("../sw.js");
 
-  assert.match(collection, /order-form\.js\?v=20260903a/);
-  assert.match(delivery, /order-form\.js\?v=20260903a/);
+  assert.match(collection, /order-form\.js\?v=20260904a/);
+  assert.match(delivery, /order-form\.js\?v=20260904a/);
   assert.match(account, /account\.js\?v=20260901b/);
-  assert.match(orderSource, /menu-catalog\.js\?v=20260903a/);
+  assert.match(orderSource, /menu-catalog\.js\?v=20260904a/);
   assert.match(orderSource, /order-draft\.js\?v=20260901c/);
   assert.match(draftSource, /order-draft-state\.js\?v=20260901b/);
-  assert.match(serviceWorker, /millers-static-v94/);
+  assert.match(serviceWorker, /millers-static-v95/);
 });

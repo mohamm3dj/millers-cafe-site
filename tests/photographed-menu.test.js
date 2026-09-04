@@ -122,7 +122,9 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
     "Coca-Cola Can",
     "Diet Coke Can",
     "Fanta Can",
+    "Fanta Fruit Twist",
     "Sprite Can",
+    "Dr Pepper",
     "Still Water",
     "Sparkling Water",
     "J2O Orange",
@@ -148,6 +150,13 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
   );
   coldDrinkNames.forEach((name) => {
     assert.equal(optionNamed(drink, name).priceAdjustment, 0, `${name} should be included`);
+  });
+  ["Fanta Fruit Twist", "Dr Pepper"].forEach((name) => {
+    assert.deepEqual(
+      optionNamed(drink, name).allergenCodes,
+      [],
+      `${name} should not make an unverified allergen claim`
+    );
   });
   hotDrinkUpgradeNames.forEach((name) => {
     assert.equal(optionNamed(drink, name).priceAdjustment, 1, `${name} should cost +£1`);

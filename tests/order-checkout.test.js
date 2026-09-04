@@ -120,6 +120,8 @@ test("priceOrderCart applies a 10 percent collection discount", () => {
 test("priceOrderCart excludes the fresh lunch deal and its paid drink upgrade from collection discounts", () => {
   [
     { drink: "Coca-Cola Can", subtotal: 5.95, totalMinor: 595 },
+    { drink: "Fanta Fruit Twist", subtotal: 5.95, totalMinor: 595 },
+    { drink: "Dr Pepper", subtotal: 5.95, totalMinor: 595 },
     { drink: "Latte (hot drink upgrade)", subtotal: 6.95, totalMinor: 695 }
   ].forEach(({ drink, subtotal, totalMinor }) => {
     const priced = priceOrderCart([

@@ -492,7 +492,15 @@ export const MILLERS_ORDER_MENU = [
                 "priceAdjustment": 0
               },
               {
+                "name": "Fanta Fruit Twist",
+                "priceAdjustment": 0
+              },
+              {
                 "name": "Sprite Can",
+                "priceAdjustment": 0
+              },
+              {
+                "name": "Dr Pepper",
                 "priceAdjustment": 0
               },
               {
