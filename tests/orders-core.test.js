@@ -5,6 +5,7 @@ import { beforeEach, test } from "node:test";
 
 import {
   createOrderRecord,
+  feedRows,
   findOrderIndexByReference,
   loadOrders,
   saveOrderEntity,
@@ -69,6 +70,44 @@ test("createOrderRecord creates a submitted order with a tracking token and refe
   assert.equal(created.record.time, "13:00");
   assert.match(created.reference, /^MCO-/);
   assert.equal(created.record.trackingToken.length, 20);
+});
+
+test("cash payment metadata survives normalization and is exposed to protected order feeds", async () => {
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1350,
+    paymentCurrency: "gbp",
+    refundStatus: "failed",
+    refundId: "re_test_123",
+    refundAttempts: 2,
+    refundLastError: "Temporary provider failure"
+  });
+  assert.equal(created.ok, true);
+
+  await saveOrders({}, [created.record]);
+  const [stored] = await loadOrders({});
+  assert.equal(stored.paymentProvider, "cash");
+  assert.equal(stored.paymentStatus, "unpaid");
+  assert.equal(stored.paymentAmountTotal, 1350);
+  assert.equal(stored.paymentCurrency, "gbp");
+
+  const [feedOrder] = feedRows([stored], true);
+  assert.equal(feedOrder.payment_provider, "cash");
+  assert.equal(feedOrder.payment_status, "unpaid");
+  assert.equal(feedOrder.payment_amount_total, 1350);
+  assert.equal(feedOrder.payment_currency, "gbp");
+  assert.equal(feedOrder.refund_status, "failed");
+  assert.equal(feedOrder.refund_id, "re_test_123");
+  assert.equal(feedOrder.refund_attempts, 2);
+  assert.equal(feedOrder.refund_last_error, "Temporary provider failure");
+
+  const csv = toCSV([feedOrder]);
+  assert.match(
+    csv.split("\n", 1)[0],
+    /payment_provider,payment_status,payment_amount_total,payment_currency,refund_status,refund_id,refund_attempts,refund_last_error$/
+  );
+  assert.match(csv, /,cash,unpaid,1350,gbp,failed,re_test_123,2,Temporary provider failure\n$/);
 });
 
 test("order notes require and record explicit consent", () => {

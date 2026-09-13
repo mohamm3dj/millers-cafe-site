@@ -34,7 +34,7 @@ test("every customer-facing page uses the shared homepage shell", () => {
 test("public pages share one stylesheet cache version", () => {
   PUBLIC_PAGES.forEach((relativePath) => {
     const html = read(relativePath);
-    assert.match(html, /styles\.css\?v=20260901c/, relativePath);
+    assert.match(html, /styles\.css\?v=20260913a/, relativePath);
   });
 });
 
@@ -81,11 +81,12 @@ test("the menu landing migration uses coordinated browser asset versions", () =>
   const draftSource = read("../orders/order-draft.js");
   const serviceWorker = read("../sw.js");
 
-  assert.match(collection, /order-form\.js\?v=20260904a/);
-  assert.match(delivery, /order-form\.js\?v=20260904a/);
-  assert.match(account, /account\.js\?v=20260901b/);
-  assert.match(orderSource, /menu-catalog\.js\?v=20260904a/);
+  assert.match(collection, /order-form\.js\?v=20260913b/);
+  assert.match(delivery, /order-form\.js\?v=20260913b/);
+  assert.match(account, /account\.js\?v=20260913a/);
+  assert.match(orderSource, /menu-catalog\.js\?v=20260913a/);
   assert.match(orderSource, /order-draft\.js\?v=20260901c/);
+  assert.match(orderSource, /checkout-attempt\.js\?v=20260913a/);
   assert.match(draftSource, /order-draft-state\.js\?v=20260901b/);
-  assert.match(serviceWorker, /millers-static-v95/);
+  assert.match(serviceWorker, /millers-static-v97/);
 });

@@ -215,6 +215,12 @@ function compareMillisDesc(left, right) {
   return right - left;
 }
 
+function optionalMinorAmount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
 function mapBooking(booking) {
   return {
     id: String(booking.id || ""),
@@ -263,14 +269,10 @@ function mapOrder(order) {
     decisionTime: String(order.decisionTime || "").trim(),
     paymentProvider: String(order.paymentProvider || "").trim().toLowerCase(),
     paymentStatus: String(order.paymentStatus || "").trim().toLowerCase(),
-    paymentAmountTotal: Number.isFinite(Number(order.paymentAmountTotal))
-      ? Math.round(Number(order.paymentAmountTotal))
-      : null,
+    paymentAmountTotal: optionalMinorAmount(order.paymentAmountTotal),
     paymentCurrency: String(order.paymentCurrency || "").trim().toLowerCase(),
     refundStatus: String(order.refundStatus || "").trim().toLowerCase(),
-    refundAmountTotal: Number.isFinite(Number(order.refundAmountTotal))
-      ? Math.round(Number(order.refundAmountTotal))
-      : null,
+    refundAmountTotal: optionalMinorAmount(order.refundAmountTotal),
     cartItems: Array.isArray(order.cartItems)
       ? order.cartItems.map((item) => ({
         itemName: String(item.itemName || "").trim(),
@@ -381,7 +383,10 @@ function buildAccountSummary(email, bookings, orders, profile) {
         date: latestOrder.date,
         time: latestOrder.time,
         status: latestOrder.status,
-        paymentStatus: latestOrder.paymentStatus
+        paymentProvider: latestOrder.paymentProvider,
+        paymentStatus: latestOrder.paymentStatus,
+        paymentAmountTotal: latestOrder.paymentAmountTotal,
+        paymentCurrency: latestOrder.paymentCurrency
       }
       : null
   };

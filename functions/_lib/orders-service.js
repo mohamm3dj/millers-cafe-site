@@ -72,6 +72,12 @@ function orderReviewRecord(order) {
     paymentAmountTotal: order.paymentAmountTotal,
     paymentCurrency: order.paymentCurrency || "",
     refundStatus: order.refundStatus || "",
+    refundId: String(order.refundId || "").trim(),
+    refundAmountTotal: order.refundAmountTotal,
+    refundCreatedAt: String(order.refundCreatedAt || "").trim(),
+    refundAttempts: Math.max(0, Math.round(Number(order.refundAttempts || 0))),
+    refundLastError: String(order.refundLastError || "").trim(),
+    refundUpdatedAt: String(order.refundUpdatedAt || "").trim(),
     source: order.source,
     createdAt: order.createdAt,
     statusUpdatedAt: order.statusUpdatedAt || order.createdAt

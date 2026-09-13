@@ -299,7 +299,7 @@ export const MILLERS_ORDER_MENU = [
       {
         "name": "Fresh Lunch Deal",
         "basePrice": 5.95,
-        "description": "Choose a fresh homemade bread sandwich, mini Twister wrap or pasta pot; chicken, chicken tikka, tuna, egg or cheese; a sauce; optional lettuce, cucumber, tomato and onions; crisps or a snack; and a cold drink. Upgrade to any hot drink for +£1. Not eligible for discounts.",
+        "description": "Choose a fresh homemade bread sandwich, mini Twister wrap or pasta pot; chicken, chicken tikka, tuna, egg or cheese; a sauce; optional lettuce, cucumber, tomato and onions; crisps or a snack; and a cold drink. Upgrade to Red Bull or any hot drink for +£1. Not eligible for discounts.",
         "publicPriceLabel": "",
         "discountEligible": false,
         "codes": [],
@@ -512,12 +512,20 @@ export const MILLERS_ORDER_MENU = [
                 "priceAdjustment": 0
               },
               {
+                "name": "Smart Water",
+                "priceAdjustment": 0
+              },
+              {
                 "name": "J2O Orange",
                 "priceAdjustment": 0
               },
               {
                 "name": "J2O Apple & Raspberry",
                 "priceAdjustment": 0
+              },
+              {
+                "name": "Red Bull",
+                "priceAdjustment": 1
               },
               {
                 "name": "Peppermint Tea (hot drink upgrade)",
@@ -1136,7 +1144,7 @@ export const MILLERS_ORDER_MENU = [
     "items": [
       {
         "name": "Coca-Cola Can",
-        "basePrice": 2,
+        "basePrice": 1.5,
         "description": "",
         "publicPriceLabel": "",
         "codes": [],
@@ -1145,7 +1153,7 @@ export const MILLERS_ORDER_MENU = [
       },
       {
         "name": "Diet Coke Can",
-        "basePrice": 2,
+        "basePrice": 1.5,
         "description": "",
         "publicPriceLabel": "",
         "codes": [],
@@ -1154,7 +1162,16 @@ export const MILLERS_ORDER_MENU = [
       },
       {
         "name": "Fanta Can",
-        "basePrice": 2,
+        "basePrice": 1.5,
+        "description": "",
+        "publicPriceLabel": "",
+        "codes": [],
+        "tags": [],
+        "modifierGroups": []
+      },
+      {
+        "name": "Fanta Fruit Twist",
+        "basePrice": 1.5,
         "description": "",
         "publicPriceLabel": "",
         "codes": [],
@@ -1163,7 +1180,16 @@ export const MILLERS_ORDER_MENU = [
       },
       {
         "name": "Sprite Can",
-        "basePrice": 2,
+        "basePrice": 1.5,
+        "description": "",
+        "publicPriceLabel": "",
+        "codes": [],
+        "tags": [],
+        "modifierGroups": []
+      },
+      {
+        "name": "Dr Pepper",
+        "basePrice": 1.5,
         "description": "",
         "publicPriceLabel": "",
         "codes": [],
@@ -1216,8 +1242,17 @@ export const MILLERS_ORDER_MENU = [
         "modifierGroups": []
       },
       {
+        "name": "Smart Water",
+        "basePrice": 1.5,
+        "description": "",
+        "publicPriceLabel": "",
+        "codes": [],
+        "tags": [],
+        "modifierGroups": []
+      },
+      {
         "name": "Red Bull",
-        "basePrice": 3.5,
+        "basePrice": 2,
         "description": "",
         "publicPriceLabel": "",
         "codes": [],

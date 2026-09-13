@@ -41,15 +41,17 @@ test("homepage launches the Fresh Lunch Deal in both responsive entry points", (
     assert.match(markup, /href="\.\/menu\/#fresh-lunch-deal"/);
     assert.match(markup, /Order for collection/);
     assert.match(markup, /View the menu/);
+    assert.match(markup, /Red Bull or hot drink \+£1/);
+    assert.match(markup, /Upgrade to Red Bull or any hot drink for £1 extra/);
     assert.match(markup, /role="group" aria-label="The deal includes/);
     assert.match(markup, /excluded from discounts/i);
   });
 });
 
 test("homepage launch styles use a coordinated cache refresh", () => {
-  assert.match(homeHtml, /styles\.css\?v=20260901c/);
-  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v95"/);
-  assert.match(serviceWorker, /"\/styles\.css\?v=20260901c"/);
+  assert.match(homeHtml, /styles\.css\?v=20260913a/);
+  assert.match(serviceWorker, /const CACHE_NAME = "millers-static-v97"/);
+  assert.match(serviceWorker, /"\/styles\.css\?v=20260913a"/);
 });
 
 test("page chrome clips decorative overflow and mobile ordering removes the oversized shine", () => {

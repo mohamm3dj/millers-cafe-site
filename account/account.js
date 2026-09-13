@@ -127,11 +127,14 @@ function bookingStatusLabel(status) {
 }
 
 function orderStatusLabel(order) {
+  const paymentProvider = String(order?.paymentProvider || "").trim().toLowerCase();
   const paymentStatus = String(order?.paymentStatus || "").trim().toLowerCase();
   const status = String(order?.status || "").trim().toLowerCase();
+  if (status === "rejected") return "Rejected";
+  if (paymentProvider === "cash" && status === "accepted") return "Accepted · Cash due";
+  if (paymentProvider === "cash" && status === "submitted") return "Submitted · Cash due";
   if (status === "accepted" && paymentStatus === "paid") return "Accepted and paid";
   if (status === "accepted") return "Accepted";
-  if (status === "rejected") return "Rejected";
   if (status === "submitted" && paymentStatus === "paid") return "Submitted and paid";
   if (status === "submitted") return "Submitted";
   return titleCaseWords(status || "pending");
@@ -173,12 +176,55 @@ function formatIsoTimestamp(isoValue) {
 }
 
 function formatCurrencyMinor(amountMinor, currency = "gbp") {
+  if (amountMinor === null || amountMinor === undefined || amountMinor === "") return "";
   const amount = Number(amountMinor);
   if (!Number.isFinite(amount)) return "";
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: String(currency || "gbp").trim().toUpperCase() || "GBP"
   }).format(amount / 100);
+}
+
+function orderPaymentLabel(order) {
+  const amount = formatCurrencyMinor(order?.paymentAmountTotal, order?.paymentCurrency);
+  const refundAmount = formatCurrencyMinor(
+    order?.refundAmountTotal ?? order?.paymentAmountTotal,
+    order?.paymentCurrency
+  );
+  const provider = String(order?.paymentProvider || "").trim().toLowerCase();
+  const paymentStatus = String(order?.paymentStatus || "").trim().toLowerCase();
+  const refundStatus = String(order?.refundStatus || "").trim().toLowerCase();
+  const orderStatus = String(order?.status || "").trim().toLowerCase();
+
+  if (provider === "cash") {
+    if (orderStatus === "rejected") {
+      return amount
+        ? `Cash order total ${amount} · No online payment was taken. Any cash already paid will be handled directly by Millers Café.`
+        : "Cash order · No online payment was taken. Any cash already paid will be handled directly by Millers Café.";
+    }
+    const location = String(order?.orderType || "").trim().toLowerCase() === "delivery"
+      ? "delivery"
+      : "collection";
+    return amount ? `Cash due on ${location}: ${amount}` : `Cash due on ${location}`;
+  }
+
+  if (provider === "stripe") {
+    if (refundStatus === "succeeded") {
+      return refundAmount ? `Refunded to card: ${refundAmount}` : "Card payment refunded";
+    }
+    if (refundStatus === "processing" || refundStatus === "pending") {
+      return refundAmount ? `Card refund pending: ${refundAmount}` : "Card refund pending";
+    }
+    if (refundStatus === "failed") {
+      return amount
+        ? `Paid online by card: ${amount} · Refund not completed`
+        : "Paid online by card · Refund not completed";
+    }
+    if (paymentStatus === "paid") return amount ? `Paid online by card: ${amount}` : "Paid online by card";
+    return amount ? `Card payment total: ${amount}` : "Card payment not completed";
+  }
+
+  return amount ? `Order total: ${amount}` : "";
 }
 
 function isTerminalBookingStatus(status) {
@@ -430,7 +476,7 @@ function renderOrders(orders) {
   }
 
   ordersList.innerHTML = orders.map((order) => {
-    const paymentAmount = formatCurrencyMinor(order.paymentAmountTotal, order.paymentCurrency);
+    const paymentLabel = orderPaymentLabel(order);
     const addressLine = order.orderType === "delivery"
       ? [order.addressLine1, order.addressLine2, order.townCity, order.postcode]
         .map((value) => String(value || "").trim())
@@ -444,8 +490,8 @@ function renderOrders(orders) {
       `<div class="accountHistoryHeader"><h3>${escapeHtml(order.reference)}</h3><span class="accountStatusPill">${escapeHtml(orderStatusLabel(order))}</span></div>`,
       `<p class="accountHistoryPrimary">${escapeHtml(titleCaseWords(order.orderType))} · ${escapeHtml(formatDateTimeLabel(order.date, order.time))}</p>`,
       `<p class="accountHistoryMeta">${escapeHtml(safeText(order.itemsSummary, "Order details unavailable"))}</p>`,
-      paymentAmount
-        ? `<p class="accountHistoryMeta">Paid ${escapeHtml(paymentAmount)}</p>`
+      paymentLabel
+        ? `<p class="accountHistoryMeta">${escapeHtml(paymentLabel)}</p>`
         : "",
       addressLine
         ? `<p class="accountHistoryMeta">${escapeHtml(addressLine)}</p>`

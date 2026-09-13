@@ -1,6 +1,7 @@
 "use strict";
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { beforeEach, test } from "node:test";
 
 import { createBooking } from "../functions/_lib/bookings-service.js";
@@ -28,6 +29,22 @@ const originalFetch = globalThis.fetch;
 beforeEach(() => {
   resetInMemoryStores();
   globalThis.fetch = originalFetch;
+});
+
+test("account order history distinguishes cash, paid card, and refund states", () => {
+  const source = readFileSync(new URL("../account/account.js", import.meta.url), "utf8");
+  assert.match(source, /Cash due on \$\{location\}: \$\{amount\}/);
+  assert.match(source, /Paid online by card: \$\{amount\}/);
+  assert.match(source, /No online payment was taken\. Any cash already paid will be handled directly by Millers Café\./);
+  assert.match(source, /Refunded to card: \$\{refundAmount\}/);
+  assert.match(source, /Card refund pending: \$\{refundAmount\}/);
+  assert.match(source, /Refund not completed/);
+  assert.match(
+    source,
+    /if \(refundStatus === "succeeded"\)[\s\S]*?if \(refundStatus === "processing" \|\| refundStatus === "pending"\)[\s\S]*?if \(paymentStatus === "paid"\)/
+  );
+  assert.doesNotMatch(source, /Cash order total \$\{amount\} · No payment taken/);
+  assert.doesNotMatch(source, /<p class="accountHistoryMeta">Paid \$\{escapeHtml\(paymentAmount\)\}/);
 });
 
 async function createAccountSession(email) {
@@ -161,7 +178,12 @@ test("customer account routes expose booking and order history for the signed-in
     phoneNumber: "07123 456789",
     email: accountEmail,
     itemsSummary: "2 x Miller burgers"
-  }));
+  }), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1850,
+    paymentCurrency: "gbp"
+  });
   const bobOrder = createOrderRecord([], makeOrderPayload({
     customerName: "Bob Stone",
     phoneNumber: "07234 567890",
@@ -195,6 +217,10 @@ test("customer account routes expose booking and order history for the signed-in
   assert.equal(meBody.account.orderCount, 1);
   assert.equal(meBody.account.upcomingBooking.reference.startsWith("MC-"), true);
   assert.equal(meBody.account.latestOrder.reference.startsWith("MCO-"), true);
+  assert.equal(meBody.account.latestOrder.paymentProvider, "cash");
+  assert.equal(meBody.account.latestOrder.paymentStatus, "unpaid");
+  assert.equal(meBody.account.latestOrder.paymentAmountTotal, 1850);
+  assert.equal(meBody.account.latestOrder.paymentCurrency, "gbp");
 
   const bookingsResponse = await getAccountBookings({
     env: {},
@@ -225,6 +251,10 @@ test("customer account routes expose booking and order history for the signed-in
   assert.equal(ordersBody.orders.length, 1);
   assert.equal(ordersBody.orders[0].email, accountEmail);
   assert.equal(ordersBody.orders[0].itemsSummary, "2 x Miller burgers");
+  assert.equal(ordersBody.orders[0].paymentProvider, "cash");
+  assert.equal(ordersBody.orders[0].paymentStatus, "unpaid");
+  assert.equal(ordersBody.orders[0].paymentAmountTotal, 1850);
+  assert.equal(ordersBody.orders[0].paymentCurrency, "gbp");
 });
 
 test("logging out removes the account session and protected routes reject the old cookie", async () => {

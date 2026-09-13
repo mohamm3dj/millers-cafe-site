@@ -23,6 +23,34 @@ function parseEtaMinutes(value, fallback) {
   return Math.max(1, Math.min(240, Math.round(parsed)));
 }
 
+function formatPaymentAmount(order) {
+  const rawAmount = order?.paymentAmountTotal;
+  if (rawAmount === null || rawAmount === undefined || rawAmount === "") return "";
+  const amount = Number(rawAmount);
+  if (!Number.isFinite(amount) || amount < 0) return "";
+  const currency = String(order?.paymentCurrency || "gbp").trim().toUpperCase() || "GBP";
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(amount / 100);
+}
+
+function paymentSummary(order, statusOverride = "") {
+  const provider = String(order?.paymentProvider || "").trim().toLowerCase();
+  const amount = formatPaymentAmount(order);
+  if (provider === "cash") {
+    const status = normalizedStatus(statusOverride || order?.status);
+    if (status === "rejected") {
+      return "No online payment was taken. Any cash already paid will be handled directly by Millers Café.";
+    }
+    const location = String(order?.orderType || "").trim().toLowerCase() === "delivery"
+      ? "delivery"
+      : "collection";
+    return amount ? `Cash due on ${location}: ${amount}` : `Cash due on ${location}`;
+  }
+  if (provider === "stripe") {
+    return amount ? `Paid online via Stripe: ${amount}` : "Paid online via Stripe";
+  }
+  return "";
+}
+
 async function findOrder(env, reference) {
   const orders = await loadOrders(env);
   const index = findOrderIndexByReference(orders, reference);
@@ -56,10 +84,12 @@ function confirmationPage(action, current, etaMinutes) {
   const refundWarning = !accepted && String(current.order.paymentProvider || "").toLowerCase() === "stripe"
     ? "<p><strong>Rejecting this Stripe-paid order will attempt a refund.</strong></p>"
     : "";
+  const paymentLine = paymentSummary(current.order);
 
   return pageResponse(title, [
     `<h1>${htmlEscape(title)}</h1>`,
     `<p>Order <strong>${htmlEscape(current.reference)}</strong> is currently <strong>${htmlEscape(current.status)}</strong>.</p>`,
+    paymentLine ? `<p><strong>Payment:</strong> ${htmlEscape(paymentLine)}</p>` : "",
     "<p>This will update the website/app feed and email the customer.</p>",
     refundWarning,
     confirmationForm({
@@ -129,10 +159,12 @@ export async function onRequestPost(context) {
     const refundLine = updated?.refund?.attempted
       ? `<p>Refund status: <strong>${htmlEscape(updated.refund.status || "pending")}</strong>.</p>`
       : "";
+    const paymentLine = paymentSummary(current.order, nextStatus);
     return pageResponse("Order Updated", [
       "<h1>Order updated</h1>",
       `<p>Order <strong>${htmlEscape(action.reference)}</strong> is now <strong>${htmlEscape(nextStatus)}</strong>.</p>`,
       action.status === "accepted" ? `<p>ETA set to <strong>${htmlEscape(etaMinutes)} minutes</strong>.</p>` : "",
+      paymentLine ? `<p><strong>Payment:</strong> ${htmlEscape(paymentLine)}</p>` : "",
       refundLine,
       "<p>The app/feed now shows the updated status, and the customer notification email has been queued.</p>"
     ].join(""));

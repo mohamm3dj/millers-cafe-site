@@ -80,6 +80,10 @@ function extractBetween(source, startMarker, endMarker) {
   return source.slice(start, end);
 }
 
+function namedFunctionSource(source, name, nextName) {
+  return extractBetween(source, `function ${name}(`, `\nfunction ${nextName}(`);
+}
+
 function findMatchingBrace(source, openIndex) {
   let depth = 0;
   let quote = "";
@@ -354,6 +358,48 @@ test("collection and delivery expose the polished three-stage checkout structure
     assert.match(modifierTag, /role="dialog"/);
     assert.match(modifierTag, /aria-modal="true"/);
     assert.match(modifierTag, /aria-labelledby="orderModifierTitle"/);
+  });
+});
+
+test("collection and delivery offer accessible card or cash payment choices", () => {
+  const cashCopy = {
+    "collection/index.html": ["Cash on collection", "Pay at the café when you collect"],
+    "delivery/index.html": ["Cash on delivery", "Pay the driver when your order arrives"]
+  };
+
+  ORDER_PAGE_PATHS.forEach((path) => {
+    const html = read(path);
+    const paymentFieldset = extractBetween(html, '<fieldset id="orderPaymentMethod"', "</fieldset>");
+    const cardInput = paymentFieldset.match(/<input[^>]*id="orderPaymentCard"[^>]*>/)?.[0] || "";
+    const cashInput = paymentFieldset.match(/<input[^>]*id="orderPaymentCash"[^>]*>/)?.[0] || "";
+    const cashOption = paymentFieldset.match(/<label[^>]*id="orderPaymentCashOption"[^>]*>/)?.[0] || "";
+    const result = html.match(/<div[^>]*id="orderResult"[^>]*>/)?.[0] || "";
+
+    assert.match(paymentFieldset, /class="orderPaymentMethod orderCheckoutField"/);
+    assert.ok(paymentFieldset.includes('<legend class="orderPaymentLegend">Payment method</legend>'));
+    assert.equal((paymentFieldset.match(/name="paymentMethod"/g) || []).length, 2);
+    assert.match(cardInput, /type="radio"/);
+    assert.match(cardInput, /value="card"/);
+    assert.match(cardInput, /aria-describedby="orderPaymentCardHint"/);
+    assert.match(cardInput, /\bchecked\b/);
+    assert.match(cardInput, /\brequired\b/);
+    assert.match(cashInput, /type="radio"/);
+    assert.match(cashInput, /value="cash"/);
+    assert.match(cashInput, /aria-describedby="orderPaymentCashHint"/);
+    assert.match(cashInput, /\bdisabled\b/);
+    assert.doesNotMatch(cashInput, /\bchecked\b/);
+    assert.match(cashOption, /\bhidden\b/);
+    cashCopy[path].forEach((copy) => assert.match(paymentFieldset, new RegExp(copy)));
+    assert.match(html, new RegExp(`secure card payment or ${cashCopy[path][0].toLowerCase()}`));
+    assert.doesNotMatch(html, /pay securely with Stripe/);
+    assert.ok(html.indexOf('id="orderReviewRow"') < html.indexOf('id="orderPaymentMethod"'));
+    assert.ok(html.indexOf('id="orderPaymentMethod"') < html.indexOf("By placing your order"));
+    assert.doesNotMatch(html, /By continuing to payment/);
+    assert.match(result, /role="region"/);
+    assert.match(result, /aria-label="Order confirmation"/);
+    assert.doesNotMatch(result, /aria-live=/);
+    assert.doesNotMatch(result, /aria-atomic=/);
+    assert.match(result, /tabindex="-1"/);
   });
 });
 
@@ -660,10 +706,99 @@ test("checkout validation moves customers to the first invalid field", () => {
 
 test("browser checkout retries reuse an idempotency key for unchanged order details", () => {
   const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
-  assert.match(source, /checkoutIdempotencyKey\(payload, cartPayload\)/);
+  const attemptSource = readFileSync(new URL("../orders/checkout-attempt.js", import.meta.url), "utf8");
+  assert.match(source, /createCheckoutAttemptManager/);
+  assert.match(source, /await checkoutIdempotencyKey\(payload, cartPayload\)/);
   assert.match(source, /"Idempotency-Key": idempotencyKey/);
-  assert.match(source, /checkoutAttemptFingerprint !== fingerprint/);
+  assert.match(source, /checkoutAttemptManager\.clear\(\)/);
+  assert.match(attemptSource, /delete fingerprintPayload\.paymentMethod/);
+  assert.match(attemptSource, /SHA-256/);
   assert.match(source, /if \(!redirectStarted\) resetOrderTurnstile\(\)/);
+});
+
+test("browser checkout preserves Stripe for card and completes cash orders directly", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /function currentPaymentMethod\(\)/);
+  assert.match(source, /const paymentMethod = currentPaymentMethod\(\);/);
+  assert.match(source, /const payload = \{\s*orderType,\s*paymentMethod,/);
+  assert.match(source, /if \(paymentMethod === "card"\) \{[\s\S]*?trackClientEvent\("order_checkout_redirect"/);
+  assert.match(source, /if \(paymentMethod === "cash"\) \{/);
+  assert.match(source, /if \(body\.status === "completed"\) \{[\s\S]*?!body\.reference \|\| !body\.trackingToken/);
+  assert.match(source, /finishOrderSuccess\(body, orderType, payload\.postcode, paymentMethod\)/);
+  assert.match(source, /const serverMethod = normalizeText\(body\?\.paymentMethod\)\.toLowerCase\(\)/);
+  assert.match(source, /confirmedPaymentMethod\(body, fallbackPaymentMethod\) === "cash"/);
+  assert.match(source, /if \(!body\.checkoutUrl\)/);
+  assert.match(source, /window\.location\.href = body\.checkoutUrl/);
+  assert.match(source, /finishOrderSuccess\(body, orderType, preservedPostcode, "card"\)/);
+  assert.match(source, /return orderType === "delivery" \? "on delivery" : "on collection"/);
+  assert.match(source, /Place cash order/);
+  assert.match(source, /Placing order\.\.\./);
+  assert.match(source, /cashDueStatusMessage\(body, orderType\)/);
+  assert.match(source, /statusData\?\.paymentAmountTotal \?\? statusData\?\.amountTotal/);
+  assert.match(source, /Some order notifications may be delayed/);
+  assert.doesNotMatch(source, /Confirmation email is delayed/);
+  assert.match(source, /startOrderStatusTracking\(body\.reference, body\.trackingToken, orderType\)/);
+  assert.match(source, /resetAfterSuccessfulCheckout\(orderType, preservedPostcode\)/);
+  assert.match(source, /resultEl\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /after you place the order/);
+  assert.doesNotMatch(source, /outside our usual delivery area\. We will review it after payment/);
+  assert.match(source, /statusData\.paymentMethod === "cash" \|\| statusData\.paymentProvider === "cash"/);
+  assert.match(source, /cashDueStatusMessage\(statusData, orderType\)/);
+  assert.match(source, /No online payment was taken\. Any cash already paid will be handled directly by Millers Café\./);
+  assert.match(source, /updateOrderResultSummary\("Order rejected", cashRejectionMessage\)/);
+  assert.match(source, /const pollGeneration = statusPollGeneration/);
+  assert.match(source, /const statusData = await fetchOrderStatus\(reference, trackingToken\);\s*if \(!isCurrentPoll\(\)\) return;/);
+  assert.match(source, /catch \(error\) \{\s*if \(!isCurrentPoll\(\)\) return;/);
+});
+
+test("cash confirmation trusts the server method and formats the server-confirmed amount", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+  const buildConfirmedMethod = new Function(
+    "normalizeText",
+    `${namedFunctionSource(source, "confirmedPaymentMethod", "createMenuItemId")}; return confirmedPaymentMethod;`
+  );
+  const confirmedMethod = buildConfirmedMethod((value) => String(value || "").trim());
+
+  assert.equal(confirmedMethod({ paymentMethod: "card", paymentProvider: "stripe" }, "cash"), "card");
+  assert.equal(confirmedMethod({ paymentMethod: "cash", paymentProvider: "cash" }, "card"), "cash");
+
+  const buildCashDueMessage = new Function(
+    "normalizeText",
+    "formatGBP",
+    "cashPaymentTiming",
+    `${namedFunctionSource(source, "cashDueStatusMessage", "renderOrderStatusTracker")}; return cashDueStatusMessage;`
+  );
+  const cashDueMessage = buildCashDueMessage(
+    (value) => String(value || "").trim(),
+    (value) => `£${Number(value).toFixed(2)}`,
+    (orderType) => orderType === "delivery" ? "on delivery" : "on collection"
+  );
+
+  assert.equal(cashDueMessage({ amountTotal: 795, currency: "gbp" }, "collection"), "£7.95 cash is due on collection.");
+  assert.equal(
+    cashDueMessage({ paymentAmountTotal: 895, paymentCurrency: "GBP" }, "delivery"),
+    "£8.95 cash is due on delivery."
+  );
+});
+
+test("cash checkout stays fail-closed until live site config enables it", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /let cashOrderingEnabled = false/);
+  assert.match(source, /cashOrderingEnabled = orders\.cashOrderingEnabled === true/);
+  assert.match(source, /cashPaymentOption\.hidden = !cashOrderingEnabled/);
+  assert.match(source, /paymentMethod === "cash" && !cashOrderingEnabled/);
+});
+
+test("checkout validation activates on meaningful blur or submit, not a payment-method change", () => {
+  const source = readFileSync(new URL("../orders/order-form.js", import.meta.url), "utf8");
+
+  assert.match(source, /function validateEditedCheckoutFieldOnBlur/);
+  assert.match(source, /activateCheckoutFieldValidation\(\);\s*if \(!runCheckoutFieldValidation\(\)\)/);
+  assert.match(source, /nameInput\?\.addEventListener\("input", \(\) => \{\s*markCheckoutFieldEdited\(nameInput\);\s*validateActiveCheckoutField/);
+  assert.match(source, /paymentMethodInputs\.forEach\(\(input\) => \{\s*input\.addEventListener\("change", \(\) => \{\s*updateOrderReviewRow\(\);/);
+  assert.match(source, /form\.setAttribute\("aria-busy", "true"\)/);
 });
 
 test("production ordering can be paused without hiding the browseable menu", () => {

@@ -14,6 +14,7 @@ import { onRequestGet as getBridgeBookings, onRequestPost as postBridgeBookingDe
 import { onRequestGet as getBridgeMenu, onRequestPut as putBridgeMenu } from "../functions/api/bridge/menu.js";
 import { onRequestGet as getBridgeOrders, onRequestPost as postBridgeOrderDecision } from "../functions/api/bridge/orders.js";
 import { createBooking } from "../functions/_lib/bookings-service.js";
+import { createOrderRecord, saveOrders } from "../functions/_orders-core.js";
 import { createOrder } from "../functions/_lib/orders-service.js";
 import { onRequestGet as getPublicMenu } from "../functions/api/menu-catalog.js";
 import { onRequestGet as getOrderStatus, onRequestPost as postOrderStatus } from "../functions/api/order-status.js";
@@ -614,6 +615,92 @@ test("venue bridge order endpoint is token protected and updates order decisions
   const decisionBody = await decisionResponse.json();
   assert.equal(decisionBody.status, "accepted");
   assert.equal(decisionBody.etaMinutes, 35);
+});
+
+test("venue bridge exposes cash due metadata before and after an order decision", async () => {
+  const env = { VENUE_BRIDGE_TOKEN_V2: "bridge-secret" };
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(created.ok, true);
+  await saveOrders(env, [created.record]);
+
+  const feedResponse = await getBridgeOrders({
+    env,
+    request: adminRequest("https://example.com/api/bridge/orders?status=submitted", "GET", "bridge-secret")
+  });
+  assert.equal(feedResponse.status, 200);
+  const feedBody = await feedResponse.json();
+  assert.equal(feedBody.count, 1);
+  assert.equal(feedBody.orders[0].paymentProvider, "cash");
+  assert.equal(feedBody.orders[0].paymentStatus, "unpaid");
+  assert.equal(feedBody.orders[0].paymentAmountTotal, 1250);
+  assert.equal(feedBody.orders[0].paymentCurrency, "gbp");
+
+  const decisionResponse = await postBridgeOrderDecision({
+    env,
+    request: adminRequest("https://example.com/api/bridge/orders", "POST", "bridge-secret", {
+      reference: created.reference,
+      status: "rejected",
+      notify: false
+    })
+  });
+  assert.equal(decisionResponse.status, 200);
+  const decisionBody = await decisionResponse.json();
+  assert.equal(decisionBody.paymentProvider, "cash");
+  assert.equal(decisionBody.paymentStatus, "unpaid");
+  assert.equal(decisionBody.paymentAmountTotal, 1250);
+  assert.equal(decisionBody.refund.attempted, false);
+});
+
+test("protected order feeds and the venue bridge expose refund diagnostics", async () => {
+  const env = {
+    ORDERS_FEED_TOKEN: "order-feed-secret",
+    VENUE_BRIDGE_TOKEN_V2: "bridge-secret"
+  };
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "stripe",
+    paymentStatus: "paid",
+    paymentSessionId: "cs_refund_diagnostics",
+    paymentIntentId: "pi_refund_diagnostics",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp",
+    refundStatus: "failed",
+    refundId: "re_refund_diagnostics",
+    refundAmountTotal: 1250,
+    refundCreatedAt: "2026-09-13T09:00:00.000Z",
+    refundAttempts: 2,
+    refundLastError: "Stripe timed out.",
+    refundUpdatedAt: "2026-09-13T09:05:00.000Z"
+  });
+  assert.equal(created.ok, true);
+  await saveOrders(env, [created.record]);
+
+  const protectedFeedResponse = await getOrderFeedJson({
+    env,
+    request: adminRequest("https://example.com/orders/feed.json?includePast=true", "GET", "order-feed-secret")
+  });
+  assert.equal(protectedFeedResponse.status, 200);
+  const [protectedRow] = await protectedFeedResponse.json();
+  assert.equal(protectedRow.refund_status, "failed");
+  assert.equal(protectedRow.refund_id, "re_refund_diagnostics");
+  assert.equal(protectedRow.refund_attempts, 2);
+  assert.equal(protectedRow.refund_last_error, "Stripe timed out.");
+
+  const bridgeResponse = await getBridgeOrders({
+    env,
+    request: adminRequest("https://example.com/api/bridge/orders?status=submitted&includePast=true", "GET", "bridge-secret")
+  });
+  assert.equal(bridgeResponse.status, 200);
+  const bridgeBody = await bridgeResponse.json();
+  assert.equal(bridgeBody.count, 1);
+  assert.equal(bridgeBody.orders[0].refundStatus, "failed");
+  assert.equal(bridgeBody.orders[0].refundId, "re_refund_diagnostics");
+  assert.equal(bridgeBody.orders[0].refundAttempts, 2);
+  assert.equal(bridgeBody.orders[0].refundLastError, "Stripe timed out.");
 });
 
 test("analytics endpoint records allowed events and admin summary aggregates them", async () => {

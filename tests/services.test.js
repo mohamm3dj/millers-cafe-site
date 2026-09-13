@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 
 import { loadBookings } from "../functions/_booking-core.js";
+import { sendOrderDecisionEmails, sendOrderEmails } from "../functions/_order-email.js";
 import { createOrderRecord, loadOrders, saveOrders } from "../functions/_orders-core.js";
 import { ApiError } from "../functions/_lib/errors.js";
 import {
@@ -308,8 +309,116 @@ test("createOrder sends customer and owner emails through Resend", async () => {
   assert.equal(stored.length, 1);
 });
 
+test("cash order emails show the amount due and distinguish collection from delivery", async () => {
+  const sentPayloads = [];
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(String(url), "https://api.resend.com/emails");
+    sentPayloads.push(JSON.parse(String(options.body || "{}")));
+    return new Response(JSON.stringify({ id: `email_${sentPayloads.length}` }), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8" }
+    });
+  };
+  const env = {
+    RESEND_API_KEY: "re_test_123",
+    ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
+    ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe"
+  };
+
+  const collection = createOrderRecord([], makeOrderPayload({ email: "collection@example.com" }), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(collection.ok, true);
+  await sendOrderEmails(env, collection.record, collection.reference);
+
+  assert.equal(sentPayloads.length, 2);
+  sentPayloads.forEach((payload) => {
+    assert.match(payload.text, /Payment: Cash due on collection \(£12\.50\)/);
+    assert.doesNotMatch(payload.text, /Payment: Paid/i);
+  });
+
+  const delivery = createOrderRecord([], makeOrderPayload({
+    orderType: "delivery",
+    email: "delivery@example.com",
+    addressLine1: "55 Brigsley Road",
+    townCity: "Grimsby",
+    postcode: "DN37 0JZ"
+  }), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1500,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(delivery.ok, true);
+  await sendOrderDecisionEmails(env, delivery.record, delivery.reference, {
+    status: "accepted",
+    etaMinutes: 35
+  });
+
+  assert.equal(sentPayloads.length, 4);
+  assert.match(sentPayloads[2].text, /Please have £15\.00 in cash ready for delivery\./);
+  assert.match(sentPayloads[3].text, /Payment: Cash due on delivery \(£15\.00\)/);
+  assert.doesNotMatch(sentPayloads[2].text, /paid/i);
+
+  await sendOrderDecisionEmails(env, { ...collection.record, status: "rejected" }, collection.reference, {
+    status: "rejected"
+  });
+
+  assert.equal(sentPayloads.length, 6);
+  assert.match(
+    sentPayloads[4].text,
+    /No online payment was taken\. Any cash already paid will be handled directly by Millers Café\./
+  );
+  assert.match(
+    sentPayloads[5].text,
+    /Payment: Cash order \(£12\.50; no online payment was taken; any cash already paid will be handled directly by Millers Café\)/
+  );
+  assert.doesNotMatch(sentPayloads[4].text, /No payment taken/i);
+});
+
+test("order email idempotency prefixes create stable recipient-specific Resend keys", async () => {
+  const idempotencyKeys = [];
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(String(url), "https://api.resend.com/emails");
+    idempotencyKeys.push(options.headers?.["Idempotency-Key"] || "");
+    return new Response(JSON.stringify({ id: `email_${idempotencyKeys.length}` }), {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8" }
+    });
+  };
+  const env = {
+    RESEND_API_KEY: "re_test_123",
+    ORDERS_EMAIL_FROM: "Millers Cafe <help@millers.cafe>",
+    ORDERS_NOTIFICATION_EMAIL: "help@millers.cafe"
+  };
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(created.ok, true);
+
+  await sendOrderEmails(env, created.record, created.reference, {
+    idempotencyKeyPrefix: `cash-order-email:${created.record.id}`
+  });
+
+  assert.deepEqual(idempotencyKeys, [
+    `cash-order-email:${created.record.id}:customer`,
+    `cash-order-email:${created.record.id}:owner`
+  ]);
+});
+
 test("readOrderStatus requires the correct tracking token and updateOrderStatus persists decisions", async () => {
-  const created = createOrderRecord([], makeOrderPayload());
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
   assert.equal(created.ok, true);
   await saveOrders({}, [created.record]);
 
@@ -318,6 +427,11 @@ test("readOrderStatus requires the correct tracking token and updateOrderStatus 
     tracking: created.record.trackingToken
   });
   assert.equal(initial.status, "submitted");
+  assert.equal(initial.paymentMethod, "cash");
+  assert.equal(initial.paymentProvider, "cash");
+  assert.equal(initial.paymentStatus, "unpaid");
+  assert.equal(initial.paymentAmountTotal, 1250);
+  assert.equal(initial.paymentCurrency, "gbp");
 
   await assert.rejects(
     () => readOrderStatus({}, {
@@ -405,6 +519,35 @@ test("updateOrderStatus refunds rejected Stripe-paid orders", async () => {
   assert.equal(stored[0].refundStatus, "succeeded");
   assert.equal(stored[0].refundId, "re_test_refund");
   assert.equal(stored[0].refundAmountTotal, 2500);
+});
+
+test("rejecting a cash order never attempts a Stripe refund", async () => {
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(created.ok, true);
+  await saveOrders({}, [created.record]);
+
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error("Cash rejection must not contact Stripe.");
+  };
+
+  const updated = await updateOrderStatus({ STRIPE_SECRET_KEY: "sk_test_123" }, {
+    reference: created.reference,
+    status: "rejected",
+    notify: false
+  });
+
+  assert.equal(updated.status, "rejected");
+  assert.equal(updated.paymentProvider, "cash");
+  assert.equal(updated.paymentStatus, "unpaid");
+  assert.equal(updated.refund.attempted, false);
+  assert.equal(fetchCalls, 0);
 });
 
 test("failed Stripe refunds persist retry state and reuse the same idempotency key", async () => {

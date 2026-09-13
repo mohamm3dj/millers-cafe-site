@@ -2,8 +2,10 @@
 
 import { sendOrderEmails } from "../_order-email.js";
 import {
+  createOrderRecord,
   createOrderRecordFromValidatedDraft,
   findOrderIndexByPaymentSessionId,
+  loadOrderEntity,
   loadOrders,
   makeReference,
   saveOrderEntity,
@@ -13,12 +15,13 @@ import {
 } from "../_orders-core.js";
 import { ApiError } from "./errors.js";
 import { recordAnalyticsEvent } from "./analytics.js";
-import { isOnlineOrderingEnabled } from "./feature-flags.js";
+import { isCashOrderingEnabled, isOnlineOrderingEnabled } from "./feature-flags.js";
 import { priceOrderCart, resolveDeliveryFeeGBP } from "./order-menu.js";
 import { defaultMenuCatalog, getSiteConfig } from "./site-config.js";
 import {
   assertStripeWebhookSecret,
   createCheckoutSession,
+  expireCheckoutSession,
   retrieveCheckoutSession,
   verifyStripeWebhookSignature
 } from "./stripe.js";
@@ -142,6 +145,54 @@ function normalizeCheckoutRequestKey(value) {
   return normalized;
 }
 
+function normalizePaymentMethod(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "card";
+  if (normalized === "card" || normalized === "cash") return normalized;
+  throw new ApiError("Payment method must be card or cash.", 400);
+}
+
+function checkoutRequestIdentity(payload) {
+  const cartItems = Array.isArray(payload?.cartItems)
+    ? payload.cartItems.map((item) => ({
+      itemName: String(item?.itemName || item?.name || "").trim(),
+      posItemId: String(item?.posItemId || item?.itemId || item?.menuItemId || "").trim(),
+      quantity: Number(item?.quantity),
+      modifierSelections: Array.isArray(item?.modifierSelections)
+        ? item.modifierSelections.map((selection) => ({
+          groupName: String(selection?.groupName || "").trim(),
+          optionName: String(selection?.optionName || "").trim(),
+          posModifierGroupId: String(selection?.posModifierGroupId || selection?.groupId || "").trim(),
+          posModifierOptionId: String(selection?.posModifierOptionId || selection?.optionId || "").trim(),
+          isTextInput: Boolean(selection?.isTextInput)
+        }))
+        : []
+    }))
+    : [];
+
+  return {
+    orderType: String(payload?.orderType || "").trim().toLowerCase(),
+    customerName: String(payload?.customerName || "").trim(),
+    phoneNumber: String(payload?.phoneNumber || "").trim(),
+    email: String(payload?.email || "").trim(),
+    date: String(payload?.date || "").trim(),
+    time: String(payload?.time || "").trim().toUpperCase(),
+    specialOccasion: String(payload?.specialOccasion || "").trim(),
+    notes: String(payload?.notes || "").trim(),
+    sensitiveInfoConsent: Boolean(payload?.sensitiveInfoConsent),
+    addressLine1: String(payload?.addressLine1 || "").trim(),
+    addressLine2: String(payload?.addressLine2 || "").trim(),
+    townCity: String(payload?.townCity || "").trim(),
+    postcode: normalizePostcode(payload?.postcode),
+    cartItems
+  };
+}
+
+async function checkoutRequestFingerprint(payload) {
+  const source = JSON.stringify(checkoutRequestIdentity(payload));
+  return await sha256Hex(source) || fallbackHashHex(source);
+}
+
 function assertCheckoutCartBounds(rawCartItems) {
   if (!Array.isArray(rawCartItems) || rawCartItems.length === 0) {
     throw new ApiError("Please add at least one menu item.", 400);
@@ -180,6 +231,8 @@ function normalizeDraft(raw) {
     id: String(raw.id || "").trim(),
     status: String(raw.status || "checkout_created").trim().toLowerCase(),
     orderType: String(raw.orderType || "collection").trim().toLowerCase(),
+    paymentMethod: String(raw.paymentMethod || "").trim().toLowerCase() === "cash" ? "cash" : "card",
+    requestFingerprint: String(raw.requestFingerprint || "").trim().toLowerCase(),
     payload: raw.payload && typeof raw.payload === "object" ? { ...raw.payload } : null,
     pricedCart: raw.pricedCart && typeof raw.pricedCart === "object" ? { ...raw.pricedCart } : null,
     stripeSessionId: String(raw.stripeSessionId || "").trim(),
@@ -237,6 +290,14 @@ function normalizeCompletion(raw) {
   const orderId = String(raw.orderId || "").trim();
   const trackingToken = String(raw.trackingToken || "").trim();
   if (!reference || !orderId || !trackingToken) return null;
+  const paymentMethod = String(raw.paymentMethod || "").trim().toLowerCase() === "cash" ||
+    String(raw.paymentProvider || "").trim().toLowerCase() === "cash"
+    ? "cash"
+    : "card";
+  const rawAmountTotal = raw.amountTotal;
+  const amountTotal = rawAmountTotal === null || rawAmountTotal === undefined || rawAmountTotal === ""
+    ? null
+    : Number(rawAmountTotal);
   return {
     ok: true,
     status: "completed",
@@ -244,7 +305,13 @@ function normalizeCompletion(raw) {
     orderId,
     trackingToken,
     orderType: String(raw.orderType || "collection").trim().toLowerCase() === "delivery" ? "delivery" : "collection",
-    paymentStatus: String(raw.paymentStatus || "paid").trim().toLowerCase(),
+    paymentMethod,
+    paymentProvider: paymentMethod === "cash" ? "cash" : "stripe",
+    paymentStatus: String(raw.paymentStatus || (paymentMethod === "cash" ? "unpaid" : "paid")).trim().toLowerCase(),
+    amountTotal: Number.isSafeInteger(amountTotal) && amountTotal >= 0 ? amountTotal : null,
+    currency: /^[a-z]{3}$/.test(String(raw.currency || "").trim().toLowerCase())
+      ? String(raw.currency).trim().toLowerCase()
+      : "",
     emailStatus: String(raw.emailStatus || "pending").trim().toLowerCase(),
     emailErrors: Array.isArray(raw.emailErrors) ? raw.emailErrors.map((value) => String(value || "")) : []
   };
@@ -334,6 +401,12 @@ function buildCheckoutForm(draft, requestUrl) {
 }
 
 function completedPayload(order, draft, emailStatus, emailErrors) {
+  const paymentProvider = String(order.paymentProvider || "").trim().toLowerCase();
+  const paymentMethod = paymentProvider === "cash" ? "cash" : "card";
+  const rawAmountTotal = order.paymentAmountTotal;
+  const amountTotal = rawAmountTotal === null || rawAmountTotal === undefined || rawAmountTotal === ""
+    ? null
+    : Number(rawAmountTotal);
   return {
     ok: true,
     status: "completed",
@@ -341,13 +414,17 @@ function completedPayload(order, draft, emailStatus, emailErrors) {
     orderId: order.id,
     trackingToken: order.trackingToken,
     orderType: order.orderType,
-    paymentStatus: String(order.paymentStatus || draft?.paymentStatus || "paid"),
+    paymentMethod,
+    paymentProvider: paymentMethod === "cash" ? "cash" : "stripe",
+    paymentStatus: String(order.paymentStatus || draft?.paymentStatus || (paymentMethod === "cash" ? "unpaid" : "paid")),
+    amountTotal: Number.isSafeInteger(amountTotal) && amountTotal >= 0 ? amountTotal : null,
+    currency: String(order.paymentCurrency || draft?.pricedCart?.currency || "").trim().toLowerCase(),
     emailStatus,
     emailErrors
   };
 }
 
-function assertPaidSessionMatchesDraft(session, draft) {
+function assertStripeSessionMatchesDraft(session, draft) {
   const sessionId = String(session?.id || "").trim();
   const clientReferenceId = String(session?.client_reference_id || "").trim();
   const metadataDraftId = String(session?.metadata?.order_draft_id || "").trim();
@@ -359,6 +436,9 @@ function assertPaidSessionMatchesDraft(session, draft) {
 
   if (!draft?.id || !draft.payload || !draft.pricedCart) {
     throw new ApiError("No matching order draft was found for this Stripe checkout session.", 404);
+  }
+  if (draft.paymentMethod !== "card") {
+    throw new ApiError("Stripe checkout cannot finalize an order draft that was not created for card payment.", 409);
   }
   if (clientReferenceId && clientReferenceId !== draft.id) {
     throw new ApiError("Stripe checkout session does not match the saved order draft.", 409);
@@ -386,16 +466,16 @@ async function finalizePaidSessionUnlocked(env, session) {
     throw new ApiError("Stripe checkout session id is missing.", 400);
   }
 
-  const completed = await readCompletion(env, sessionId);
-  if (completed) return completed;
-
   if (String(session?.payment_status || "").trim().toLowerCase() !== "paid") {
     throw new ApiError("Stripe checkout session is not paid yet.", 409);
   }
 
   const draftId = String(session?.client_reference_id || session?.metadata?.order_draft_id || "").trim();
   const draft = await readDraft(env, draftId);
-  assertPaidSessionMatchesDraft(session, draft);
+  assertStripeSessionMatchesDraft(session, draft);
+
+  const completed = await readCompletion(env, sessionId);
+  if (completed) return completed;
   const identity = await stableOrderIdentity(sessionId);
 
   const result = await withOrdersMutationLock(async () => {
@@ -431,7 +511,10 @@ async function finalizePaidSessionUnlocked(env, session) {
 
     orders.push(creation.record);
     await saveOrderEntity(env, creation.record);
-    await saveOrdersAfterEntity(env, orders);
+    const aggregateSaved = await saveOrdersAfterEntity(env, orders);
+    if (!aggregateSaved) {
+      throw new ApiError("Paid order storage is still syncing. Please retry shortly.", 503);
+    }
     return { order: creation.record, created: true };
   });
 
@@ -447,7 +530,9 @@ async function finalizePaidSessionUnlocked(env, session) {
 
   let emailResult = null;
   try {
-    emailResult = await sendOrderEmails(env, result.order, makeReference(result.order.id));
+    emailResult = await sendOrderEmails(env, result.order, makeReference(result.order.id), {
+      idempotencyKeyPrefix: `stripe-order-email:${sessionId}`
+    });
   } catch (error) {
     emailResult = {
       enabled: true,
@@ -484,12 +569,232 @@ async function finalizePaidSession(env, session) {
   return withFinalizeLock(sessionId, () => finalizePaidSessionUnlocked(env, session));
 }
 
-function checkoutDraftMatches(existing, candidate) {
+function checkoutDraftDetailsMatch(existing, candidate) {
   if (!existing || !candidate) return false;
   return existing.orderType === candidate.orderType &&
+    (!existing.requestFingerprint || existing.requestFingerprint === candidate.requestFingerprint) &&
     Number(existing.pricedCart?.totalMinor) === Number(candidate.pricedCart?.totalMinor) &&
     String(existing.pricedCart?.currency || "") === String(candidate.pricedCart?.currency || "") &&
     JSON.stringify(existing.payload) === JSON.stringify(candidate.payload);
+}
+
+function checkoutDraftMatches(existing, candidate) {
+  return existing?.paymentMethod === candidate?.paymentMethod && checkoutDraftDetailsMatch(existing, candidate);
+}
+
+function persistedCashOrderMatchesDraft(order, draft) {
+  if (!order || !draft?.payload || !draft?.pricedCart) return false;
+  const payload = draft.payload;
+  const textFields = [
+    "orderType",
+    "customerName",
+    "phoneNumber",
+    "phoneDigits",
+    "email",
+    "date",
+    "time",
+    "specialOccasion",
+    "itemsSummary",
+    "notes",
+    "addressLine1",
+    "addressLine2",
+    "townCity",
+    "postcode"
+  ];
+  if (textFields.some((field) => String(order[field] || "") !== String(payload[field] || ""))) return false;
+  if (Boolean(order.sensitiveInfoConsent) !== Boolean(payload.sensitiveInfoConsent)) return false;
+  if (JSON.stringify(order.cartItems || []) !== JSON.stringify(payload.cartItems || [])) return false;
+  return String(order.paymentProvider || "").trim().toLowerCase() === "cash" &&
+    Number(order.paymentAmountTotal) === Number(draft.pricedCart.totalMinor) &&
+    String(order.paymentCurrency || "").trim().toLowerCase() === String(draft.pricedCart.currency || "").trim().toLowerCase();
+}
+
+async function finalizeCashDraftUnlocked(env, draft) {
+  const completionId = `cash:${draft.id}`;
+  const completed = await readCompletion(env, completionId);
+  const identity = await stableOrderIdentity(completionId);
+  const result = await withOrdersMutationLock(async () => {
+    let orders = await loadOrders(env);
+    let existingOrder = orders.find((order) => String(order.id || "") === identity.recordId);
+    let recoveredEntity = false;
+    if (!existingOrder) {
+      existingOrder = await loadOrderEntity(env, identity.recordId);
+      recoveredEntity = Boolean(existingOrder);
+    }
+    if (existingOrder) {
+      if (!persistedCashOrderMatchesDraft(existingOrder, draft)) {
+        throw new ApiError("A conflicting cash order identity already exists.", 409);
+      }
+      if (recoveredEntity) {
+        orders.push(existingOrder);
+        const aggregateSaved = await saveOrdersAfterEntity(env, orders);
+        if (!aggregateSaved) {
+          throw new ApiError("Cash order storage is still syncing. Please retry shortly.", 503);
+        }
+      }
+      return {
+        order: existingOrder,
+        shouldSendEmail: !completed,
+        completed
+      };
+    }
+    if (completed) {
+      throw new ApiError("The completed cash order could not be verified against its saved record.", 409);
+    }
+
+    const creation = createOrderRecord(orders, draft.payload, {
+      recordId: identity.recordId,
+      trackingToken: identity.trackingToken,
+      skipWindowValidation: true,
+      paymentProvider: "cash",
+      paymentStatus: "unpaid",
+      paymentSessionId: "",
+      paymentIntentId: "",
+      paymentAmountTotal: Number(draft.pricedCart.totalMinor),
+      paymentCurrency: String(draft.pricedCart.currency || "").trim().toLowerCase()
+    });
+
+    if (!creation.ok) {
+      throw new ApiError(creation.error || "Cash order could not be created.", creation.status || 400);
+    }
+
+    orders.push(creation.record);
+    await saveOrderEntity(env, creation.record);
+    const aggregateSaved = await saveOrdersAfterEntity(env, orders);
+    if (!aggregateSaved) {
+      throw new ApiError("Cash order storage is still syncing. Please retry shortly.", 503);
+    }
+    return { order: creation.record, shouldSendEmail: true, completed: null };
+  });
+
+  if (!result.shouldSendEmail) {
+    if (result.completed) return result.completed;
+    const payload = completedPayload(result.order, draft, "pending", []);
+    try {
+      await writeCompletion(env, completionId, payload);
+    } catch (error) {
+      // The persisted order remains authoritative if the completion marker cannot be rebuilt.
+    }
+    return payload;
+  }
+
+  let emailResult = null;
+  try {
+    emailResult = await sendOrderEmails(env, result.order, makeReference(result.order.id), {
+      idempotencyKeyPrefix: `cash-order-email:${result.order.id}`
+    });
+  } catch (error) {
+    emailResult = {
+      enabled: true,
+      sentAll: false,
+      delivered: 0,
+      total: 2,
+      errors: ["Email service request failed."]
+    };
+  }
+
+  const emailStatus = Boolean(emailResult?.enabled && emailResult?.sentAll) ? "sent" : "pending";
+  const emailErrors = emailResult?.errors || [];
+  const payload = completedPayload(result.order, draft, emailStatus, emailErrors);
+  try {
+    await writeCompletion(env, completionId, payload);
+  } catch (error) {
+    // Completion markers are an optimization; the persisted cash order remains authoritative.
+  }
+
+  await recordAnalyticsEvent(env, "order_cash_placed", {
+    page: "checkout",
+    orderType: result.order.orderType
+  }).catch(() => null);
+
+  return payload;
+}
+
+async function finalizeCashDraft(env, draft) {
+  const completionId = `cash:${String(draft?.id || "").trim()}`;
+  if (!draft?.id) {
+    throw new ApiError("Cash order draft id is missing.", 500);
+  }
+  return withFinalizeLock(completionId, () => finalizeCashDraftUnlocked(env, draft));
+}
+
+async function hasPersistedCashOrder(env, draft) {
+  if (!draft?.id) return false;
+  const completionId = `cash:${draft.id}`;
+  const identity = await stableOrderIdentity(completionId);
+  const [completed, entity] = await Promise.all([
+    readCompletion(env, completionId),
+    loadOrderEntity(env, identity.recordId)
+  ]);
+  return Boolean(completed || entity);
+}
+
+function stripeSessionState(session) {
+  return {
+    paymentStatus: String(session?.payment_status || "").trim().toLowerCase(),
+    status: String(session?.status || "").trim().toLowerCase()
+  };
+}
+
+async function switchExpiredCardDraftToCash(env, cardDraft, cashCandidate) {
+  return writeDraft(env, {
+    ...cashCandidate,
+    createdAt: cardDraft.createdAt,
+    stripeSessionId: cardDraft.stripeSessionId,
+    stripePaymentIntentId: "",
+    paymentStatus: "unpaid",
+    status: "checkout_created"
+  });
+}
+
+async function supersedeCardDraftWithCash(env, cardDraft, cashCandidate) {
+  const sessionId = String(cardDraft?.stripeSessionId || "").trim();
+  if (!sessionId) {
+    throw new ApiError(
+      "The earlier card checkout cannot be safely cancelled. Please refresh and start a new checkout.",
+      409
+    );
+  }
+
+  let session = await retrieveCheckoutSession(env, sessionId);
+  assertStripeSessionMatchesDraft(session, cardDraft);
+  let state = stripeSessionState(session);
+
+  if (state.paymentStatus === "paid") {
+    return { completed: await finalizePaidSession(env, session), draft: cardDraft };
+  }
+  if (state.status === "expired") {
+    return { completed: null, draft: await switchExpiredCardDraftToCash(env, cardDraft, cashCandidate) };
+  }
+  if (state.status !== "open") {
+    throw new ApiError(
+      "The earlier card checkout is still processing and cannot be changed to cash yet.",
+      409
+    );
+  }
+
+  try {
+    session = await expireCheckoutSession(env, sessionId, {
+      idempotencyKey: `order-checkout-expire:${cardDraft.id}`
+    });
+  } catch (error) {
+    // Payment and expiry can race. Re-read Stripe before deciding which outcome won.
+    session = await retrieveCheckoutSession(env, sessionId);
+  }
+
+  assertStripeSessionMatchesDraft(session, cardDraft);
+  state = stripeSessionState(session);
+  if (state.paymentStatus === "paid") {
+    return { completed: await finalizePaidSession(env, session), draft: cardDraft };
+  }
+  if (state.status !== "expired") {
+    throw new ApiError(
+      "The earlier card checkout could not be safely cancelled. Please retry shortly.",
+      409
+    );
+  }
+
+  return { completed: null, draft: await switchExpiredCardDraftToCash(env, cardDraft, cashCandidate) };
 }
 
 function processingPayload(draft, session) {
@@ -502,8 +807,31 @@ function processingPayload(draft, session) {
 }
 
 export async function createOrderCheckout(env, requestUrl, payload, options = {}) {
+  const paymentMethod = normalizePaymentMethod(payload?.paymentMethod);
+  const requestKey = normalizeCheckoutRequestKey(options.idempotencyKey || payload?.checkoutRequestId);
+  const draftId = requestKey ? await draftIdForRequestKey(requestKey) : "";
+  const requestFingerprint = requestKey ? await checkoutRequestFingerprint(payload) : "";
+
+  if (paymentMethod === "cash" && requestKey) {
+    const retryDraft = await readDraft(env, draftId);
+    if (retryDraft?.paymentMethod === "cash") {
+      if (!retryDraft.requestFingerprint || retryDraft.requestFingerprint !== requestFingerprint) {
+        throw new ApiError("The checkout idempotency key was already used for different order details.", 409);
+      }
+      if (await hasPersistedCashOrder(env, retryDraft)) {
+        return finalizeCashDraft(env, retryDraft);
+      }
+    } else if (retryDraft?.requestFingerprint && retryDraft.requestFingerprint !== requestFingerprint) {
+      throw new ApiError("The checkout idempotency key was already used for different order details.", 409);
+    }
+  }
+
   if (!isOnlineOrderingEnabled(env, requestUrl)) {
     throw new ApiError("Online ordering is temporarily paused. Please contact Millers Café if you need help.", 503);
+  }
+
+  if (paymentMethod === "cash" && !isCashOrderingEnabled(env)) {
+    throw new ApiError("Cash ordering is temporarily unavailable. Please choose card payment.", 503);
   }
 
   const orderType = String(payload?.orderType || "").trim().toLowerCase();
@@ -545,12 +873,16 @@ export async function createOrderCheckout(env, requestUrl, payload, options = {}
     throw new ApiError(shapeCheck.error || "Order details are invalid.", shapeCheck.status || 400);
   }
 
-  const requestKey = normalizeCheckoutRequestKey(options.idempotencyKey || payload?.checkoutRequestId);
-  const draftId = await draftIdForRequestKey(requestKey);
+  if (paymentMethod === "cash" && !requestKey) {
+    throw new ApiError("An idempotency key is required for cash orders.", 400);
+  }
+  const resolvedDraftId = draftId || await draftIdForRequestKey(requestKey);
   const candidateDraft = normalizeDraft({
-    id: draftId,
+    id: resolvedDraftId,
     status: "checkout_created",
     orderType,
+    paymentMethod,
+    requestFingerprint,
     payload: shapeCheck.data,
     pricedCart,
     paymentStatus: "unpaid",
@@ -558,34 +890,70 @@ export async function createOrderCheckout(env, requestUrl, payload, options = {}
     emailErrors: [],
     createdAt: nowISO()
   });
-  let draft = requestKey ? await readDraft(env, draftId) : null;
-  if (draft) {
-    if (draft.status !== "checkout_created") {
-      throw new ApiError("This checkout request has already finished. Please start a new checkout.", 409);
-    }
-    if (!checkoutDraftMatches(draft, candidateDraft)) {
-      throw new ApiError("The checkout idempotency key was already used for different order details.", 409);
-    }
-  } else {
-    draft = await writeDraft(env, candidateDraft);
-  }
 
-  const session = await createCheckoutSession(env, buildCheckoutForm(draft, requestUrl), {
-    idempotencyKey: `order-checkout:${draft.id}`
+  return withFinalizeLock(`draft:${resolvedDraftId}`, async () => {
+    let draft = requestKey ? await readDraft(env, resolvedDraftId) : null;
+    if (draft) {
+      if (!checkoutDraftDetailsMatch(draft, candidateDraft)) {
+        throw new ApiError("The checkout idempotency key was already used for different order details.", 409);
+      }
+
+      if (draft.paymentMethod === "card" && paymentMethod === "cash") {
+        const transition = await supersedeCardDraftWithCash(env, draft, candidateDraft);
+        if (transition.completed) return transition.completed;
+        return finalizeCashDraft(env, transition.draft);
+      }
+
+      if (draft.paymentMethod === "cash" && paymentMethod === "card") {
+        if (await hasPersistedCashOrder(env, draft)) {
+          return finalizeCashDraft(env, draft);
+        }
+        throw new ApiError("This checkout request has already been started as a cash order.", 409);
+      }
+
+      if (draft.status !== "checkout_created") {
+        throw new ApiError("This checkout request has already finished. Please start a new checkout.", 409);
+      }
+      if (!checkoutDraftMatches(draft, candidateDraft)) {
+        throw new ApiError("The checkout idempotency key was already used for different order details.", 409);
+      }
+    } else {
+      draft = await writeDraft(env, candidateDraft);
+    }
+
+    if (paymentMethod === "cash") {
+      return finalizeCashDraft(env, draft);
+    }
+
+    const session = await createCheckoutSession(env, buildCheckoutForm(draft, requestUrl), {
+      idempotencyKey: `order-checkout:${draft.id}`
+    });
+    const sessionId = String(session?.id || "").trim();
+    const checkoutUrl = String(session?.url || "").trim();
+    if (!/^cs_[a-zA-Z0-9_]+$/.test(sessionId) || !isValidHttpsUrl(checkoutUrl)) {
+      throw new ApiError("Stripe returned an invalid checkout session.", 502);
+    }
+    if (draft.stripeSessionId && draft.stripeSessionId !== sessionId) {
+      throw new ApiError("Stripe returned a conflicting checkout session for this request.", 409);
+    }
+
+    draft = await writeDraft(env, {
+      ...draft,
+      stripeSessionId: sessionId,
+      paymentStatus: String(session?.payment_status || "unpaid").trim().toLowerCase()
+    });
+
+    return {
+      ok: true,
+      status: "redirect_required",
+      paymentMethod: "card",
+      paymentProvider: "stripe",
+      checkoutUrl,
+      sessionId,
+      amountTotal: draft.pricedCart.totalMinor,
+      currency: draft.pricedCart.currency
+    };
   });
-  const sessionId = String(session?.id || "").trim();
-  const checkoutUrl = String(session?.url || "").trim();
-  if (!/^cs_[a-zA-Z0-9_]+$/.test(sessionId) || !isValidHttpsUrl(checkoutUrl)) {
-    throw new ApiError("Stripe returned an invalid checkout session.", 502);
-  }
-
-  return {
-    ok: true,
-    checkoutUrl,
-    sessionId,
-    amountTotal: pricedCart.totalMinor,
-    currency: pricedCart.currency
-  };
 }
 
 export async function getCheckoutSessionStatus(env, sessionId) {

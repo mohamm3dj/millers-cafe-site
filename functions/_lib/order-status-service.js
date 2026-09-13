@@ -66,6 +66,21 @@ function refundPayload(order) {
   };
 }
 
+function paymentPayload(order) {
+  const provider = String(order.paymentProvider || "").trim().toLowerCase();
+  const rawAmountTotal = order.paymentAmountTotal;
+  const amountTotal = rawAmountTotal === null || rawAmountTotal === undefined || rawAmountTotal === ""
+    ? null
+    : Number(rawAmountTotal);
+  return {
+    paymentMethod: provider === "cash" ? "cash" : (provider === "stripe" ? "card" : ""),
+    paymentProvider: provider,
+    paymentStatus: String(order.paymentStatus || "").trim().toLowerCase(),
+    paymentAmountTotal: Number.isFinite(amountTotal) ? Math.round(amountTotal) : null,
+    paymentCurrency: String(order.paymentCurrency || "").trim().toLowerCase()
+  };
+}
+
 async function maybeRefundRejectedStripeOrder(env, order, reference, nextStatus) {
   if (nextStatus !== "rejected") {
     return {
@@ -144,6 +159,7 @@ function orderStatusPayload(order, reference) {
     ok: true,
     reference,
     status: normalizedStatus(order.status || "submitted"),
+    ...paymentPayload(order),
     etaMinutes: parseEtaMinutes(order.etaMinutes),
     decisionDate: String(order.decisionDate || ""),
     decisionTime: String(order.decisionTime || ""),

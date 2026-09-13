@@ -127,6 +127,7 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
     "Dr Pepper",
     "Still Water",
     "Sparkling Water",
+    "Smart Water",
     "J2O Orange",
     "J2O Apple & Raspberry"
   ];
@@ -146,20 +147,40 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
 
   assert.deepEqual(
     drink.options.map((option) => option.name),
-    [...coldDrinkNames, ...hotDrinkUpgradeNames]
+    [...coldDrinkNames, "Red Bull", ...hotDrinkUpgradeNames]
   );
   coldDrinkNames.forEach((name) => {
     assert.equal(optionNamed(drink, name).priceAdjustment, 0, `${name} should be included`);
   });
-  ["Fanta Fruit Twist", "Dr Pepper"].forEach((name) => {
+  ["Fanta Fruit Twist", "Dr Pepper", "Smart Water", "Red Bull"].forEach((name) => {
     assert.deepEqual(
       optionNamed(drink, name).allergenCodes,
       [],
       `${name} should not make an unverified allergen claim`
     );
   });
+  assert.equal(optionNamed(drink, "Red Bull").priceAdjustment, 1, "Red Bull should cost +£1");
   hotDrinkUpgradeNames.forEach((name) => {
     assert.equal(optionNamed(drink, name).priceAdjustment, 1, `${name} should cost +£1`);
+  });
+});
+
+test("standalone soft drinks use the approved website prices", () => {
+  const expectedPrices = new Map([
+    ["Coca-Cola Can", 1.5],
+    ["Diet Coke Can", 1.5],
+    ["Fanta Can", 1.5],
+    ["Fanta Fruit Twist", 1.5],
+    ["Sprite Can", 1.5],
+    ["Dr Pepper", 1.5],
+    ["Red Bull", 2],
+    ["Smart Water", 1.5]
+  ]);
+
+  expectedPrices.forEach((price, name) => {
+    const drink = itemNamed("Soft Drinks", name);
+    assert.equal(drink.basePrice, price, `${name} should cost £${price.toFixed(2)}`);
+    assert.deepEqual(drink.codes, [], `${name} should not make an unverified allergen claim`);
   });
 });
 

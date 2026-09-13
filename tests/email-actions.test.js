@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 
 import { createBooking, listBookingReviewFeed } from "../functions/_lib/bookings-service.js";
-import { emailActionSecret, emailActionToken } from "../functions/_lib/email-actions.js";
+import { createOrderRecord, saveOrders } from "../functions/_orders-core.js";
+import { emailActionSecret, emailActionToken, emailActionUrl } from "../functions/_lib/email-actions.js";
 import { createOrder, listOrderReviewFeed } from "../functions/_lib/orders-service.js";
 import { onRequestGet as getBookingAction, onRequestPost as postBookingAction } from "../functions/api/email-actions/bookings.js";
 import { onRequestGet as getOrderAction, onRequestPost as postOrderAction } from "../functions/api/email-actions/orders.js";
@@ -147,4 +148,46 @@ test("order staff email action accepts a submitted order and sets ETA", async ()
   } finally {
     mock.restore();
   }
+});
+
+test("order email action confirmation identifies cash due without a refund warning", async () => {
+  const env = {
+    SITE_ORIGIN: "https://millers.cafe",
+    EMAIL_ACTION_SECRET: "email-action-secret"
+  };
+  const created = createOrderRecord([], makeOrderPayload(), {
+    paymentProvider: "cash",
+    paymentStatus: "unpaid",
+    paymentAmountTotal: 1250,
+    paymentCurrency: "gbp"
+  });
+  assert.equal(created.ok, true);
+  await saveOrders(env, [created.record]);
+  const rejectUrl = await emailActionUrl(env, {
+    kind: "order",
+    reference: created.reference,
+    status: "rejected"
+  });
+
+  const response = await getOrderAction({
+    env,
+    request: new Request(rejectUrl)
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Cash due on collection: £12\.50/);
+  assert.doesNotMatch(html, /Stripe-paid order will attempt a refund/);
+
+  const actionResponse = await postOrderAction({
+    env,
+    request: new Request(rejectUrl, { method: "POST" })
+  });
+  const actionHtml = await actionResponse.text();
+  assert.equal(actionResponse.status, 200);
+  assert.match(
+    actionHtml,
+    /No online payment was taken\. Any cash already paid will be handled directly by Millers Café\./
+  );
+  assert.doesNotMatch(actionHtml, /No payment taken/i);
 });

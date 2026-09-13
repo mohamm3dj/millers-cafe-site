@@ -7,12 +7,12 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
   <title>Collection Order | Millers Café</title>
-  <meta name="description" content="Order collection from Millers Café online and pay securely with Stripe.">
+  <meta name="description" content="Order collection from Millers Café online and choose secure card payment or cash on collection.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://millers.cafe/collection/">
   <link rel="preload" href="../assets/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="../assets/urbanist-variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="../styles.css?v=20260901c">
+  <link rel="stylesheet" href="../styles.css?v=20260913a">
 </head>
 <body class="publicBody orderBody">
   <a class="skipLink" href="#mainContent">Skip to main content</a>
@@ -249,7 +249,27 @@
             <button id="orderEditItemsBtn" class="orderReviewEditBtn" type="button">Edit basket</button>
           </div>
 
-          <p class="policyConsentNote orderCheckoutField">By continuing to payment, you agree to the <a href="../terms/">online terms</a>, <a href="../refunds/">cancellations and refunds policy</a>, and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
+          <fieldset id="orderPaymentMethod" class="orderPaymentMethod orderCheckoutField">
+            <legend class="orderPaymentLegend">Payment method</legend>
+            <div class="orderPaymentOptions">
+              <label class="orderPaymentOption">
+                <input id="orderPaymentCard" name="paymentMethod" type="radio" value="card" aria-describedby="orderPaymentCardHint" checked required>
+                <span class="orderPaymentOptionText">
+                  <strong>Card online</strong>
+                  <small id="orderPaymentCardHint">Pay securely now by card</small>
+                </span>
+              </label>
+              <label id="orderPaymentCashOption" class="orderPaymentOption" hidden>
+                <input id="orderPaymentCash" name="paymentMethod" type="radio" value="cash" aria-describedby="orderPaymentCashHint" required disabled>
+                <span class="orderPaymentOptionText">
+                  <strong>Cash on collection</strong>
+                  <small id="orderPaymentCashHint">Pay at the café when you collect</small>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <p class="policyConsentNote orderCheckoutField">By placing your order, you agree to the <a href="../terms/">online terms</a>, <a href="../refunds/">cancellations and refunds policy</a>, and acknowledge the <a href="../privacy/">privacy notice</a>.</p>
           <div id="orderCheckoutActions" class="bookingActions orderCheckoutField">
             <button id="orderBackToItems" class="orderBackToItemsBtn" type="button"><img src="../assets/icon-arrow-left.svg" alt="" width="18" height="18">Back to dishes</button>
             <button id="orderSubmit" class="bookingSubmitBtn" type="submit">Continue to secure payment</button>
@@ -271,12 +291,12 @@
         <ol class="orderBasketProgress" aria-label="Checkout progress">
           <li class="isActive"><span>1</span>Basket</li>
           <li><span>2</span>Details</li>
-          <li><span>3</span>Payment</li>
+          <li id="stickyCheckoutPaymentStep"><span>3</span>Payment</li>
         </ol>
         <button id="stickyCheckoutBtn" class="stickyCheckoutBtn" type="button">Continue</button>
       </div>
 
-      <div id="orderResult" class="bookingResult" hidden></div>
+      <div id="orderResult" class="bookingResult" role="region" aria-label="Order confirmation" tabindex="-1" hidden></div>
       <div id="orderError" class="bookingError" role="alert" hidden></div>
     </section>
 
@@ -290,6 +310,6 @@
     </footer>
   </main>
   <script src="../client-tools.js?v=20260710b"></script>
-  <script type="module" src="../orders/order-form.js?v=20260904a"></script>
+  <script type="module" src="../orders/order-form.js?v=20260913b"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ import {
   getMenuItemAllergenLabels,
   getMenuItemDietaryDisplay,
   getPreferredModifierOptionIndex
-} from "./menu-catalog.js?v=20260904a";
+} from "./menu-catalog.js?v=20260913a";
 import {
   calculateOrderPricing,
   canAdvanceToCheckoutDetails,
@@ -15,6 +15,7 @@ import {
   scrollBehaviorForPreference
 } from "./order-draft.js?v=20260901c";
 import { getOrderItemDescription } from "./order-media.js?v=20260714a";
+import { createCheckoutAttemptManager } from "./checkout-attempt.js?v=20260913a";
 
 const CHECKOUT_API_BASE = "/api/orders/checkout";
 const CHECKOUT_SESSION_API_BASE = "/api/orders/checkout-session";
@@ -206,6 +207,10 @@ const noticeEl = document.getElementById("orderNotice");
 const resultEl = document.getElementById("orderResult");
 const errorEl = document.getElementById("orderError");
 const submitBtn = document.getElementById("orderSubmit");
+const paymentMethodInputs = [...document.querySelectorAll('input[name="paymentMethod"]')];
+const cardPaymentInput = document.getElementById("orderPaymentCard");
+const cashPaymentInput = document.getElementById("orderPaymentCash");
+const cashPaymentOption = document.getElementById("orderPaymentCashOption");
 
 const orderTypeField = document.getElementById("orderType");
 const nameInput = document.getElementById("orderName");
@@ -270,6 +275,7 @@ const stickyCheckoutBar = document.getElementById("stickyCheckoutBar");
 const stickyCheckoutDateTime = document.getElementById("stickyCheckoutDateTime");
 const stickyCheckoutOrder = document.getElementById("stickyCheckoutOrder");
 const stickyCheckoutBtn = document.getElementById("stickyCheckoutBtn");
+const stickyCheckoutPaymentStep = document.getElementById("stickyCheckoutPaymentStep");
 const turnstileContainer = document.getElementById("orderTurnstile");
 const orderStepBadge1 = document.getElementById("orderStepBadge1");
 const orderStepBadge2 = document.getElementById("orderStepBadge2");
@@ -307,6 +313,7 @@ let mobileOpenCategory = "";
 let searchQuery = "";
 let statusPollTimer = null;
 let statusPollKey = "";
+let statusPollGeneration = 0;
 let availableOrderDates = [];
 let availableOrderDateSet = new Set();
 let orderCalendarViewMonthUTC = null;
@@ -321,8 +328,8 @@ let pendingRemovedCartLine = null;
 let removeUndoTimer = null;
 let persistedOrderDraft = createEmptyOrderDraft();
 let restoredDraftMeta = createEmptyOrderDraftMeta();
-let checkoutAttemptKey = "";
-let checkoutAttemptFingerprint = "";
+let editedCheckoutFields = new WeakSet();
+let activeCheckoutValidationFields = new WeakSet();
 
 function newCheckoutAttemptKey() {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
@@ -331,13 +338,21 @@ function newCheckoutAttemptKey() {
   return `order-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function checkoutIdempotencyKey(payload, cartPayload) {
-  const fingerprint = JSON.stringify({ payload, cartItems: cartPayload });
-  if (!checkoutAttemptKey || checkoutAttemptFingerprint !== fingerprint) {
-    checkoutAttemptKey = newCheckoutAttemptKey();
-    checkoutAttemptFingerprint = fingerprint;
+function checkoutAttemptStorage() {
+  try {
+    return window.sessionStorage;
+  } catch (error) {
+    return null;
   }
-  return checkoutAttemptKey;
+}
+
+const checkoutAttemptManager = createCheckoutAttemptManager({
+  storage: checkoutAttemptStorage(),
+  createKey: newCheckoutAttemptKey
+});
+
+async function checkoutIdempotencyKey(payload, cartPayload) {
+  return checkoutAttemptManager.keyFor(payload, cartPayload);
 }
 let restoredDraftHadCart = false;
 let checkoutFinalizeTimer = null;
@@ -345,6 +360,7 @@ let orderTurnstileToken = "";
 let orderTurnstileWidget = null;
 let siteConfigState = null;
 let onlineOrderingEnabled = true;
+let cashOrderingEnabled = false;
 
 let normalizedMenu = normalizeMenuCatalog(MILLERS_ORDER_MENU);
 
@@ -425,6 +441,8 @@ function applyLiveSiteConfig(config) {
   const orders = next.orders && typeof next.orders === "object" ? next.orders : {};
   const delivery = next.delivery && typeof next.delivery === "object" ? next.delivery : {};
   onlineOrderingEnabled = orders.onlineOrderingEnabled !== false;
+  cashOrderingEnabled = orders.cashOrderingEnabled === true;
+  updateCashPaymentAvailability();
 
   SERVICE_START_MINUTES = Math.round(Number(orders.serviceStartMinutes ?? SERVICE_START_MINUTES));
   SERVICE_END_MINUTES = Math.round(Number(orders.serviceEndMinutes ?? SERVICE_END_MINUTES));
@@ -517,6 +535,37 @@ function currentOrderType() {
   return String(orderTypeField?.value || "collection").toLowerCase() === "delivery"
     ? "delivery"
     : "collection";
+}
+
+function currentPaymentMethod() {
+  const selected = paymentMethodInputs.find((input) => input.checked);
+  return String(selected?.value || "card").toLowerCase() === "cash" ? "cash" : "card";
+}
+
+function updateCashPaymentAvailability() {
+  if (cashPaymentOption) cashPaymentOption.hidden = !cashOrderingEnabled;
+  if (cashPaymentInput) cashPaymentInput.disabled = isSubmitting || !cashOrderingEnabled;
+
+  if (!cashOrderingEnabled && cashPaymentInput?.checked) {
+    cashPaymentInput.checked = false;
+    if (cardPaymentInput) cardPaymentInput.checked = true;
+    updateOrderReviewRow();
+    updateSubmitButtonState();
+    updateOrderFlowStepLabels();
+  }
+}
+
+function cashPaymentTiming(orderType = currentOrderType()) {
+  return orderType === "delivery" ? "on delivery" : "on collection";
+}
+
+function confirmedPaymentMethod(body, fallback = "card") {
+  const serverMethod = normalizeText(body?.paymentMethod).toLowerCase();
+  if (serverMethod === "cash" || serverMethod === "card") return serverMethod;
+  const provider = normalizeText(body?.paymentProvider).toLowerCase();
+  if (provider === "cash") return "cash";
+  if (provider === "stripe") return "card";
+  return fallback === "cash" ? "cash" : "card";
 }
 
 function createMenuItemId(categoryKey, itemName, itemIndex) {
@@ -800,7 +849,7 @@ function updateDeliveryAreaHint() {
         : "This postcode may be outside our normal delivery area.",
       outsideAreaMode === "reject"
         ? "Please call Millers Café before placing a delivery order."
-        : "Estimated fee and ETA will be confirmed after checkout.",
+        : "Estimated fee and ETA will be confirmed after you place the order.",
       "warning"
     );
     return;
@@ -877,6 +926,37 @@ function setInlineError(input, message) {
   }
   mirrorInlineErrorToVisibleProxy(input, errorEl, hasError);
   return !hasError;
+}
+
+function markCheckoutFieldEdited(input) {
+  if (input && typeof input === "object") editedCheckoutFields.add(input);
+}
+
+function validateActiveCheckoutField(input, validator) {
+  if (!input || !activeCheckoutValidationFields.has(input)) return true;
+  return validator();
+}
+
+function validateEditedCheckoutFieldOnBlur(input, validator) {
+  if (!input || !editedCheckoutFields.has(input)) return true;
+  activeCheckoutValidationFields.add(input);
+  return validator();
+}
+
+function activateCheckoutFieldValidation() {
+  [
+    nameInput,
+    phoneInput,
+    emailInput,
+    dateSelect,
+    timeSelect,
+    address1Input,
+    townInput,
+    postcodeInput,
+    sensitiveInfoConsentInput
+  ].forEach((input) => {
+    if (input && typeof input === "object") activeCheckoutValidationFields.add(input);
+  });
 }
 
 function validateNameField() {
@@ -989,6 +1069,8 @@ function focusFirstInvalidCheckoutField() {
 }
 
 function clearInlineValidation() {
+  editedCheckoutFields = new WeakSet();
+  activeCheckoutValidationFields = new WeakSet();
   [
     nameInput,
     phoneInput,
@@ -1015,14 +1097,18 @@ function updateOrderReviewRow() {
     : "No date";
   const timeLabel = timeSelect?.value ? formatOrderSlotTime(timeSelect.value) : "No time";
   const typeLabel = orderType === "delivery" ? "Delivery" : "Collection";
+  const paymentLabel = currentPaymentMethod() === "cash"
+    ? `Cash ${cashPaymentTiming(orderType)}`
+    : "Card online";
   const priceSummary = orderType === "delivery"
     ? `Subtotal ${formatGBP(totals.subtotal)} + delivery ${formatGBP(totals.deliveryFee)} = total ${formatGBP(totals.total)}`
     : `Subtotal ${formatGBP(totals.subtotal)} − 10% discount on eligible items ${formatGBP(totals.collectionDiscount)} = total ${formatGBP(totals.total)}`;
-  orderReviewText.textContent = `${typeLabel} · ${totals.totalQuantity} ${dishLabel} · ${priceSummary} · ${dateLabel} at ${timeLabel}`;
+  orderReviewText.textContent = `${typeLabel} · ${totals.totalQuantity} ${dishLabel} · ${priceSummary} · ${dateLabel} at ${timeLabel} · ${paymentLabel}`;
 }
 
 function updateOrderFlowStepLabels() {
   const paymentStageActive = currentOrderStep === 2 && isSubmitting;
+  const cashSelected = currentPaymentMethod() === "cash";
   const stages = [
     {
       element: orderStepBadge1,
@@ -1044,8 +1130,8 @@ function updateOrderFlowStepLabels() {
     {
       element: orderStepBadge3,
       number: "3",
-      text: "Payment",
-      label: "Step 3 of 3: Secure payment",
+      text: cashSelected ? "Cash" : "Payment",
+      label: cashSelected ? "Step 3 of 3: Place cash order" : "Step 3 of 3: Secure card payment",
       active: paymentStageActive,
       complete: false,
       locked: !paymentStageActive
@@ -1069,6 +1155,16 @@ function updateOrderFlowStepLabels() {
     if (stage.active) stage.element.setAttribute("aria-current", "step");
     else stage.element.removeAttribute("aria-current");
   });
+
+  if (stickyCheckoutPaymentStep) {
+    const number = document.createElement("span");
+    number.textContent = "3";
+    stickyCheckoutPaymentStep.replaceChildren(number, cashSelected ? "Cash" : "Payment");
+    stickyCheckoutPaymentStep.setAttribute(
+      "aria-label",
+      cashSelected ? `Cash ${cashPaymentTiming()}` : "Card payment"
+    );
+  }
 }
 
 function setOrderStep(step, options = {}) {
@@ -1443,6 +1539,7 @@ function updateStickyCheckoutBar() {
   const isMobileMenu = isMobileOrderMenuLayout() && currentOrderStep === 1;
   const isMobileCheckout = isMobileOrderMenuLayout() && currentOrderStep === 2;
   const isDesktopMenu = isDesktopBasketLayout() && currentOrderStep === 1;
+  const cashSelected = currentPaymentMethod() === "cash";
 
   const stickyHost = isMobileCheckout ? form?.parentElement : (basketColumn || orderHub);
   if (stickyHost && stickyCheckoutBar.parentElement !== stickyHost) {
@@ -1458,7 +1555,9 @@ function updateStickyCheckoutBar() {
   if (stickyCheckoutDateTime) {
     stickyCheckoutDateTime.textContent = isMobileMenu
       ? `${totals.totalQuantity} item${totals.totalQuantity === 1 ? "" : "s"} in cart`
-      : (isMobileCheckout ? "Secure Stripe checkout" : `${dateLabel} · ${timeLabel}`);
+      : (isMobileCheckout
+        ? (cashSelected ? `Cash ${cashPaymentTiming()}` : "Secure card payment")
+        : `${dateLabel} · ${timeLabel}`);
   }
   if (stickyCheckoutOrder) {
     const adjustmentText = currentOrderType() === "delivery" && totals.deliveryFee > 0
@@ -1467,7 +1566,7 @@ function updateStickyCheckoutBar() {
     stickyCheckoutOrder.textContent = isMobileMenu
       ? `${formatGBP(totals.total)} total`
       : (isMobileCheckout
-        ? `${formatGBP(totals.total)} due`
+        ? `${formatGBP(totals.total)} ${cashSelected ? `due ${cashPaymentTiming()}` : "due online"}`
         : `${totals.totalQuantity} ${totals.totalQuantity === 1 ? "dish" : "dishes"} · ${formatGBP(totals.total)}${adjustmentText}`);
   }
   if (stickyCheckoutBtn) {
@@ -1477,7 +1576,7 @@ function updateStickyCheckoutBar() {
       : (isMobileMenu
         ? (hasItems ? "View basket" : "Add dishes")
         : (isMobileCheckout
-          ? "Pay securely"
+          ? (cashSelected ? "Place cash order" : "Pay securely")
           : (isDesktopMenu
             ? (hasItems ? `Continue to checkout · ${totalLabel}` : "Add dishes to continue")
             : "Continue")));
@@ -1486,7 +1585,9 @@ function updateStickyCheckoutBar() {
       : (isMobileMenu
         ? (hasItems ? `View basket, total ${totalLabel}` : "Add dishes to continue")
         : (isMobileCheckout
-          ? `Continue to secure payment, total ${totalLabel}`
+          ? (cashSelected
+            ? `Place cash order, ${totalLabel} due ${cashPaymentTiming()}`
+            : `Continue to secure card payment, total ${totalLabel}`)
           : (isDesktopMenu
             ? (hasItems ? `Continue to checkout details, total ${totalLabel}` : "Add dishes to continue")
             : "Continue"))));
@@ -1508,7 +1609,7 @@ function updateStickyCheckoutBar() {
     basketCheckoutBtn.textContent = !onlineOrderingEnabled
       ? "Online ordering paused"
       : (isSubmitting
-      ? "Redirecting..."
+      ? (cashSelected ? "Placing order..." : "Redirecting...")
       : (hasSelectableTime ? "Continue to checkout" : "Choose another date"));
   }
 
@@ -1650,6 +1751,18 @@ function showResult(message, referenceText) {
 
   card.appendChild(actions);
   resultEl.appendChild(card);
+  window.requestAnimationFrame(() => {
+    resultEl.focus({ preventScroll: true });
+    resultEl.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
+  });
+}
+
+function updateOrderResultSummary(titleText, leadText) {
+  if (!resultEl) return;
+  const title = resultEl.querySelector(".orderResultTitle");
+  const lead = resultEl.querySelector(".orderResultLead");
+  if (title && titleText) title.textContent = titleText;
+  if (lead && leadText) lead.textContent = leadText;
 }
 
 function showCheckoutProcessing(message) {
@@ -1726,29 +1839,33 @@ function resetAfterSuccessfulCheckout(orderType, preservedPostcode = "") {
   syncOrderCalendarToSelectedDate();
   updateDeliveryAreaHint();
   clearSavedOrderDraft();
-  checkoutAttemptKey = "";
-  checkoutAttemptFingerprint = "";
+  checkoutAttemptManager.clear();
   resetOrderBuilder();
   clearInlineValidation();
   setOrderStep(1, { instant: true, silent: true });
 }
 
-function finishCheckoutSuccess(body, orderType, preservedPostcode = "") {
+function finishOrderSuccess(body, orderType, preservedPostcode = "", fallbackPaymentMethod = "card") {
   clearFeedback();
   stopCheckoutFinalizePolling();
   clearCheckoutReturnParams();
 
   const orderLabel = orderType === "delivery" ? "Delivery" : "Collection";
-  const successMessage = body.emailStatus === "pending"
-    ? `${orderLabel} order paid and placed. Staff approval is still required. Confirmation email is delayed right now.`
-    : `${orderLabel} order paid and placed. We are waiting for staff approval.`;
+  const isCash = confirmedPaymentMethod(body, fallbackPaymentMethod) === "cash";
+  const notificationDelay = body.emailStatus === "pending"
+    ? " Some order notifications may be delayed."
+    : "";
+  const cashDueMessage = cashDueStatusMessage(body, orderType);
+  const successMessage = isCash
+    ? `${orderLabel} cash order placed. ${cashDueMessage} We are waiting for staff approval.${notificationDelay}`
+    : `${orderLabel} order paid and placed. We are waiting for staff approval.${notificationDelay}`;
   const reference = body.reference ? `Reference: ${body.reference}` : "";
 
   showResult(successMessage, reference);
   setNotice(
-    body.emailStatus === "pending"
-      ? `${orderLabel} order submitted and paid. Confirmation email is delayed right now.`
-      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Café.`,
+    isCash
+      ? `${orderLabel} cash order submitted. ${cashDueMessage} Waiting for approval from Millers Café.${notificationDelay}`
+      : `${orderLabel} order submitted and paid. Waiting for approval from Millers Café.${notificationDelay}`,
     false
   );
 
@@ -1788,7 +1905,7 @@ async function finalizeSuccessfulCheckout(sessionId, orderType, preservedPostcod
   try {
     const body = await fetchCheckoutSessionStatus(sessionId);
     if (body.status === "completed") {
-      finishCheckoutSuccess(body, orderType, preservedPostcode);
+      finishOrderSuccess(body, orderType, preservedPostcode, "card");
       return;
     }
 
@@ -1825,6 +1942,7 @@ function stopStatusPolling() {
     statusPollTimer = null;
   }
   statusPollKey = "";
+  statusPollGeneration += 1;
 }
 
 function formatEtaLabel(etaMinutes, orderType, fallbackDate, fallbackTime) {
@@ -1845,6 +1963,15 @@ function formatEtaLabel(etaMinutes, orderType, fallbackDate, fallbackTime) {
   return `Estimated ${orderType === "delivery" ? "delivery" : "collection"} time will be confirmed shortly.`;
 }
 
+function cashDueStatusMessage(statusData, orderType) {
+  const amountTotal = Number(statusData?.paymentAmountTotal ?? statusData?.amountTotal);
+  const currency = normalizeText(statusData?.paymentCurrency ?? statusData?.currency ?? "GBP").toUpperCase();
+  const amountLabel = currency === "GBP" && Number.isSafeInteger(amountTotal) && amountTotal >= 0
+    ? `${formatGBP(amountTotal / 100)} cash`
+    : "Cash";
+  return `${amountLabel} is due ${cashPaymentTiming(orderType)}.`;
+}
+
 function renderOrderStatusTracker(state) {
   if (!resultEl) return;
 
@@ -1859,7 +1986,7 @@ function renderOrderStatusTracker(state) {
       "</div>",
       "<div class=\"orderStatusBody\">",
       "<div class=\"orderStatusSpinner\" aria-hidden=\"true\"><span></span><span></span><span></span></div>",
-      "<p class=\"orderStatusMessage\"></p>",
+      "<p class=\"orderStatusMessage\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\"></p>",
       "</div>"
     ].join("");
     resultEl.appendChild(panel);
@@ -1874,7 +2001,7 @@ function renderOrderStatusTracker(state) {
   if (state.type === "accepted") {
     panel.classList.add("isAccepted");
     if (badge) badge.textContent = "Accepted";
-    if (message) message.textContent = state.message;
+    if (message && message.textContent !== state.message) message.textContent = state.message;
     if (spinner) spinner.hidden = true;
     return;
   }
@@ -1882,14 +2009,14 @@ function renderOrderStatusTracker(state) {
   if (state.type === "rejected") {
     panel.classList.add("isRejected");
     if (badge) badge.textContent = "Rejected";
-    if (message) message.textContent = state.message;
+    if (message && message.textContent !== state.message) message.textContent = state.message;
     if (spinner) spinner.hidden = true;
     return;
   }
 
   panel.classList.add("isPending");
   if (badge) badge.textContent = "Pending";
-  if (message) message.textContent = state.message;
+  if (message && message.textContent !== state.message) message.textContent = state.message;
   if (spinner) spinner.hidden = false;
 }
 
@@ -1923,6 +2050,7 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
 
   stopStatusPolling();
   statusPollKey = `${reference}:${trackingToken}`;
+  const pollGeneration = statusPollGeneration;
 
   renderOrderStatusTracker({
     type: "pending",
@@ -1931,11 +2059,14 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
 
   const poll = async () => {
     const activeKey = `${reference}:${trackingToken}`;
-    if (statusPollKey !== activeKey) return;
+    const isCurrentPoll = () => statusPollKey === activeKey && statusPollGeneration === pollGeneration;
+    if (!isCurrentPoll()) return;
 
     try {
       const statusData = await fetchOrderStatus(reference, trackingToken);
+      if (!isCurrentPoll()) return;
       const status = String(statusData.status || "submitted").toLowerCase();
+      const cashOrder = statusData.paymentMethod === "cash" || statusData.paymentProvider === "cash";
 
       if (status === "accepted") {
         const etaMessage = formatEtaLabel(
@@ -1946,19 +2077,37 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
         );
         renderOrderStatusTracker({
           type: "accepted",
-          message: `Order accepted. ${etaMessage}`
+          message: cashOrder
+            ? `Order accepted. ${etaMessage} ${cashDueStatusMessage(statusData, orderType)}`
+            : `Order accepted. ${etaMessage}`
         });
-        setNotice("Order accepted by Millers Café.", false);
+        setNotice(
+          cashOrder
+            ? `Order accepted by Millers Café. ${cashDueStatusMessage(statusData, orderType)}`
+            : "Order accepted by Millers Café.",
+          false
+        );
         stopStatusPolling();
         return;
       }
 
       if (status === "rejected" || status === "declined" || status === "cancelled") {
+        const cashRejectionMessage = "No online payment was taken. Any cash already paid will be handled directly by Millers Café.";
+        if (cashOrder) {
+          updateOrderResultSummary("Order rejected", cashRejectionMessage);
+        }
         renderOrderStatusTracker({
           type: "rejected",
-          message: "Order rejected. Please call Millers Café on 01472 828600 if you need help."
+          message: cashOrder
+            ? `Order rejected. ${cashRejectionMessage} Please call Millers Café on 01472 828600 if you need help.`
+            : "Order rejected. Please call Millers Café on 01472 828600 if you need help."
         });
-        setNotice("Order was rejected by Millers Café.", true);
+        setNotice(
+          cashOrder
+            ? `Order was rejected by Millers Café. ${cashRejectionMessage}`
+            : "Order was rejected by Millers Café.",
+          true
+        );
         stopStatusPolling();
         return;
       }
@@ -1968,6 +2117,7 @@ function startOrderStatusTracking(reference, trackingToken, orderType) {
         message: "Awaiting approval from the team. We'll update this automatically."
       });
     } catch (error) {
+      if (!isCurrentPoll()) return;
       renderOrderStatusTracker({
         type: "pending",
         message: "Still waiting for approval. Live updates are reconnecting."
@@ -2043,19 +2193,27 @@ async function preloadAccountProfile() {
 }
 
 function setSubmitting(submitting) {
-  if (!submitBtn) return;
   isSubmitting = Boolean(submitting);
+  if (form) {
+    if (isSubmitting) form.setAttribute("aria-busy", "true");
+    else form.removeAttribute("aria-busy");
+  }
+  paymentMethodInputs.forEach((input) => {
+    input.disabled = isSubmitting || (input === cashPaymentInput && !cashOrderingEnabled);
+  });
+  if (!submitBtn) return;
   updateSubmitButtonState();
   updateOrderFlowStepLabels();
 }
 
 function updateSubmitButtonState() {
   if (!submitBtn) return;
-  const idleLabel = "Continue to secure payment";
+  const cashSelected = currentPaymentMethod() === "cash";
+  const idleLabel = cashSelected ? "Place cash order" : "Continue to secure payment";
   submitBtn.disabled = !onlineOrderingEnabled || isSubmitting || !hasSelectableTime || cartItems.length === 0;
   submitBtn.textContent = !onlineOrderingEnabled
     ? "Online ordering paused"
-    : (isSubmitting ? "Redirecting..." : idleLabel);
+    : (isSubmitting ? (cashSelected ? "Placing order..." : "Redirecting...") : idleLabel);
   updateStickyCheckoutBar();
 }
 
@@ -4012,6 +4170,7 @@ async function handleSubmit(event) {
     return;
   }
 
+  activateCheckoutFieldValidation();
   if (!runCheckoutFieldValidation()) {
     showError("Please correct the highlighted fields.");
     focusFirstInvalidCheckoutField();
@@ -4019,8 +4178,15 @@ async function handleSubmit(event) {
   }
 
   const orderType = String(orderTypeField?.value || "collection").toLowerCase();
+  const paymentMethod = currentPaymentMethod();
+  if (paymentMethod === "cash" && !cashOrderingEnabled) {
+    updateCashPaymentAvailability();
+    showError("Cash ordering is not available right now. Please pay securely by card.");
+    return;
+  }
   const payload = {
     orderType,
+    paymentMethod,
     customerName: (nameInput?.value || "").trim(),
     phoneNumber: (phoneInput?.value || "").trim(),
     email: (emailInput?.value || "").trim(),
@@ -4049,21 +4215,23 @@ async function handleSubmit(event) {
       return;
     }
 
-    setNotice("This postcode may be outside our usual delivery area. We will review it after payment and contact you if there is a problem.", true);
+    setNotice("This postcode may be outside our usual delivery area. We will review it after you place the order and contact you if there is a problem.", true);
   }
 
   setSubmitting(true);
 
   let redirectStarted = false;
   try {
-    void trackClientEvent("order_checkout_redirect", {
-      page: "order",
-      route: window.location.pathname,
-      orderType
-    });
+    if (paymentMethod === "card") {
+      void trackClientEvent("order_checkout_redirect", {
+        page: "order",
+        route: window.location.pathname,
+        orderType
+      });
+    }
 
     const cartPayload = checkoutCartPayload();
-    const idempotencyKey = checkoutIdempotencyKey(payload, cartPayload);
+    const idempotencyKey = await checkoutIdempotencyKey(payload, cartPayload);
     const response = await fetch(CHECKOUT_API_BASE, {
       method: "POST",
       headers: {
@@ -4086,7 +4254,23 @@ async function handleSubmit(event) {
     }
 
     if (!response.ok) {
-      showError(body.error || "Could not start secure checkout right now. Please try again.");
+      showError(body.error || (paymentMethod === "cash"
+        ? "Could not place your cash order right now. Please try again."
+        : "Could not start secure checkout right now. Please try again."));
+      return;
+    }
+
+    if (body.status === "completed") {
+      if (!body.reference || !body.trackingToken) {
+        showError("Your order could not be confirmed right now. Please try again.");
+        return;
+      }
+      finishOrderSuccess(body, orderType, payload.postcode, paymentMethod);
+      return;
+    }
+
+    if (paymentMethod === "cash") {
+      showError("Your cash order could not be confirmed right now. Please try again.");
       return;
     }
 
@@ -4099,7 +4283,9 @@ async function handleSubmit(event) {
     redirectStarted = true;
     window.location.href = body.checkoutUrl;
   } catch (error) {
-    showError("Secure checkout is currently unavailable. Please try again shortly.");
+    showError(paymentMethod === "cash"
+      ? "Cash ordering is currently unavailable. Please try again shortly."
+      : "Secure checkout is currently unavailable. Please try again shortly.");
   } finally {
     if (!redirectStarted) resetOrderTurnstile();
     setSubmitting(false);
@@ -4397,28 +4583,37 @@ async function initialize() {
   });
   orderCalendarPrevBtn?.addEventListener("click", () => moveOrderCalendarMonth(-1));
   orderCalendarNextBtn?.addEventListener("click", () => moveOrderCalendarMonth(1));
-  nameInput?.addEventListener("input", validateNameField);
-  nameInput?.addEventListener("blur", validateNameField);
+  nameInput?.addEventListener("input", () => {
+    markCheckoutFieldEdited(nameInput);
+    validateActiveCheckoutField(nameInput, validateNameField);
+  });
+  nameInput?.addEventListener("blur", () => validateEditedCheckoutFieldOnBlur(nameInput, validateNameField));
   phoneInput?.addEventListener("input", () => {
+    markCheckoutFieldEdited(phoneInput);
     normalizePhoneField();
-    validatePhoneField();
+    validateActiveCheckoutField(phoneInput, validatePhoneField);
   });
   phoneInput?.addEventListener("blur", () => {
     normalizePhoneField();
-    validatePhoneField();
+    validateEditedCheckoutFieldOnBlur(phoneInput, validatePhoneField);
   });
-  emailInput?.addEventListener("input", validateEmailField);
-  emailInput?.addEventListener("blur", validateEmailField);
+  emailInput?.addEventListener("input", () => {
+    markCheckoutFieldEdited(emailInput);
+    validateActiveCheckoutField(emailInput, validateEmailField);
+  });
+  emailInput?.addEventListener("blur", () => validateEditedCheckoutFieldOnBlur(emailInput, validateEmailField));
   address1Input?.addEventListener("input", () => {
-    validateAddress1Field();
+    markCheckoutFieldEdited(address1Input);
+    validateActiveCheckoutField(address1Input, validateAddress1Field);
     updateOrderContextStrip();
   });
-  address1Input?.addEventListener("blur", validateAddress1Field);
+  address1Input?.addEventListener("blur", () => validateEditedCheckoutFieldOnBlur(address1Input, validateAddress1Field));
   townInput?.addEventListener("input", () => {
-    validateTownField();
+    markCheckoutFieldEdited(townInput);
+    validateActiveCheckoutField(townInput, validateTownField);
     updateOrderContextStrip();
   });
-  townInput?.addEventListener("blur", validateTownField);
+  townInput?.addEventListener("blur", () => validateEditedCheckoutFieldOnBlur(townInput, validateTownField));
   timeSelect?.addEventListener("change", () => {
     renderOrderSlotCards(lastRenderedTimeRows);
     validateTimeField();
@@ -4426,18 +4621,38 @@ async function initialize() {
     updateStickyCheckoutBar();
   });
   postcodeInput?.addEventListener("input", () => {
+    markCheckoutFieldEdited(postcodeInput);
     normalizePostcodeField();
     updateDeliveryAreaHint();
-    validatePostcodeField();
+    validateActiveCheckoutField(postcodeInput, validatePostcodeField);
     updateOrderContextStrip();
   });
   postcodeInput?.addEventListener("blur", () => {
     normalizePostcodeField();
     updateDeliveryAreaHint();
-    validatePostcodeField();
+    validateEditedCheckoutFieldOnBlur(postcodeInput, validatePostcodeField);
   });
-  notesInput?.addEventListener("input", validateSensitiveInfoConsentField);
-  sensitiveInfoConsentInput?.addEventListener("change", validateSensitiveInfoConsentField);
+  notesInput?.addEventListener("input", () => {
+    markCheckoutFieldEdited(notesInput);
+    validateActiveCheckoutField(sensitiveInfoConsentInput, validateSensitiveInfoConsentField);
+  });
+  notesInput?.addEventListener("blur", () => {
+    if (!editedCheckoutFields.has(notesInput) || !sensitiveInfoConsentInput) return;
+    activeCheckoutValidationFields.add(sensitiveInfoConsentInput);
+    validateSensitiveInfoConsentField();
+  });
+  sensitiveInfoConsentInput?.addEventListener("change", () => {
+    markCheckoutFieldEdited(sensitiveInfoConsentInput);
+    activeCheckoutValidationFields.add(sensitiveInfoConsentInput);
+    validateSensitiveInfoConsentField();
+  });
+  paymentMethodInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      updateOrderReviewRow();
+      updateSubmitButtonState();
+      updateOrderFlowStepLabels();
+    });
+  });
   orderEditItemsBtn?.addEventListener("click", () => setOrderStep(1));
   orderBackToItemsBtn?.addEventListener("click", () => setOrderStep(1));
   stickyCheckoutBtn?.addEventListener("click", () => {

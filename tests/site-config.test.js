@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isOnlineOrderingEnabled } from "../functions/_lib/feature-flags.js";
+import { isCashOrderingEnabled, isOnlineOrderingEnabled } from "../functions/_lib/feature-flags.js";
 import { buildOpeningSummary, defaultSiteConfig, saveSiteConfig } from "../functions/_lib/site-config.js";
 
 test("online ordering fails closed on the production domain until explicitly enabled", () => {
@@ -16,6 +16,13 @@ test("online ordering fails closed on the production domain until explicitly ena
     false
   );
   assert.equal(isOnlineOrderingEnabled({}, "not a URL"), false);
+});
+
+test("cash ordering is fail-closed until explicitly enabled", () => {
+  assert.equal(isCashOrderingEnabled({}), false);
+  assert.equal(isCashOrderingEnabled({ CASH_ORDERING_ENABLED: "false" }), false);
+  assert.equal(isCashOrderingEnabled({ CASH_ORDERING_ENABLED: "true" }), true);
+  assert.equal(isCashOrderingEnabled({ CASH_ORDERING_ENABLED: "1" }), true);
 });
 
 test("opening summary does not imply a closed Monday is open", () => {

@@ -161,6 +161,17 @@ export async function retrieveCheckoutSession(env, sessionId) {
   return stripeRequest(env, "GET", `/checkout/sessions/${encodeURIComponent(normalized)}`);
 }
 
+export async function expireCheckoutSession(env, sessionId, options = {}) {
+  const normalized = String(sessionId || "").trim();
+  if (!normalized) {
+    throw new ApiError("Checkout session id is required.", 400);
+  }
+  return stripeRequest(env, "POST", `/checkout/sessions/${encodeURIComponent(normalized)}/expire`, {
+    form: new URLSearchParams(),
+    idempotencyKey: options.idempotencyKey
+  });
+}
+
 function parseStripeSignatureHeader(headerValue) {
   const header = String(headerValue || "").trim();
   if (!header) return { timestamp: 0, signatures: [] };

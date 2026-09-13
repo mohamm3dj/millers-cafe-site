@@ -19,3 +19,7 @@ export function isOnlineOrderingEnabled(env, requestUrl) {
     return false;
   }
 }
+
+export function isCashOrderingEnabled(env) {
+  return explicitBoolean(env?.CASH_ORDERING_ENABLED) === true;
+}

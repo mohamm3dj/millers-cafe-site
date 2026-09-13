@@ -271,7 +271,7 @@ function normalizeEtaMinutes(value) {
 
 function normalizePaymentProvider(value) {
   const normalized = String(value || "").trim().toLowerCase();
-  return normalized === "stripe" ? "stripe" : "";
+  return normalized === "stripe" || normalized === "cash" ? normalized : "";
 }
 
 function normalizePaymentStatus(value) {
@@ -656,6 +656,21 @@ async function loadOrderEntities(env) {
   }
 }
 
+export async function loadOrderEntity(env, orderId) {
+  const normalizedOrderId = String(orderId || "").trim();
+  if (!/^[a-zA-Z0-9-]{8,100}$/.test(normalizedOrderId)) return null;
+
+  if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.get === "function") {
+    return normalizeOrderRecord(
+      await env.BOOKINGS_KV.get(`${ORDER_ENTITY_PREFIX}${normalizedOrderId}`, "json")
+    );
+  }
+
+  return normalizeOrderRecord(
+    getInMemoryStore().find((order) => String(order?.id || "").trim() === normalizedOrderId) || null
+  );
+}
+
 export async function loadOrders(env, options = {}) {
   let records = [];
   if (env.BOOKINGS_KV && typeof env.BOOKINGS_KV.get === "function") {
@@ -1021,7 +1036,15 @@ export function feedRows(orders, includePast = false) {
       tracking_token: order.trackingToken || "",
       status_updated_at: order.statusUpdatedAt || order.createdAt,
       source: order.source,
-      created_at: order.createdAt
+      created_at: order.createdAt,
+      payment_provider: normalizePaymentProvider(order.paymentProvider),
+      payment_status: normalizePaymentStatus(order.paymentStatus),
+      payment_amount_total: normalizePaymentAmountTotal(order.paymentAmountTotal),
+      payment_currency: normalizePaymentCurrency(order.paymentCurrency),
+      refund_status: normalizeRefundStatus(order.refundStatus),
+      refund_id: String(order.refundId || "").trim(),
+      refund_attempts: normalizeRefundAttempts(order.refundAttempts),
+      refund_last_error: String(order.refundLastError || "").trim()
     }));
 }
 
@@ -1058,7 +1081,15 @@ export function toCSV(rows) {
     "tracking_token",
     "status_updated_at",
     "source",
-    "created_at"
+    "created_at",
+    "payment_provider",
+    "payment_status",
+    "payment_amount_total",
+    "payment_currency",
+    "refund_status",
+    "refund_id",
+    "refund_attempts",
+    "refund_last_error"
   ];
 
   const lines = [header.join(",")];

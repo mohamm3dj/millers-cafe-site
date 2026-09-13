@@ -86,7 +86,7 @@ export async function onRequestPost(context) {
     });
     return json(created, 201);
   } catch (error) {
-    return errorResponse(error, "Checkout session could not be created.");
+    return errorResponse(error, "Order checkout could not be started.");
   }
 }
 

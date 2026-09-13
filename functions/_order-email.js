@@ -16,7 +16,9 @@ function typeLabel(orderType) {
 }
 
 function formatPaymentAmount(order) {
-  const amountMinor = Number(order?.paymentAmountTotal);
+  const rawAmountMinor = order?.paymentAmountTotal;
+  if (rawAmountMinor === null || rawAmountMinor === undefined || rawAmountMinor === "") return "";
+  const amountMinor = Number(rawAmountMinor);
   const currency = String(order?.paymentCurrency || "gbp").trim().toUpperCase();
   if (!Number.isFinite(amountMinor) || amountMinor < 0) return "";
   const amount = amountMinor / 100;
@@ -24,6 +26,51 @@ function formatPaymentAmount(order) {
     style: "currency",
     currency: currency || "GBP"
   }).format(amount);
+}
+
+function cashPaymentLocation(order) {
+  return String(order?.orderType || "").trim().toLowerCase() === "delivery"
+    ? "delivery"
+    : "collection";
+}
+
+function paymentDetail(order) {
+  const provider = String(order?.paymentProvider || "").trim().toLowerCase();
+  const amount = formatPaymentAmount(order);
+
+  if (provider === "stripe") {
+    return amount ? `Paid via Stripe (${amount})` : "Paid via Stripe";
+  }
+
+  if (provider === "cash") {
+    const status = String(order?.status || "").trim().toLowerCase();
+    if (status === "rejected") {
+      const settlement = "no online payment was taken; any cash already paid will be handled directly by Millers Café";
+      return amount ? `Cash order (${amount}; ${settlement})` : `Cash order (${settlement})`;
+    }
+    return amount
+      ? `Cash due on ${cashPaymentLocation(order)} (${amount})`
+      : `Cash due on ${cashPaymentLocation(order)}`;
+  }
+
+  return "";
+}
+
+function cashDecisionLine(order, status) {
+  if (String(order?.paymentProvider || "").trim().toLowerCase() !== "cash") return "";
+  if (status !== "accepted") {
+    return "No online payment was taken. Any cash already paid will be handled directly by Millers Café.";
+  }
+
+  const amount = formatPaymentAmount(order);
+  if (cashPaymentLocation(order) === "delivery") {
+    return amount
+      ? `Please have ${amount} in cash ready for delivery.`
+      : "Please have cash ready for delivery.";
+  }
+  return amount
+    ? `Please pay ${amount} in cash when you collect your order.`
+    : "Please pay in cash when you collect your order.";
 }
 
 function formatDateForEmail(isoDate) {
@@ -87,11 +134,8 @@ function orderDetailsLines(order, reference) {
     ["Notes", order.notes || "None"]
   ];
 
-  if (String(order.paymentProvider || "").toLowerCase() === "stripe") {
-    const paidAmount = formatPaymentAmount(order);
-    const paymentLine = paidAmount
-      ? `Paid via Stripe (${paidAmount})`
-      : "Paid via Stripe";
+  const paymentLine = paymentDetail(order);
+  if (paymentLine) {
     lines.splice(8, 0, ["Payment", paymentLine]);
   }
 
@@ -194,6 +238,7 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
   const refundLine = String(order.paymentProvider || "").toLowerCase() === "stripe" && refundStatus === "succeeded"
     ? "Your Stripe payment refund has been started."
     : "";
+  const cashLine = cashDecisionLine(order, status);
 
   if (status === "accepted") {
     return {
@@ -206,12 +251,14 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
         `<h2 style=\"margin: 0 0 12px;\">Order accepted</h2>`,
         `<p style=\"margin: 0 0 12px;\">Great news, your ${htmlEscape(type)} order <strong>${htmlEscape(reference)}</strong> has been accepted.</p>`,
         `<p style=\"margin: 0 0 12px;\"><strong>Estimated ready time:</strong> ${htmlEscape(etaLine)}</p>`,
+        cashLine ? `<p style=\"margin: 0 0 12px;\">${htmlEscape(cashLine)}</p>` : "",
         "<p style=\"margin: 0;\">If you need help, reply to this email.</p>",
         "</div>"
       ].join(""),
       text: [
         `Your ${type} order ${reference} has been accepted.`,
         `Estimated ready time: ${etaLine}.`,
+        ...(cashLine ? [cashLine] : []),
         "",
         "If you need help, reply to this email."
       ].join("\n")
@@ -228,12 +275,14 @@ function customerDecisionPayload(fromAddress, replyTo, order, reference, update)
       `<h2 style=\"margin: 0 0 12px;\">Order update</h2>`,
       `<p style=\"margin: 0 0 12px;\">Your ${htmlEscape(type)} order <strong>${htmlEscape(reference)}</strong> has been rejected.</p>`,
       refundLine ? `<p style=\"margin: 0 0 12px;\">${htmlEscape(refundLine)}</p>` : "",
+      cashLine ? `<p style=\"margin: 0 0 12px;\">${htmlEscape(cashLine)}</p>` : "",
       "<p style=\"margin: 0;\">If this was unexpected, reply to this email and we'll help.</p>",
       "</div>"
     ].join(""),
     text: [
       `Your ${type} order ${reference} has been rejected.`,
       refundLine,
+      cashLine,
       "",
       "If this was unexpected, reply to this email and we'll help."
     ].filter(Boolean).join("\n")
@@ -287,7 +336,7 @@ function orderEmailAddresses(env) {
   };
 }
 
-export async function sendOrderEmails(env, order, reference) {
+export async function sendOrderEmails(env, order, reference, options = {}) {
   const apiKey = String(env.RESEND_API_KEY || "").trim();
   const { fromAddress, ownerEmails, replyTo } = orderEmailAddresses(env);
 
@@ -297,15 +346,18 @@ export async function sendOrderEmails(env, order, reference) {
 
   const ownerPayload = await ownerEmailPayload(env, fromAddress, replyTo, ownerEmails, order, reference);
   const jobs = [
-    customerEmailPayload(fromAddress, replyTo, order, reference),
-    ownerPayload
+    { audience: "customer", payload: customerEmailPayload(fromAddress, replyTo, order, reference) },
+    { audience: "owner", payload: ownerPayload }
   ];
+  const idempotencyKeyPrefix = String(options.idempotencyKeyPrefix || "").trim();
 
   let delivered = 0;
   const errors = [];
 
   for (const job of jobs) {
-    const result = await sendResendEmail(apiKey, job);
+    const result = await sendResendEmail(apiKey, job.payload, {
+      idempotencyKey: idempotencyKeyPrefix ? `${idempotencyKeyPrefix}:${job.audience}` : ""
+    });
     if (result.ok) {
       delivered += 1;
     } else {

@@ -290,7 +290,7 @@ function topLevelCssTokens(value) {
 test("public menu keeps exact canonical category and item parity", () => {
   const actual = parseStaticMenu(MENU_HTML);
   assert.equal(actual.length, 28, "the public menu must render every canonical category");
-  assert.equal(actual.reduce((count, category) => count + category.items.length, 0), 178);
+  assert.equal(actual.reduce((count, category) => count + category.items.length, 0), 181);
 
   assert.deepEqual(
     actual.map((category) => category.name),

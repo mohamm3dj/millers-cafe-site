@@ -70,12 +70,14 @@ export function recipientList(...values) {
   return recipients;
 }
 
-export async function sendResendEmail(apiKey, payload) {
+export async function sendResendEmail(apiKey, payload, options = {}) {
+  const idempotencyKey = String(options.idempotencyKey || "").trim();
   const response = await fetch(RESEND_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {})
     },
     body: JSON.stringify(payload)
   });
