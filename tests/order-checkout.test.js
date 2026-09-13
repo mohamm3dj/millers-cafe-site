@@ -317,6 +317,27 @@ test("priceOrderCart keeps the fresh lunch deal full-price for delivery despite 
   assert.doesNotMatch(priced.items[0].stripeDescription, /collection discount applied/i);
 });
 
+test("priceOrderCart accepts No Sauce for the fresh lunch deal without changing its price", () => {
+  const modifierSelections = freshLunchDealSelections().map((selection) => (
+    selection.groupName === "Sauce"
+      ? { groupName: "Sauce", optionName: "No Sauce" }
+      : selection
+  ));
+  const priced = priceOrderCart([
+    freshLunchDealCartItem("Coca-Cola Can", { modifierSelections })
+  ], {
+    orderType: "collection"
+  });
+
+  assert.equal(priced.ok, true);
+  assert.equal(priced.subtotalMinor, 595);
+  assert.equal(priced.collectionDiscountMinor, 0);
+  assert.equal(priced.totalMinor, 595);
+  assert.ok(priced.items[0].modifierSelections.some((selection) => (
+    selection.groupName === "Sauce" && selection.optionName === "No Sauce"
+  )));
+});
+
 test("priceOrderCart preserves POS menu ids from the live catalog", () => {
   const menuCatalog = [
     {

@@ -403,6 +403,10 @@ export const MILLERS_ORDER_MENU = [
               {
                 "name": "Curry Mayo",
                 "priceAdjustment": 0
+              },
+              {
+                "name": "No Sauce",
+                "priceAdjustment": 0
               }
             ]
           },

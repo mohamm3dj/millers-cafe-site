@@ -3,7 +3,7 @@ import {
   getMenuItemAllergenLabels,
   getMenuItemDietaryDisplay,
   getPreferredModifierOptionIndex
-} from "./menu-catalog.js?v=20260913a";
+} from "./menu-catalog.js?v=20260914a";
 import {
   calculateOrderPricing,
   canAdvanceToCheckoutDetails,

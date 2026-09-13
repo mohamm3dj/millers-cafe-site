@@ -73,7 +73,8 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
       "Mango Chutney",
       "Sriracha",
       "Tamarind",
-      "Curry Mayo"
+      "Curry Mayo",
+      "No Sauce"
     ]],
     ["Crisp or snack", [
       "Quavers - Cheese",
@@ -95,6 +96,9 @@ test("the Fresh Lunch Deal is first with every approved choice", () => {
     assert.deepEqual(group.options.map((option) => option.name), expectedOptions);
     group.options.forEach((option) => {
       assert.equal(option.priceAdjustment, 0, `${groupName} / ${option.name} should be included`);
+      if (option.name === "No Sauce") {
+        assert.deepEqual(option.allergenCodes, [], "No Sauce should not make an unverified allergen claim");
+      }
       if (groupName === "Crisp or snack") {
         assert.deepEqual(option.allergenCodes, [], `${option.name} should not make an unverified allergen claim`);
       }
